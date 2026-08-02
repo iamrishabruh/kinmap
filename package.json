@@ -28,6 +28,7 @@
     "migration:apply": "tsx scripts/migrations/cli.ts apply",
     "migration:verify": "tsx scripts/migrations/cli.ts verify",
     "migration:rollback": "tsx scripts/migrations/cli.ts rollback",
+    "apple:bundle-ids": "tsx scripts/apple/bundle-ids.ts",
     "mobile:build:dev:ios": "pnpm --filter @family/mobile exec eas build --profile development --platform ios",
     "mobile:build:dev:android": "pnpm --filter @family/mobile exec eas build --profile development --platform android",
     "mobile:build:staging": "pnpm --filter @family/mobile exec eas build --profile staging --platform all",

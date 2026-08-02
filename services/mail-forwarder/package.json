@@ -1,0 +1,29 @@
+{
+  "name": "@family/mail-forwarder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Forwards mail received at support@/privacy@/security@ to a personal inbox (SES inbound → S3 → SES SendRawEmail)",
+  "main": "./src/handler.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "lint": "eslint src tests"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.980.0",
+    "@aws-sdk/client-ses": "3.980.0",
+    "@family/contracts": "workspace:*",
+    "@family/observability": "workspace:*"
+  },
+  "devDependencies": {
+    "@family/eslint-config": "workspace:*",
+    "@family/tsconfig": "workspace:*",
+    "@types/node": "24.13.3",
+    "eslint": "10.8.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}
