@@ -191,7 +191,13 @@ export class MigrationStack extends Stack {
       timeout: Duration.minutes(15),
       memorySize: 512,
       // One migration run at a time; concurrent runners would race on status.
-      reservedConcurrentExecutions: 1,
+      //
+      // Production only: a fresh AWS account has a total Lambda concurrency of
+      // 10 and requires 10 to remain unreserved, so any reservation fails
+      // outright. The DataMigrations table's conditional writes are the actual
+      // guard against a double-apply — this reservation is defence in depth,
+      // not the mechanism — so dropping it outside production is safe.
+      reservedConcurrentExecutions: config.isProduction ? 1 : undefined,
       tracing: Tracing.ACTIVE,
       logGroup,
       environment: {

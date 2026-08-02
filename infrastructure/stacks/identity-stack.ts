@@ -324,6 +324,15 @@ export class IdentityStack extends Stack {
       RetryGracePeriodSeconds: 60,
     });
 
+    // Cognito rejects ALLOW_REFRESH_TOKEN_AUTH outright once rotation is on:
+    //   "ALLOW_REFRESH_TOKEN_AUTH is not a permitted ExplicitAuthFlow when
+    //    refresh token rotation is enabled."
+    // CDK adds that flow automatically for every client, so it has to be
+    // removed here rather than by omitting it above. Refreshing still works —
+    // the rotation feature services it — and this override must stay adjacent
+    // to the rotation setting, because enabling one without the other fails.
+    cfnUserPoolClient.addPropertyOverride('ExplicitAuthFlows', ['ALLOW_USER_SRP_AUTH']);
+
     // -----------------------------------------------------------------------
     // Outputs — identifiers only. No secret, and nothing user-specific.
     // -----------------------------------------------------------------------
