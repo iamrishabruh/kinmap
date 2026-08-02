@@ -52,11 +52,14 @@ temurin@21` failed because casks install into `/Library` and require a sudo
    possible. Installed via Homebrew (1.17.0), which vendors its own Ruby and so
    sidesteps the stale system Ruby.
 4. **No iOS simulator runtime installed.** `xcrun simctl list runtimes` is empty.
-   This does **not** block the spec's verification command, because
-   `xcodebuild -sdk iphonesimulator build` only _compiles_ — the iOS Simulator
-   SDK 26.5 is present. It **does** block actually _running_ the app on a
-   simulator; a runtime must be downloaded (`xcodebuild -downloadPlatform iOS`,
-   several GiB) before any simulator run or UI test.
+   An earlier draft of this report assumed that would still allow a compile-only
+   build, since the iOS Simulator SDK 26.5 is present. **That was wrong**, and
+   the build proved it: `xcodebuild` resolves a _destination_ before it
+   compiles, and with no runtime installed it fails with
+   `Unable to find a destination matching the provided destination specifier`
+   (and `Found no destinations` when the specifier is omitted). A runtime must
+   be downloaded — `xcodebuild -downloadPlatform iOS`, several GiB — before the
+   iOS project can be built at all, on a developer machine or in CI.
 5. **Node 26 is not a tested Expo line.** See §4.
 
 ## 3. Authentication state discovered
@@ -142,18 +145,18 @@ github` performs this once configuration exists.
 Every claim below was produced by running the command and reading its output.
 Anything not listed here was not verified and is not claimed.
 
-| Check | Command | Result |
-| --- | --- | --- |
-| Typecheck | `pnpm typecheck` | **pass** — 21/21 workspace tasks |
-| Lint | `pnpm lint` | **pass** — 21/21, zero errors |
-| Format | `pnpm format:check` | **pass** |
-| Unit tests | `pnpm test` | **pass** — 1019 tests across 9 packages |
-| Secret scan | `scripts/validation/check-secrets.sh` | **pass** |
-| CI job/ruleset agreement | `scripts/ci/verify-required-checks.sh` | **pass** — all 12 required checks map to real jobs |
-| Workflow YAML | parsed all 19 files | **pass** |
-| Native project generation | `expo prebuild --clean` | **pass** — `ios/` and `android/` generated |
-| iOS dependency install | `pod install` | **pass** — 138 pods, `LocationEngine (0.1.0)` linked |
-| Config plugins applied | inspected generated `Info.plist` / `AndroidManifest.xml` | **pass** |
+| Check                     | Command                                                  | Result                                               |
+| ------------------------- | -------------------------------------------------------- | ---------------------------------------------------- |
+| Typecheck                 | `pnpm typecheck`                                         | **pass** — 21/21 workspace tasks                     |
+| Lint                      | `pnpm lint`                                              | **pass** — 21/21, zero errors                        |
+| Format                    | `pnpm format:check`                                      | **pass**                                             |
+| Unit tests                | `pnpm test`                                              | **pass** — 1019 tests across 9 packages              |
+| Secret scan               | `scripts/validation/check-secrets.sh`                    | **pass**                                             |
+| CI job/ruleset agreement  | `scripts/ci/verify-required-checks.sh`                   | **pass** — all 12 required checks map to real jobs   |
+| Workflow YAML             | parsed all 19 files                                      | **pass**                                             |
+| Native project generation | `expo prebuild --clean`                                  | **pass** — `ios/` and `android/` generated           |
+| iOS dependency install    | `pod install`                                            | **pass** — 138 pods, `LocationEngine (0.1.0)` linked |
+| Config plugins applied    | inspected generated `Info.plist` / `AndroidManifest.xml` | **pass**                                             |
 
 Test counts by package: location-core 610, auth 101, validation 99, crypto 65,
 schemas 42, observability 31, api-client 26, test-utils 23, contracts 22.
@@ -162,7 +165,7 @@ schemas 42, observability 31, api-client 26, test-utils 23, contracts 22.
 
 - **iOS compilation.** `xcodebuild` cannot resolve a build destination because
   no iOS simulator runtime is installed (the §2 blocker). `xcodebuild
-  -downloadPlatform iOS` was started; until it completes and the build is run,
+-downloadPlatform iOS` was started; until it completes and the build is run,
   **no claim is made that the iOS app compiles.**
 - **Android compilation.** `./gradlew assembleDebug` was started; its result is
   recorded separately. Until it reports `BUILD SUCCESSFUL`, no claim is made.

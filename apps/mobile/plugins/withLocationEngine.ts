@@ -1,8 +1,4 @@
-import {
-  type ConfigPlugin,
-  withEntitlementsPlist,
-  withInfoPlist,
-} from 'expo/config-plugins';
+import { type ConfigPlugin, withEntitlementsPlist, withInfoPlist } from 'expo/config-plugins';
 
 /**
  * iOS configuration for the native location engine (spec §9, §25).
@@ -36,7 +32,9 @@ const REQUIRED_USAGE_KEYS = [
 const MIN_USAGE_DESCRIPTION_LENGTH = 60;
 
 const withLocationEngine: ConfigPlugin = (config) => {
-  config = withInfoPlist(config, (mod) => {
+  // Each `with*` helper returns a new config rather than mutating in place, so
+  // the result is threaded through a local instead of reassigning the parameter.
+  let next = withInfoPlist(config, (mod) => {
     const plist = mod.modResults;
 
     for (const key of REQUIRED_USAGE_KEYS) {
@@ -63,19 +61,21 @@ const withLocationEngine: ConfigPlugin = (config) => {
       ...new Set([...existing, ...BACKGROUND_TASK_IDENTIFIERS]),
     ];
 
-    const modes = Array.isArray(plist.UIBackgroundModes) ? (plist.UIBackgroundModes as string[]) : [];
+    const modes = Array.isArray(plist.UIBackgroundModes)
+      ? (plist.UIBackgroundModes as string[])
+      : [];
     plist.UIBackgroundModes = [...new Set([...modes, 'location', 'fetch', 'processing'])];
 
     return mod;
   });
 
-  config = withEntitlementsPlist(config, (mod) => {
+  next = withEntitlementsPlist(next, (mod) => {
     // Sign in with Apple is mandatory for any app offering third-party sign-in.
     mod.modResults['com.apple.developer.applesignin'] = ['Default'];
     return mod;
   });
 
-  return config;
+  return next;
 };
 
 export default withLocationEngine;

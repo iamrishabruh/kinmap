@@ -1,8 +1,4 @@
-import {
-  AndroidConfig,
-  type ConfigPlugin,
-  withAndroidManifest,
-} from 'expo/config-plugins';
+import { AndroidConfig, type ConfigPlugin, withAndroidManifest } from 'expo/config-plugins';
 
 /**
  * Android configuration for the native location engine (spec §9).

@@ -53,15 +53,15 @@ scripts/             Bootstrap, validation, CI and migration tooling
 Pinned deliberately; see `docs/operations/execution-report.md` for why each
 version was chosen.
 
-| | |
-| --- | --- |
-| Node | 24.18.1 (LTS) — pinned in `.nvmrc`, `engines`, `eas.json`, CI |
-| pnpm | 11.12.0 |
-| TypeScript | 6.0.3 — **not** 7.x, which `typescript-eslint` does not support |
-| Expo SDK | 57.0.9 |
-| React Native | 0.86.2 / React 19.2.3 |
-| AWS CDK | 2.1134.0 (`aws-cdk-lib` 2.263.0) |
-| JDK | 21 · Android compileSdk 36 · Xcode 26.5 |
+|              |                                                                 |
+| ------------ | --------------------------------------------------------------- |
+| Node         | 24.18.1 (LTS) — pinned in `.nvmrc`, `engines`, `eas.json`, CI   |
+| pnpm         | 11.12.0                                                         |
+| TypeScript   | 6.0.3 — **not** 7.x, which `typescript-eslint` does not support |
+| Expo SDK     | 57.0.9                                                          |
+| React Native | 0.86.2 / React 19.2.3                                           |
+| AWS CDK      | 2.1134.0 (`aws-cdk-lib` 2.263.0)                                |
+| JDK          | 21 · Android compileSdk 36 · Xcode 26.5                         |
 
 ## Quickstart
 
