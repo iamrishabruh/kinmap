@@ -241,12 +241,27 @@ export class SecurityStack extends Stack {
     this.rotationFunction = this.createRotationFunction(config);
     this.rotatingSigningSecret = this.createRotatingSecret(config, encryptionKey);
 
-    this.rotatingSigningSecret.addRotationSchedule('Rotation', {
-      rotationLambda: this.rotationFunction,
-      automaticallyAfter: this.rotationInterval(config),
-    });
+    // Rotation schedules are attached in production only.
+    //
+    // AWS::SecretsManager::RotationSchedule blocks stack completion until the
+    // rotation Lambda has driven a secret all the way through
+    // createSecret -> setSecret -> testSecret -> finishSecret. If any step does
+    // not complete, CloudFormation does not fail — it waits, for hours, and the
+    // whole environment is stuck behind it. That is an acceptable price for a
+    // production credential and a poor trade for a development account whose
+    // signing secret protects nothing real. The secret itself is still created
+    // everywhere; only the automatic rotation is production-scoped.
+    if (config.isProduction) {
+      this.rotatingSigningSecret.addRotationSchedule('Rotation', {
+        rotationLambda: this.rotationFunction,
+        automaticallyAfter: this.rotationInterval(config),
+      });
+    }
 
-    for (const [index, arn] of (props.additionalRotatedSecretArns ?? []).entries()) {
+    for (const [index, arn] of (config.isProduction
+      ? (props.additionalRotatedSecretArns ?? [])
+      : []
+    ).entries()) {
       const imported: ISecret = Secret.fromSecretCompleteArn(
         this,
         `ImportedRotatedSecret${index}`,

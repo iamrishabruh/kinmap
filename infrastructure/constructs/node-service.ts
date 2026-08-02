@@ -68,6 +68,17 @@ export interface NodeServiceProps {
   readonly environment?: Record<string, string>;
   readonly memorySize?: number;
   readonly timeout?: Duration;
+  /**
+   * Reserved concurrency. Honoured only in production.
+   *
+   * Reserving concurrency carves capacity out of the account's pool, and a new
+   * AWS account starts with a total limit of 10 rather than 1000 — with a hard
+   * requirement that 10 stay unreserved. Any reservation in such an account
+   * therefore fails outright with "decreases account's UnreservedConcurrentExecution
+   * below its minimum value". The setting exists for production blast-radius and
+   * cost control, which a development account does not need, so it is ignored
+   * outside production rather than blocking the whole environment from deploying.
+   */
   readonly reservedConcurrentExecutions?: number;
   readonly logRetention?: RetentionDays;
   readonly alarmTopic?: ITopic;
@@ -131,7 +142,9 @@ export class NodeService extends Construct {
 
       memorySize: props.memorySize ?? config.lambdaMemoryMb,
       timeout: props.timeout ?? Duration.seconds(config.lambdaTimeoutSeconds),
-      reservedConcurrentExecutions: props.reservedConcurrentExecutions,
+      reservedConcurrentExecutions: config.isProduction
+        ? props.reservedConcurrentExecutions
+        : undefined,
 
       tracing: Tracing.ACTIVE,
       logGroup: this.logGroup,
