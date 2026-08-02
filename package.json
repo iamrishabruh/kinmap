@@ -1,0 +1,64 @@
+{
+  "name": "family-location",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consent-based family location sharing platform",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.12.0",
+  "engines": {
+    "node": ">=24.18.1 <25",
+    "pnpm": ">=11.12.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:contract": "turbo run test:contract",
+    "test:infra": "pnpm --filter @family/infrastructure test",
+    "cdk:synth": "pnpm --filter @family/infrastructure synth",
+    "cdk:diff": "pnpm --filter @family/infrastructure diff",
+    "cdk:deploy": "pnpm --filter @family/infrastructure deploy",
+    "migration:list": "tsx scripts/migrations/cli.ts list",
+    "migration:plan": "tsx scripts/migrations/cli.ts plan",
+    "migration:apply": "tsx scripts/migrations/cli.ts apply",
+    "migration:verify": "tsx scripts/migrations/cli.ts verify",
+    "migration:rollback": "tsx scripts/migrations/cli.ts rollback",
+    "mobile:build:dev:ios": "pnpm --filter @family/mobile exec eas build --profile development --platform ios",
+    "mobile:build:dev:android": "pnpm --filter @family/mobile exec eas build --profile development --platform android",
+    "mobile:build:staging": "pnpm --filter @family/mobile exec eas build --profile staging --platform all",
+    "mobile:build:production": "pnpm --filter @family/mobile exec eas build --profile production --platform all",
+    "mobile:submit:ios": "pnpm --filter @family/mobile exec eas submit --profile production --platform ios",
+    "mobile:submit:android": "pnpm --filter @family/mobile exec eas submit --profile production --platform android",
+    "validate:secrets": "./scripts/validation/check-secrets.sh",
+    "validate:prebuild": "./scripts/validation/check-prebuild-consistency.sh",
+    "bootstrap": "./scripts/bootstrap/bootstrap.sh",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.31.1",
+    "@family/eslint-config": "workspace:*",
+    "@family/tsconfig": "workspace:*",
+    "husky": "9.1.7",
+    "lint-staged": "17.3.0",
+    "prettier": "3.9.6",
+    "tsx": "4.23.1",
+    "turbo": "2.10.8",
+    "typescript": "6.0.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+name: infrastructure-diff
+
+# Posts the CDK diff onto the pull request so a reviewer sees the exact
+# CloudFormation change before approving (spec §14).
+
+on:
+  pull_request:
+    branches: [main, development]
+    paths:
+      - "infrastructure/**"
+      - "services/**"
+      - "packages/**"
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    name: infrastructure-diff
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      # A fork PR has no OIDC access; fall back to a credential-free synth so the
+      # check still runs and cannot be used to exfiltrate credentials.
+      - name: Assume read-only diff role
+        id: creds
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-infra-diff
+
+      - name: Diff or synth
+        id: diff
+        run: |
+          set -euo pipefail
+          {
+            echo 'diff<<CDKDIFF'
+            if [[ "${{ steps.creds.outcome }}" == "success" ]]; then
+              pnpm cdk:diff -- --all 2>&1 | tail -300
+            else
+              echo "(no AWS credentials on this run — showing synth result only)"
+              pnpm cdk:synth 2>&1 | tail -100
+            fi
+            echo 'CDKDIFF'
+          } >> "$GITHUB_OUTPUT"
+        env:
+          CDK_ENVIRONMENT: development
+          AWS_DEV_ACCOUNT_ID: ${{ vars.AWS_DEV_ACCOUNT_ID || '000000000000' }}
+          AWS_STAGING_ACCOUNT_ID: ${{ vars.AWS_STAGING_ACCOUNT_ID || '000000000000' }}
+          AWS_PROD_ACCOUNT_ID: ${{ vars.AWS_PROD_ACCOUNT_ID || '000000000000' }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Comment the diff
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BODY: |
+            ### Infrastructure diff
+
+            <details><summary>cdk diff</summary>
+
+            ```
+            ${{ steps.diff.outputs.diff }}
+            ```
+
+            </details>
+
+            Reviewer checklist (spec §14): change summary, rollback notes, deployment
+            order, and data-compatibility assessment must be in the PR description.
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body "$BODY"

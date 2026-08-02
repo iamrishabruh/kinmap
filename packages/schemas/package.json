@@ -1,0 +1,27 @@
+{
+  "name": "@family/schemas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly --outDir dist || true",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@family/contracts": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@family/tsconfig": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

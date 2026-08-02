@@ -1,0 +1,13 @@
+{
+  "extends": "@family/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    // Runtime code here is platform-agnostic and imports no Node module; the
+    // Node types are present only so the vitest suites can use host globals
+    // such as structuredClone.
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

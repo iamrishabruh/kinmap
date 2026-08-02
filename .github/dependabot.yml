@@ -1,0 +1,49 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 10
+    target-branch: development
+    versioning-strategy: increase
+    groups:
+      aws-sdk:
+        patterns: ["@aws-sdk/*", "aws-cdk*"]
+      expo:
+        patterns: ["expo", "expo-*", "@expo/*"]
+      react-native:
+        patterns: ["react-native", "react-native-*"]
+      dev-tooling:
+        patterns: ["eslint*", "typescript-eslint", "prettier", "vitest", "turbo"]
+    ignore:
+      # Major upgrades to the mobile toolchain are coordinated releases, never
+      # automated: Expo and React Native majors move together with native code.
+      - dependency-name: expo
+        update-types: [version-update:semver-major]
+      - dependency-name: react-native
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      # typescript-eslint currently caps TypeScript at <6.1.0; a TS major would
+      # silently break linting across the monorepo.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    target-branch: development
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gradle
+    directory: /apps/mobile/android
+    schedule: { interval: monthly }
+    target-branch: development
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: swift
+    directory: /apps/mobile/ios
+    schedule: { interval: monthly }
+    target-branch: development
+    open-pull-requests-limit: 3

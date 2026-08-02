@@ -1,0 +1,56 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!--
+    Permissions are declared here so the library is self-describing; the app's
+    app.config.ts declares the same set, and the manifest merger unions them.
+
+    ACCESS_BACKGROUND_LOCATION cannot be requested inline on Android 11+. The
+    app deep-links the user to Settings and explains why, rather than pretending
+    a runtime prompt will appear.
+  -->
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <!--
+    Requested only from the troubleshooting screen, and only after explaining
+    what it does. Never requested silently.
+  -->
+  <uses-permission
+    android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+    tools:node="merge"
+    xmlns:tools="http://schemas.android.com/tools" />
+
+  <application>
+    <!--
+      The foreground service exists ONLY for live sessions, which the person
+      being located has agreed to and can see. Its notification is required by
+      the platform and is never hidden, delayed, or disguised (spec §9).
+    -->
+    <service
+      android:name=".LiveSessionService"
+      android:exported="false"
+      android:foregroundServiceType="location"
+      android:stopWithTask="false" />
+
+    <receiver
+      android:name=".GeofenceReceiver"
+      android:exported="false" />
+
+    <receiver
+      android:name=".BootReceiver"
+      android:enabled="true"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

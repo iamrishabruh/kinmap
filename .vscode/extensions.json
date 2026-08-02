@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "expo.vscode-expo-tools",
+    "editorconfig.editorconfig",
+    "sswg.swift-lang",
+    "vknabel.vscode-swiftformat",
+    "fwcd.kotlin",
+    "amazonwebservices.aws-toolkit-vscode",
+    "redhat.vscode-yaml",
+    "timonwong.shellcheck",
+    "github.vscode-github-actions"
+  ]
+}

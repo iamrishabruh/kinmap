@@ -1,0 +1,16 @@
+node_modules
+dist
+lib
+build
+coverage
+cdk.out
+.turbo
+.expo
+pnpm-lock.yaml
+apps/mobile/ios
+apps/mobile/android
+**/Pods
+*.xcodeproj
+*.xcworkspace
+.bootstrap-state
+CHANGELOG.md

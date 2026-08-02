@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Secrets — never commit. Enforced by scripts/validation/check-secrets.sh
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.key
+*.keystore
+*.jks
+*.mobileprovision
+*.cer
+*.certSigningRequest
+google-services.json
+GoogleService-Info.plist
+service-account*.json
+*-service-account.json
+bootstrap.config.local.json
+.bootstrap-state/
+apps/mobile/credentials.json
+
+# ---------------------------------------------------------------------------
+# Dependencies / build output
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+lib/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+.pnpm-store/
+
+# ---------------------------------------------------------------------------
+# Expo / React Native
+# ---------------------------------------------------------------------------
+.expo/
+.expo-shared/
+*.jsbundle
+apps/mobile/ios/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.xcode.env.local
+apps/mobile/ios/*.xcworkspace/xcuserdata/
+apps/mobile/ios/*.xcodeproj/xcuserdata/
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/android/local.properties
+apps/mobile/android/.cxx/
+
+# ---------------------------------------------------------------------------
+# AWS CDK
+# ---------------------------------------------------------------------------
+cdk.out/
+cdk.context.json
+.cdk.staging/
+
+# ---------------------------------------------------------------------------
+# Tooling / OS
+# ---------------------------------------------------------------------------
+.DS_Store
+*.log
+npm-debug.log*
+yarn-error.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+vendor/bundle/
+.ruby-version.local

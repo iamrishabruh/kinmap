@@ -1,0 +1,30 @@
+{
+  "name": "@family/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "echo \"@family/design-system: consumed as source by Metro\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "peerDependencies": {
+    "react": "19.2.3",
+    "react-native": "0.86.2"
+  },
+  "devDependencies": {
+    "@family/tsconfig": "workspace:*",
+    "@types/react": "~19.2.2",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

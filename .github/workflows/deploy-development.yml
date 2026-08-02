@@ -1,0 +1,58 @@
+name: deploy-development
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - "infrastructure/**"
+      - "services/**"
+      - "packages/**"
+      - ".github/workflows/deploy-development.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # OIDC only — no long-lived AWS keys are stored (spec §7)
+
+jobs:
+  deploy:
+    name: deploy-development
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-deploy-development
+
+      - name: Show diff before deploying
+        run: pnpm cdk:diff -- --all
+        env:
+          CDK_ENVIRONMENT: development
+          AWS_DEV_ACCOUNT_ID: ${{ vars.AWS_DEV_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+
+      - name: Deploy
+        run: pnpm cdk:deploy -- --all --require-approval never
+        env:
+          CDK_ENVIRONMENT: development
+          AWS_DEV_ACCOUNT_ID: ${{ vars.AWS_DEV_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+
+      - name: Smoke test
+        run: pnpm --filter @family/api test:smoke --if-present
+
+      - name: Apply approved development migrations
+        run: pnpm migration:apply --env development --approved-only
+        continue-on-error: false

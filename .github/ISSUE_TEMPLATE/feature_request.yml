@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a change
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can someone not do today?
+    validations: { required: true }
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations: { required: true }
+
+  - type: textarea
+    id: consent-impact
+    attributes:
+      label: Consent and safety impact
+      description: |
+        Required. Does this change what is collected, who can see it, or how a
+        person stops being located? Could it be used to observe someone who has
+        not agreed to it, or make sharing less visible to the person being shared?
+        Answer honestly — "none" is a valid answer if it is true.
+    validations: { required: true }
+
+  - type: dropdown
+    id: plan
+    attributes:
+      label: Which plan should this belong to
+      options: [Free, Family, Family Plus, Undecided]

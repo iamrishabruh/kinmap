@@ -1,0 +1,82 @@
+name: Bug report
+description: Something is broken
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste coordinates, addresses, invitation links, access tokens, or
+        another person's details into this issue.** Use opaque identifiers and the
+        request ID shown in the app instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations: { required: true }
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations: { required: true }
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations: { required: true }
+
+  - type: input
+    id: request-id
+    attributes:
+      label: Request ID
+      description: Settings → Support shows the most recent request ID.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Background location / tracking
+        - Map / current location
+        - History / timeline
+        - Saved places / arrival alerts
+        - Live session
+        - Invitations / family membership
+        - Sign-in / account
+        - Notifications
+        - Subscription / billing
+        - Privacy controls / deletion
+        - Backend / API
+        - Infrastructure / CI
+    validations: { required: true }
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS version
+      placeholder: iPhone 15 Pro, iOS 26.4 / Pixel 8, Android 16
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version and build number
+
+  - type: checkboxes
+    id: conditions
+    attributes:
+      label: Conditions at the time (helps enormously for location bugs)
+      options:
+        - label: App was in the background
+        - label: Screen was locked
+        - label: Low Power Mode / battery saver was on
+        - label: Device was offline or on a poor connection
+        - label: App had been force-quit
+        - label: Device had recently restarted
+        - label: Location permission is "While Using" rather than "Always"
+        - label: Precise location is off

@@ -1,0 +1,11 @@
+{
+  "name": "@family/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "base.json",
+    "node.json",
+    "react-native.json",
+    "lambda.json"
+  ]
+}

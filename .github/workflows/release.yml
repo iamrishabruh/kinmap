@@ -1,0 +1,55 @@
+name: release
+
+# Versioning via Changesets. Opens a release PR on development; publishing the
+# version commit is what later feeds the development -> main release PR.
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: version-packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - name: Open or update the version PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$(ls .changeset/*.md 2>/dev/null | grep -v README || true)" ]]; then
+            echo "No changesets pending; nothing to version."
+            exit 0
+          fi
+          pnpm version-packages
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            branch="chore/version-packages"
+            git checkout -B "$branch"
+            git add -A
+            git commit -m "chore: version packages"
+            git push -f origin "$branch"
+            gh pr create --base development --head "$branch" \
+              --title "chore: version packages" \
+              --body "Automated version bump from pending changesets." \
+              || gh pr edit "$branch" --body "Automated version bump from pending changesets."
+          fi

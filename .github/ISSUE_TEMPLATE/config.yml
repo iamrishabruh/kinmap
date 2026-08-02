@@ -1,0 +1,18 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/OWNER_PLACEHOLDER/family-location/security/advisories/new
+    about: >
+      Please report vulnerabilities privately. Never open a public issue for a
+      security problem. See SECURITY.md.
+
+  - name: Report abuse, stalking, or misuse
+    url: https://github.com/OWNER_PLACEHOLDER/family-location/blob/development/docs/privacy/safety-policy.md
+    about: >
+      If someone is using this product to track you without your consent, do not
+      open a public issue. Follow the safety policy for the fastest route to
+      pausing sharing, revoking devices, and contacting support.
+
+  - name: Product support
+    url: https://example.com/support
+    about: Questions about using the app.

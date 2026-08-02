@@ -1,0 +1,46 @@
+name: deploy-staging
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*.*.*-rc*"]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: deploy-staging
+    runs-on: ubuntu-latest
+    environment: staging
+    # GitHub Actions does not support YAML anchors, so shared values are set
+    # once at job level rather than repeated per step.
+    env:
+      CDK_ENVIRONMENT: staging
+      AWS_STAGING_ACCOUNT_ID: ${{ vars.AWS_STAGING_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-deploy-staging
+
+      - run: pnpm cdk:deploy -- --all --require-approval never
+
+      - name: Integration tests
+        run: pnpm --filter @family/api test:integration --if-present
+
+      - name: Staging migrations
+        run: pnpm migration:apply --env staging --approved-only

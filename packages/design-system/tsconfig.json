@@ -1,0 +1,4 @@
+{
+  "extends": "@family/tsconfig/react-native.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

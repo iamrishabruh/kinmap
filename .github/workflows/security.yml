@@ -1,0 +1,73 @@
+name: security
+
+on:
+  pull_request:
+    branches: [main, development]
+  push:
+    branches: [main, development]
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - run: ./scripts/validation/check-secrets.sh
+
+  privacy-invariants:
+    name: privacy-invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - name: Coordinates must never reach logs or telemetry
+        # The redaction tests in @family/observability are the enforcement point.
+        run: pnpm --filter @family/observability test
+
+      - name: No raw coordinate logging in services
+        run: |
+          set -euo pipefail
+          # Flags console/logger/Sentry calls that pass a latitude/longitude identifier.
+          if grep -rInE '(console\.(log|info|warn|error)|logger\.[a-z]+|captureMessage|captureException)\([^)]*\b(latitude|longitude|lat|lng|coords)\b' \
+               services packages apps/mobile/src 2>/dev/null; then
+            echo "::error::A coordinate value is being passed to a logging or telemetry call."
+            exit 1
+          fi
+          echo "No coordinate logging found."
+
+      - name: Push payloads must not carry coordinates
+        run: |
+          set -euo pipefail
+          if grep -rInE '\b(latitude|longitude)\b' services/notification-worker/src 2>/dev/null \
+             | grep -viE 'test|spec|//|\*'; then
+            echo "::error::Notification payloads must use opaque identifiers only."
+            exit 1
+          fi
+          echo "Notification payloads are clean."
+
+  osv-scan:
+    name: osv-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level moderate --json > audit.json || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-audit
+          path: audit.json
+          retention-days: 30

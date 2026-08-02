@@ -1,0 +1,38 @@
+# Code-owner review is required on main for security, infrastructure, billing and
+# native code (spec §7). Replace the placeholder teams with real ones before the
+# repository has more than one contributor — an unresolvable owner silently
+# blocks every pull request.
+
+*                                   @OWNER_PLACEHOLDER
+
+# --- Security-sensitive -----------------------------------------------------
+/packages/auth/                     @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/packages/crypto/                   @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/services/auth-events/              @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/services/invitation-service/       @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/services/deletion-worker/          @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/services/audit-worker/             @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/docs/security/                     @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/docs/privacy/                      @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+SECURITY.md                         @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+
+# --- Infrastructure ---------------------------------------------------------
+/infrastructure/                    @INFRA_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/.github/workflows/                 @INFRA_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/scripts/bootstrap/                 @INFRA_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/migrations/                        @INFRA_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+
+# --- Billing ----------------------------------------------------------------
+/services/subscription-worker/      @BILLING_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/apps/mobile/src/features/billing/  @BILLING_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+
+# --- Native code ------------------------------------------------------------
+/apps/mobile/modules/               @MOBILE_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/apps/mobile/ios/                   @MOBILE_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/apps/mobile/android/               @MOBILE_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/apps/mobile/plugins/               @MOBILE_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+
+# --- Location and privacy core ----------------------------------------------
+/packages/location-core/            @MOBILE_TEAM_PLACEHOLDER @SECURITY_TEAM_PLACEHOLDER
+/services/location-ingestion/       @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER
+/services/location-query/           @SECURITY_TEAM_PLACEHOLDER @OWNER_PLACEHOLDER

@@ -1,0 +1,116 @@
+name: deploy-production
+
+# Production deploys originate ONLY from main, which in turn accepts only pull
+# requests from development (spec §33). The `production` GitHub environment
+# requires manual approval before any job in it runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY-PRODUCTION to proceed"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    name: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+
+      - name: Confirm the operator typed the phrase
+        run: |
+          [[ "${{ inputs.confirm }}" == "DEPLOY-PRODUCTION" ]] || {
+            echo "::error::Confirmation phrase mismatch."; exit 1; }
+
+      - name: Refuse to deploy anything but main
+        run: |
+          [[ "${{ github.ref }}" == "refs/heads/main" ]] || {
+            echo "::error::Production deploys must run from main."; exit 1; }
+
+      - name: Verify development has been merged into main
+        run: |
+          set -euo pipefail
+          git fetch origin development main --quiet
+          if ! git merge-base --is-ancestor origin/development origin/main; then
+            echo "::error::origin/development is not an ancestor of main. Open the development -> main PR first."
+            exit 1
+          fi
+
+      - name: Verify a clean tree and a changelog entry
+        run: |
+          set -euo pipefail
+          [[ -z "$(git status --porcelain)" ]] || { echo "::error::Working tree is dirty."; exit 1; }
+          [[ -f CHANGELOG.md ]] || { echo "::error::CHANGELOG.md is missing."; exit 1; }
+
+      - run: ./scripts/validation/check-secrets.sh
+
+  test:
+    name: full-test-suite
+    runs-on: ubuntu-latest
+    needs: preflight
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint && pnpm typecheck && pnpm test && pnpm test:infra
+
+  deploy:
+    name: deploy-production
+    runs-on: ubuntu-latest
+    needs: [preflight, test]
+    environment: production # requires manual approval
+    # GitHub Actions does not support YAML anchors, so shared values are set
+    # once at job level rather than repeated per step.
+    env:
+      CDK_ENVIRONMENT: production
+      AWS_PROD_ACCOUNT_ID: ${{ vars.AWS_PROD_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-deploy-production
+
+      - name: Diff (recorded in the run log for the change record)
+        run: pnpm cdk:diff -- --all
+
+      - name: Deploy backward-compatible infrastructure
+        run: pnpm cdk:deploy -- --all --require-approval any-change
+
+      - name: Apply approved production migrations
+        run: pnpm migration:apply --env production --approved-only
+
+      - name: Canary
+        run: pnpm --filter @family/api test:canary --if-present
+
+  # Store submission is intentionally NOT part of this workflow. Builds are
+  # uploaded to TestFlight / Play internal only, and public release requires an
+  # explicit, separate approval (spec §32, §41).
+  notify:
+    name: release-report
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - run: |
+          echo "Production infrastructure deployed."
+          echo "Public store release still requires explicit approval — see submit-ios / submit-android."

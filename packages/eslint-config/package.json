@@ -1,0 +1,37 @@
+{
+  "name": "@family/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./eslint.config.js",
+  "exports": {
+    ".": "./eslint.config.js",
+    "./rules/privacy": "./rules/privacy.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "eslint.config.js",
+    "rules"
+  ],
+  "scripts": {
+    "build": "echo \"@family/eslint-config: nothing to build\"",
+    "typecheck": "echo \"@family/eslint-config: no typescript sources\"",
+    "lint": "eslint eslint.config.js rules",
+    "test": "echo \"@family/eslint-config: no tests\""
+  },
+  "dependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-import-x": "4.17.1",
+    "typescript-eslint": "8.65.0",
+    "eslint-import-resolver-typescript": "4.4.5"
+  },
+  "peerDependencies": {
+    "eslint": "10.8.0",
+    "typescript": "6.0.3"
+  },
+  "devDependencies": {
+    "eslint": "10.8.0",
+    "typescript": "6.0.3"
+  }
+}

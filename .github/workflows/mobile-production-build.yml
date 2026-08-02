@@ -1,0 +1,43 @@
+name: mobile-production-build
+
+# Produces signed release candidates. It does NOT submit them anywhere;
+# submission is a separate, separately-approved workflow (spec §41).
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        type: choice
+        options: [all, ios, android]
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: eas-build-production
+    runs-on: ubuntu-latest
+    environment: production # requires manual approval
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+
+      - name: Refuse to build a release candidate off any branch but main
+        run: |
+          [[ "${{ github.ref }}" == "refs/heads/main" ]] || {
+            echo "::error::Production builds must originate from main."; exit 1; }
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # 9.0.0
+        with:
+          eas-version: 21.4.0
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/validation/check-secrets.sh
+
+      - name: EAS build (auto-incremented build number)
+        working-directory: apps/mobile
+        run: eas build --profile production --platform ${{ inputs.platform }} --non-interactive --no-wait

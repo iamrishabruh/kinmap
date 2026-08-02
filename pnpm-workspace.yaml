@@ -1,0 +1,25 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "services/*"
+  - "infrastructure"
+
+# Keep the React Native / Expo native dependency graph hoisted so that
+# autolinking and CocoaPods resolution behave the same locally and on EAS.
+nodeLinker: hoisted
+
+# TypeScript 6 is newer than some packages' declared peer ranges, but it is the
+# highest release typescript-eslint supports (<6.1.0), so the range is widened
+# deliberately rather than downgrading the whole repo.
+# pnpm 10+ reads this here; the package.json "pnpm" field is no longer consulted.
+peerDependencyRules:
+  allowedVersions:
+    typescript: "6"
+
+# Postinstall scripts are denied by default; each of these is allowed
+# deliberately because it downloads or compiles a platform-specific binary that
+# the toolchain cannot work without. Anything not listed here stays blocked.
+allowBuilds:
+  "@sentry/cli": true # fetches the sentry-cli binary for symbol upload
+  esbuild: true # fetches the platform esbuild binary (CDK bundling, tsx)
+  unrs-resolver: true # native resolver used by eslint-plugin-import-x

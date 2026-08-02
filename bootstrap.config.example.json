@@ -1,0 +1,75 @@
+{
+  "_comment": "Copy to bootstrap.config.local.json (git-ignored) and fill in. This file holds ONLY non-secret identifiers. Secrets are never stored here - the bootstrap prompts for them with hidden input and writes them straight to AWS Secrets Manager, EAS, or GitHub environment secrets.",
+
+  "product": {
+    "name": "Family Location",
+    "legalCompanyName": "Example Holdings, Inc.",
+    "supportEmail": "support@example.com",
+    "privacyEmail": "privacy@example.com",
+    "securityEmail": "security@example.com"
+  },
+
+  "github": {
+    "owner": "your-github-org-or-username",
+    "repository": "family-location",
+    "visibility": "private",
+    "bootstrapAdmin": "your-github-username"
+  },
+
+  "aws": {
+    "organizationId": "o-xxxxxxxxxx",
+    "accounts": {
+      "development": "000000000000",
+      "staging": "000000000000",
+      "production": "000000000000"
+    },
+    "primaryRegion": "us-east-1",
+    "disasterRecoveryRegion": "us-west-2",
+    "ssoStartUrl": "https://your-org.awsapps.com/start",
+    "ssoRegion": "us-east-1",
+    "profilePrefix": "family-location"
+  },
+
+  "domains": {
+    "root": "example.com",
+    "api": "api.example.com",
+    "web": "www.example.com"
+  },
+
+  "apple": {
+    "teamId": "XXXXXXXXXX",
+    "bundleId": "com.example.familylocation",
+    "developmentBundleId": "com.example.familylocation.dev",
+    "stagingBundleId": "com.example.familylocation.staging",
+    "appStoreConnectIssuerId": "",
+    "appStoreConnectKeyId": ""
+  },
+
+  "android": {
+    "applicationId": "com.example.familylocation",
+    "developmentApplicationId": "com.example.familylocation.dev",
+    "stagingApplicationId": "com.example.familylocation.staging",
+    "googleCloudProjectId": "family-location-prod",
+    "firebaseProjectId": "family-location-prod"
+  },
+
+  "expo": {
+    "organization": "your-expo-account",
+    "projectSlug": "family-location"
+  },
+
+  "revenuecat": {
+    "project": "family-location"
+  },
+
+  "sentry": {
+    "organization": "your-sentry-org",
+    "project": "family-location-mobile"
+  },
+
+  "plans": {
+    "defaultFamilyMemberLimit": 6,
+    "freePlanHistoryDays": 0,
+    "paidPlanHistoryDays": 30
+  }
+}

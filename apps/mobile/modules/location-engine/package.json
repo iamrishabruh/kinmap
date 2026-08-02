@@ -1,0 +1,8 @@
+{
+  "name": "location-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Native background location engine for iOS and Android",
+  "main": "index.ts",
+  "types": "index.ts"
+}

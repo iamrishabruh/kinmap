@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalDependencies": ["pnpm-lock.yaml", ".nvmrc", "tsconfig.base.json"],
+  "globalEnv": ["APP_ENV", "NODE_ENV", "CI"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "lib/**", ".expo/**", "cdk.out/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:contract": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "synth": {
+      "dependsOn": ["^build"],
+      "outputs": ["cdk.out/**"]
+    },
+    "diff": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "deploy": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": false
+    }
+  }
+}
