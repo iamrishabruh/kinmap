@@ -391,7 +391,7 @@ export class MailStack extends Stack {
       deadLetterQueue: this.forwarderDeadLetterQueue,
       environment: {
         MAIL_BUCKET: this.mailBucket.bucketName,
-        MAIL_OBJECT_PREFIX: MAIL_OBJECT_PREFIX,
+        MAIL_OBJECT_PREFIX,
         MAIL_FORWARDED_ADDRESSES: this.forwardedAddresses.join(','),
         MAIL_FORWARD_FROM: fromAddress,
         MAIL_FORWARD_TO: forwardTo.join(','),
