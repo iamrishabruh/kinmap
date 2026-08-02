@@ -3,6 +3,7 @@ import { App, Tags, type Stack } from 'aws-cdk-lib';
 import {
   applyStandardTags,
   cdkEnvironment,
+  envList,
   resolveEnvironment,
   stackName,
 } from '../config/index.js';
@@ -12,6 +13,7 @@ import { DataStack } from '../stacks/data-stack.js';
 import { FoundationStack } from '../stacks/foundation-stack.js';
 import { IdentityStack } from '../stacks/identity-stack.js';
 import { LocationStack } from '../stacks/location-stack.js';
+import { MailStack } from '../stacks/mail-stack.js';
 import { MigrationStack } from '../stacks/migration-stack.js';
 import { NotificationStack } from '../stacks/notification-stack.js';
 import { ObservabilityStack } from '../stacks/observability-stack.js';
@@ -152,6 +154,26 @@ const web = new WebStack(app, stackName(config, 'web'), {
 });
 web.addDependency(foundation);
 
+// Inbound mail for the addresses published on the App Store listing and in the
+// privacy policy. App Review writes to the support address, so this is part of
+// the public surface rather than an operational nicety.
+//
+// MailStack overrides the region in `env`: an SES receipt rule, the bucket it
+// spools into and the function it invokes must all live in a region where SES
+// can receive, which need not be this deployment's primary region.
+const mail = new MailStack(app, stackName(config, 'mail'), {
+  config,
+  env,
+  foundation,
+  hostedZone: foundation.hostedZone,
+  // Where a person actually reads it. Deployment configuration, not a secret,
+  // and not something a stack is allowed to read for itself — the default is
+  // deliberately an address on our own domain so an unset variable produces a
+  // synth warning rather than mail that quietly goes nowhere.
+  forwardTo: envList('KINMAP_MAIL_FORWARD_TO', [config.alarmEmail]),
+});
+mail.addDependency(foundation);
+
 // -- Layer 5: operations ---------------------------------------------------
 
 const migration = new MigrationStack(app, stackName(config, 'migration'), {
@@ -187,6 +209,7 @@ const stacks: Stack[] = [
   billing,
   api,
   web,
+  mail,
   migration,
   observability,
 ];

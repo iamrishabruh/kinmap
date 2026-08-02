@@ -154,9 +154,7 @@ describe('header rewriting', () => {
 
     expect(fields[0]?.name).toBe('X-Kinmap-Forwarded-By');
     expect(headerValue(result.raw, 'x-kinmap-original-to')).toBe('support@kinmap.app');
-    expect(headerValue(result.raw, 'x-kinmap-ses-message-id')).toBe(
-      'ses-message-id-000000000001',
-    );
+    expect(headerValue(result.raw, 'x-kinmap-ses-message-id')).toBe('ses-message-id-000000000001');
     expect(headerValue(result.raw, 'x-kinmap-scan')).toBe(formatVerdicts(PASSING));
   });
 
@@ -179,9 +177,7 @@ describe('header rewriting', () => {
 
   it('lists both aliases when one delivery matched two of them', () => {
     const result = forwarded(
-      buildForwardedMessage(
-        input({ recipients: ['security@kinmap.app', 'privacy@kinmap.app'] }),
-      ),
+      buildForwardedMessage(input({ recipients: ['security@kinmap.app', 'privacy@kinmap.app'] })),
     );
 
     // Ordered by the policy, not by the envelope.
