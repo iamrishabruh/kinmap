@@ -39,6 +39,7 @@
 # Idempotent: policies are looked up by name, their content compared, and
 # attachments checked before anything is attached.
 #
+# shellcheck source-path=SCRIPTDIR
 # shellcheck disable=SC2016
 #   jq programs use $name for jq variables. Single quotes are correct there.
 

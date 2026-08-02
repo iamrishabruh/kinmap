@@ -41,6 +41,7 @@
 # Everything below is idempotent: each object is looked up before it is created,
 # and each policy document is compared before it is written.
 #
+# shellcheck source-path=SCRIPTDIR
 # shellcheck disable=SC2016
 #   jq programs use $name for jq variables. Single quotes are correct there.
 
@@ -307,11 +308,16 @@ provision_permission_set() {
 
 # stdout: group id (real, or a DRY-RUN- placeholder).
 ensure_group() {
-  local name="$1" description="$2" group_id=''
+  local name="$1" description="$2" group_id='' identifier
+
+  # AlternateIdentifier is a tagged union whose AttributeValue is a document
+  # type; the CLI's key=value shorthand is unreliable for it, so build real JSON.
+  identifier="$(jq -n --arg v "$name" \
+    '{UniqueAttribute: {AttributePath: "displayName", AttributeValue: $v}}')"
 
   group_id="$("${IDS[@]}" get-group-id \
     --identity-store-id "$KINMAP_IDENTITY_STORE_ID" \
-    --alternate-identifier "UniqueAttribute={AttributePath=displayName,AttributeValue=${name}}" \
+    --alternate-identifier "$identifier" \
     --query 'GroupId' --output text 2>/dev/null || true)"
 
   if [[ -n "$group_id" && "$group_id" != "None" ]]; then
