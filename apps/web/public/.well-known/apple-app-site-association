@@ -1,0 +1,30 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["HH7Q2DUJ9U.app.kinmap"],
+        "components": [
+          { "/": "/invite/*", "comment": "Family invitation links" },
+          { "/": "/i/*", "comment": "Short invitation links" },
+          { "/": "/live/*", "comment": "Live session links" }
+        ]
+      },
+      {
+        "appIDs": ["HH7Q2DUJ9U.app.kinmap.dev", "HH7Q2DUJ9U.app.kinmap.staging"],
+        "components": [
+          { "/": "/invite/*", "comment": "Non-production builds share the link space" },
+          { "/": "/i/*" },
+          { "/": "/live/*" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "HH7Q2DUJ9U.app.kinmap",
+      "HH7Q2DUJ9U.app.kinmap.dev",
+      "HH7Q2DUJ9U.app.kinmap.staging"
+    ]
+  }
+}

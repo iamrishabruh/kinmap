@@ -1,0 +1,13 @@
+{
+  "extends": "@family/tsconfig/lambda.json",
+  "compilerOptions": {
+    // The bundle is produced by CDK's NodejsFunction (esbuild), so `tsc` only
+    // ever type-checks here. Bundler resolution matches every other package in
+    // the workspace, which publishes TypeScript sources through `exports`.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

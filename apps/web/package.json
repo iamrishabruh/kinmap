@@ -1,0 +1,14 @@
+{
+  "name": "@family/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Static public site: legal pages, support, and universal-link association files",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "echo \"@family/web: static site, no TypeScript sources\"",
+    "lint": "echo \"@family/web: no lintable sources\"",
+    "test": "ALLOW_UNSET_ANDROID_FINGERPRINT=1 node --test tests/*.test.mjs"
+  },
+  "_androidAppLinks": "Android App Links are intentionally unconfigured while the project is iOS-first. When you ship Android: put the Play App Signing SHA-256 into public/.well-known/assetlinks.json and DELETE the ALLOW_UNSET_ANDROID_FINGERPRINT flag from the test script above, so the guard starts protecting you again."
+}

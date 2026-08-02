@@ -205,6 +205,48 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
+  apps/web: {}
+
+  infrastructure:
+    dependencies:
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
+      aws-cdk-lib:
+        specifier: 2.263.0
+        version: 2.263.0(constructs@10.8.0)
+      constructs:
+        specifier: 10.8.0
+        version: 10.8.0
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      aws-cdk:
+        specifier: 2.1134.0
+        version: 2.1134.0
+      esbuild:
+        specifier: 0.28.1
+        version: 0.28.1
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      tsx:
+        specifier: 4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
   packages/api-client:
     dependencies:
       '@family/contracts':
@@ -460,10 +502,608 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
+  services/api:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/test-utils':
+        specifier: workspace:*
+        version: link:../../packages/test-utils
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/audit-worker:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/auth-events:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/test-utils':
+        specifier: workspace:*
+        version: link:../../packages/test-utils
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/deletion-worker:
+    dependencies:
+      '@aws-sdk/client-cognito-identity-provider':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sns':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sqs':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/family-service:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-eventbridge':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/geofence-worker:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-kms':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sqs':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/invitation-service:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/location-ingestion:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-eventbridge':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/location-query:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@family/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/notification-worker:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sns':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/scheduled-maintenance:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sns':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sqs':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/location-core':
+        specifier: workspace:*
+        version: link:../../packages/location-core
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
+  services/subscription-worker:
+    dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-secrets-manager':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/client-sqs':
+        specifier: 3.980.0
+        version: 3.980.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: 3.980.0
+        version: 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@family/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@family/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@family/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@family/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      aws-jwt-verify:
+        specifier: 5.1.0
+        version: 5.1.0
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@family/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@family/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      eslint:
+        specifier: 10.8.0
+        version: 10.8.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(jsdom@20.0.3)(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
+
 packages:
 
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
+
+  '@aws-cdk/asset-awscli-v1@2.2.282':
+    resolution: {integrity: sha512-7hKMi5tTxDcKGIMIOq14PnY0GBcugW33Uh/2YHDZiEwSxLeFOCYBwhR+BFXONb/EJeVI3RETFgailNZbkcKF6g==}
+
+  '@aws-cdk/asset-node-proxy-agent-v6@2.1.2':
+    resolution: {integrity: sha512-pDiuqH+qY3zM9lhhLjbKJ1tnKOHzQ2V4Wr/3qsxyKeKAkuPMI/BVGvZG1PbrikUw949cGVTfVEt4ETKKYnrj0Q==}
+
+  '@aws-cdk/cloud-assembly-schema@54.15.0':
+    resolution: {integrity: sha512-eWdbH+SRmxeTSyECibUdP4MkRqhoXJ7GMFiHJgIt5081sU4D42tsNmwe8rPHQHyFXRTwauxdLNdhJeykOv8+Cg==}
+    engines: {node: '>= 18.0.0'}
+    bundledDependencies:
+      - jsonschema
+      - semver
 
   '@aws-crypto/sha256-browser@5.2.0':
     resolution: {integrity: sha512-AXfN/lGotSQwu6HNcEsIASo7kWXZ5HYWvfOmSNKDsEqC4OashTp8alTmaz+F7TC2L083SFv5RdB+qU3Vs1kZqw==}
@@ -478,8 +1118,32 @@ packages:
   '@aws-crypto/util@5.2.0':
     resolution: {integrity: sha512-4RkU9EsI6ZpBve5fseQlGNUWKMa1RLPQ1dnjnQoe07ldfIzcsGb5hC5W0Dm7u423KWzawlrpbjXBrXCEv9zazQ==}
 
+  '@aws-sdk/client-cognito-identity-provider@3.980.0':
+    resolution: {integrity: sha512-wK1w59UoO3LRje43SIhSFhwRBLMuQqJdeEAcLL3YLr+TBiCW0yNCjMnVqj5Cp0LYTJ7FqT3QCwc4exgOvtYfuQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-dynamodb@3.980.0':
+    resolution: {integrity: sha512-1rGhAx4cHZy3pMB3R3r84qMT5WEvQ6ajr2UksnD48fjQxwaUcpI6NsPvU5j/5BI5LqGiUO6ThOrMwSMm95twQA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-eventbridge@3.980.0':
+    resolution: {integrity: sha512-nIRF5PCEXLZ8SZvxGkPtTNv33OGDwXjwd0EJGT4YHI3k24VhPeGLgvJ2Js69KiQ0Zv90qQu7qIXUxDVMq1zcpQ==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/client-kms@3.980.0':
     resolution: {integrity: sha512-yO9y0SFKrQTFlOp0aqjW5JP1Np/DGojfnn2NURpCEu17jb3uNY+7nakviWBJoE5Dkti/G4o9D+UabQXGc4YH2A==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-secrets-manager@3.980.0':
+    resolution: {integrity: sha512-TeDBmkR8x3toPnvkFMBG73QqxsWjksFUMJyR0C4tZjVXjFq9igGwq8nHYDrQA0Hony6tGvH0SyNsjsL5w5qTww==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-sns@3.980.0':
+    resolution: {integrity: sha512-4fRS+qFrLUrLKy8H/rLKWW/Y7BIYe9AoT+YiUubVs3Bk7SqdWi5bJdEjD/nWbvCMjDVfRd6Kn+ZgwEROZCeUuA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-sqs@3.980.0':
+    resolution: {integrity: sha512-ibZ89sI3DRQOXrbHoMd83Dz6y1Qiu+qXPRTyiGV0w1tADFZlCL6G+HdwlvUmuHCkQBMErsztUzbMwil7/AhP6g==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.977.4':
@@ -518,6 +1182,24 @@ packages:
     resolution: {integrity: sha512-e4dwiRltGAaQ+2yxw57Hj0l/BF3BHiG14+QpYE7bGYBlpAq/fkIri2BDhjWon8c0mhhtd2txQBAkQb9BcTStFg==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/dynamodb-codec@3.973.39':
+    resolution: {integrity: sha512-6n1ER8qEvfruOfVFHVYrAtfSOk0ELudJDWyUMMb+M+tiP4rWSU44zd9ilQcM2/ESlRPyzxc2h7dU3R+UT+sVEg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/endpoint-cache@3.972.9':
+    resolution: {integrity: sha512-LFvdgq8SriaskUcjpBMDE7J2c9RmuT5v3gU36/znV71EU5DKUis4FmGFjCMelKCCViFeVrQADBAlIiOYRhEx6Q==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/lib-dynamodb@3.980.0':
+    resolution: {integrity: sha512-rot+9bSIUCjCJCh+BnH++ZYHCEUtTDVKkrBpN+WxbrEEGUvU1RNhkQEPXcLaf57UobRjoTI4m3LNBJCH7E6MCw==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@aws-sdk/client-dynamodb': 3.980.0
+
+  '@aws-sdk/middleware-endpoint-discovery@3.972.27':
+    resolution: {integrity: sha512-5AJlxrsg27IGGiQauWOdVyqK55EN0EMIwXndkVHhBiPT4CtdSaz89/sAENSw+GP4KF+BOWcgycZFNjkOLmfo1A==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/middleware-host-header@3.972.40':
     resolution: {integrity: sha512-e9s+NNwXzY6at4A/B6gwS+MKK5jeS9wPWPBQFqrxPrwjEmhCWd6Gx8txH4yB68uMpyCEl7Sz/DhoEKsWBkiXYQ==}
     engines: {node: '>=20.0.0'}
@@ -528,6 +1210,14 @@ packages:
 
   '@aws-sdk/middleware-recursion-detection@3.972.41':
     resolution: {integrity: sha512-3illdV11CWK4qmlG3jXNoVtEdguvS11beM/Pzn5fC6dqdUNN6zqgLbds3oPExo1ttuieNwluQN7h1trFkU6RPw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/middleware-sdk-s3@3.972.70':
+    resolution: {integrity: sha512-APdP0iODt39AkjCjzTFIoFrxDH/Cz3CpWRDKLcsJg7eOnfE1htkxL9BhDoe/xL7cXdoMwh2HBYv3DiT1uf64NQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/middleware-sdk-sqs@3.972.39':
+    resolution: {integrity: sha512-dlKLmJg1dLQVfFXUPS+f+SqXrRGHDVumY4gjM8sCLGao+zkDXEu8TObTyiaheKjT20ruok9Xs8oLocNItKQ0fw==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/middleware-user-agent@3.972.69':
@@ -542,6 +1232,10 @@ packages:
     resolution: {integrity: sha512-bQJi00IX9YpZ3P0C14DhNAt/Elllf0Pfg0k7Aj65K63ZJLLonDKHGLTgauqtohyAlo4OB6SHBW8v9yBfjvV66g==}
     engines: {node: '>=20.0.0'}
 
+  '@aws-sdk/signature-v4-multi-region@3.980.0':
+    resolution: {integrity: sha512-tO2jBj+ZIVM0nEgi1SyxWtaYGpuAJdsrugmWcI3/U2MPWCYsrvKasUo0026NvJJao38wyUq9B8XTG8Xu53j/VA==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/signature-v4-multi-region@3.996.43':
     resolution: {integrity: sha512-lKekx8bLBXSv4O+cslk9Zfnw2XKSkWBs3uWL5QGhH2ZAQfNS7FE0vcSSN2vD/AhxX54ZTywWxR4STThoeOXlBA==}
     engines: {node: '>=20.0.0'}
@@ -553,6 +1247,12 @@ packages:
   '@aws-sdk/types@3.974.2':
     resolution: {integrity: sha512-3W6IUtSxFbH6X7Wb7DzGCV5QiFQsd0g8bOfntpmDxQlzBoKWUMBu/JPQR0DwkE+Hpnxd6db1tXbOwdeHddG6cA==}
     engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/util-dynamodb@3.980.0':
+    resolution: {integrity: sha512-jG/yzr/JLFl7II9TTDWRKJRHThTXYNDYy694bRTj7JCXCU/Gb11ir5fJ7sV6FhlR9LrIaDb7Fft3RifvEnZcSQ==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@aws-sdk/client-dynamodb': 3.980.0
 
   '@aws-sdk/util-endpoints@3.980.0':
     resolution: {integrity: sha512-AjKBNEc+rjOZQE1HwcD9aCELqg1GmUj1rtICKuY8cgwB73xJ4U/kNyqKKpN2k9emGqlfDY2D8itIp/vDc6OKpw==}
@@ -2363,6 +3063,10 @@ packages:
     resolution: {integrity: sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA==}
     engines: {node: '>=14.0.0'}
 
+  '@smithy/md5-js@4.4.16':
+    resolution: {integrity: sha512-XdPyIiKajNJ5HoLkBYe3EP+Tc9LmyIz/o7bfcCvr7TR7wmtJqAezvyMSV7X+vjTh6l/y3dC81tIc2PirpMpbZw==}
+    engines: {node: '>=18.0.0'}
+
   '@smithy/middleware-content-length@4.4.16':
     resolution: {integrity: sha512-Q+J8iTUHr5qtoejFJCb9TTavDh7xQFVFRjy1n1edq5BFJq5b4mfziqrEqJlAscHHVdsqyFTNJXcV+b9i3oad9w==}
     engines: {node: '>=18.0.0'}
@@ -2453,6 +3157,10 @@ packages:
 
   '@smithy/util-utf8@4.4.16':
     resolution: {integrity: sha512-/gSbVMQlLRcneJ8D/JGbB1DNf0w4I7OpY2ldNUJ+myDmakPXEm9fy/X4swDlNYTOwBwsCKVJsogCfe7Txjnolg==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/util-waiter@4.5.16':
+    resolution: {integrity: sha512-fbrKxazlmJDe70WVjM6LOiNA2IKiz8lzsF1rHoIiEj9ONf5uQTgN1srg8X+AveJHGYavqEhsDEGZP7gM1k43Rg==}
     engines: {node: '>=18.0.0'}
 
   '@standard-schema/spec@1.1.0':
@@ -2941,6 +3649,30 @@ packages:
   await-lock@2.2.2:
     resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
 
+  aws-cdk-lib@2.263.0:
+    resolution: {integrity: sha512-cXC9wnOr+LknMee9x0kYwofgVs8aN8eBKsbzcE90sDUtpLTgWG2Bd+9koqxBKPeIU8kig/GGBFwJ69Wr+hLKDg==}
+    engines: {node: '>= 20.0.0'}
+    peerDependencies:
+      constructs: ^10.5.0
+    bundledDependencies:
+      - '@aws/cloudformation-validate'
+      - '@balena/dockerignore'
+      - '@aws-cdk/cloud-assembly-api'
+      - case
+      - fs-extra
+      - ignore
+      - jsonschema
+      - minimatch
+      - punycode
+      - semver
+      - yaml
+      - mime-types
+
+  aws-cdk@2.1134.0:
+    resolution: {integrity: sha512-Fy/g+gdpMpkhAAoCNlZtX0s4mD7q58bHlDV6QfbnTeifmQ5cEge26c5rB+U4qKB/bDudxNuJjQk/mSSk0ysnug==}
+    engines: {node: '>= 18.0.0'}
+    hasBin: true
+
   aws-jwt-verify@5.1.0:
     resolution: {integrity: sha512-98ioOBMyrLU5jW5rPvkJo20XlNB2rAX3tZR3BM6AamfBkOoSRLV1EyGkbgHQzgFOWyQ7yV8+tce6M24rOpMkgw==}
     engines: {node: '>=18.0.0'}
@@ -3251,6 +3983,9 @@ packages:
   connect@3.7.0:
     resolution: {integrity: sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ==}
     engines: {node: '>= 0.10.0'}
+
+  constructs@10.8.0:
+    resolution: {integrity: sha512-pJHp2CxvTG0ttp52rZvQfkbspPLZzttWPooIRLBwlZK8rV7ZhkjIkyZWJhIfBDC4YdcwIDmXyUFr1ieJaqjBbg==}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -4845,6 +5580,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  mnemonist@0.38.3:
+    resolution: {integrity: sha512-2K9QYubXx/NAjv4VLq1d1Ly8pWNC5L3BrixtdkyTegXWJIqY+zLNDhhX/A+ZwWt70tB1S8H4BE8FLYEFyNoOBw==}
+
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
     engines: {node: '>=4'}
@@ -4928,6 +5666,9 @@ packages:
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
+
+  obliterator@1.6.1:
+    resolution: {integrity: sha512-9WXswnqINnnhOG/5SLimUlzuU1hFJUc8zkwyD59Sd+dPOMf05PmnYG/d6Q7HZ+KmgkZJa1PxRso6QdM3sTNHig==}
 
   obug@2.1.4:
     resolution: {integrity: sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA==}
@@ -6131,6 +6872,12 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
+  '@aws-cdk/asset-awscli-v1@2.2.282': {}
+
+  '@aws-cdk/asset-node-proxy-agent-v6@2.1.2': {}
+
+  '@aws-cdk/cloud-assembly-schema@54.15.0': {}
+
   '@aws-crypto/sha256-browser@5.2.0':
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
@@ -6157,6 +6904,136 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
 
+  '@aws-sdk/client-cognito-identity-provider@3.980.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/credential-provider-node': 3.972.76
+      '@aws-sdk/middleware-host-header': 3.972.40
+      '@aws-sdk/middleware-logger': 3.972.39
+      '@aws-sdk/middleware-recursion-detection': 3.972.41
+      '@aws-sdk/middleware-user-agent': 3.972.69
+      '@aws-sdk/region-config-resolver': 3.972.43
+      '@aws-sdk/types': 3.974.2
+      '@aws-sdk/util-endpoints': 3.980.0
+      '@aws-sdk/util-user-agent-browser': 3.972.40
+      '@aws-sdk/util-user-agent-node': 3.973.55
+      '@smithy/config-resolver': 4.6.16
+      '@smithy/core': 3.31.1
+      '@smithy/fetch-http-handler': 5.6.13
+      '@smithy/hash-node': 4.4.16
+      '@smithy/invalid-dependency': 4.4.16
+      '@smithy/middleware-content-length': 4.4.16
+      '@smithy/middleware-endpoint': 4.6.16
+      '@smithy/middleware-retry': 4.7.16
+      '@smithy/middleware-serde': 4.4.16
+      '@smithy/middleware-stack': 4.4.16
+      '@smithy/node-config-provider': 4.5.16
+      '@smithy/node-http-handler': 4.9.13
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      '@smithy/url-parser': 4.4.16
+      '@smithy/util-base64': 4.5.16
+      '@smithy/util-body-length-browser': 4.4.16
+      '@smithy/util-body-length-node': 4.4.16
+      '@smithy/util-defaults-mode-browser': 4.5.16
+      '@smithy/util-defaults-mode-node': 4.4.16
+      '@smithy/util-endpoints': 3.6.16
+      '@smithy/util-middleware': 4.4.16
+      '@smithy/util-retry': 4.5.16
+      '@smithy/util-utf8': 4.4.16
+      tslib: 2.8.1
+
+  '@aws-sdk/client-dynamodb@3.980.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/credential-provider-node': 3.972.76
+      '@aws-sdk/dynamodb-codec': 3.973.39
+      '@aws-sdk/middleware-endpoint-discovery': 3.972.27
+      '@aws-sdk/middleware-host-header': 3.972.40
+      '@aws-sdk/middleware-logger': 3.972.39
+      '@aws-sdk/middleware-recursion-detection': 3.972.41
+      '@aws-sdk/middleware-user-agent': 3.972.69
+      '@aws-sdk/region-config-resolver': 3.972.43
+      '@aws-sdk/types': 3.974.2
+      '@aws-sdk/util-endpoints': 3.980.0
+      '@aws-sdk/util-user-agent-browser': 3.972.40
+      '@aws-sdk/util-user-agent-node': 3.973.55
+      '@smithy/config-resolver': 4.6.16
+      '@smithy/core': 3.31.1
+      '@smithy/fetch-http-handler': 5.6.13
+      '@smithy/hash-node': 4.4.16
+      '@smithy/invalid-dependency': 4.4.16
+      '@smithy/middleware-content-length': 4.4.16
+      '@smithy/middleware-endpoint': 4.6.16
+      '@smithy/middleware-retry': 4.7.16
+      '@smithy/middleware-serde': 4.4.16
+      '@smithy/middleware-stack': 4.4.16
+      '@smithy/node-config-provider': 4.5.16
+      '@smithy/node-http-handler': 4.9.13
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      '@smithy/url-parser': 4.4.16
+      '@smithy/util-base64': 4.5.16
+      '@smithy/util-body-length-browser': 4.4.16
+      '@smithy/util-body-length-node': 4.4.16
+      '@smithy/util-defaults-mode-browser': 4.5.16
+      '@smithy/util-defaults-mode-node': 4.4.16
+      '@smithy/util-endpoints': 3.6.16
+      '@smithy/util-middleware': 4.4.16
+      '@smithy/util-retry': 4.5.16
+      '@smithy/util-utf8': 4.4.16
+      '@smithy/util-waiter': 4.5.16
+      tslib: 2.8.1
+
+  '@aws-sdk/client-eventbridge@3.980.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/credential-provider-node': 3.972.76
+      '@aws-sdk/middleware-host-header': 3.972.40
+      '@aws-sdk/middleware-logger': 3.972.39
+      '@aws-sdk/middleware-recursion-detection': 3.972.41
+      '@aws-sdk/middleware-user-agent': 3.972.69
+      '@aws-sdk/region-config-resolver': 3.972.43
+      '@aws-sdk/signature-v4-multi-region': 3.980.0
+      '@aws-sdk/types': 3.974.2
+      '@aws-sdk/util-endpoints': 3.980.0
+      '@aws-sdk/util-user-agent-browser': 3.972.40
+      '@aws-sdk/util-user-agent-node': 3.973.55
+      '@smithy/config-resolver': 4.6.16
+      '@smithy/core': 3.31.1
+      '@smithy/fetch-http-handler': 5.6.13
+      '@smithy/hash-node': 4.4.16
+      '@smithy/invalid-dependency': 4.4.16
+      '@smithy/middleware-content-length': 4.4.16
+      '@smithy/middleware-endpoint': 4.6.16
+      '@smithy/middleware-retry': 4.7.16
+      '@smithy/middleware-serde': 4.4.16
+      '@smithy/middleware-stack': 4.4.16
+      '@smithy/node-config-provider': 4.5.16
+      '@smithy/node-http-handler': 4.9.13
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      '@smithy/url-parser': 4.4.16
+      '@smithy/util-base64': 4.5.16
+      '@smithy/util-body-length-browser': 4.4.16
+      '@smithy/util-body-length-node': 4.4.16
+      '@smithy/util-defaults-mode-browser': 4.5.16
+      '@smithy/util-defaults-mode-node': 4.4.16
+      '@smithy/util-endpoints': 3.6.16
+      '@smithy/util-middleware': 4.4.16
+      '@smithy/util-retry': 4.5.16
+      '@smithy/util-utf8': 4.4.16
+      tslib: 2.8.1
+
   '@aws-sdk/client-kms@3.980.0':
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
@@ -6177,6 +7054,134 @@ snapshots:
       '@smithy/fetch-http-handler': 5.6.13
       '@smithy/hash-node': 4.4.16
       '@smithy/invalid-dependency': 4.4.16
+      '@smithy/middleware-content-length': 4.4.16
+      '@smithy/middleware-endpoint': 4.6.16
+      '@smithy/middleware-retry': 4.7.16
+      '@smithy/middleware-serde': 4.4.16
+      '@smithy/middleware-stack': 4.4.16
+      '@smithy/node-config-provider': 4.5.16
+      '@smithy/node-http-handler': 4.9.13
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      '@smithy/url-parser': 4.4.16
+      '@smithy/util-base64': 4.5.16
+      '@smithy/util-body-length-browser': 4.4.16
+      '@smithy/util-body-length-node': 4.4.16
+      '@smithy/util-defaults-mode-browser': 4.5.16
+      '@smithy/util-defaults-mode-node': 4.4.16
+      '@smithy/util-endpoints': 3.6.16
+      '@smithy/util-middleware': 4.4.16
+      '@smithy/util-retry': 4.5.16
+      '@smithy/util-utf8': 4.4.16
+      tslib: 2.8.1
+
+  '@aws-sdk/client-secrets-manager@3.980.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/credential-provider-node': 3.972.76
+      '@aws-sdk/middleware-host-header': 3.972.40
+      '@aws-sdk/middleware-logger': 3.972.39
+      '@aws-sdk/middleware-recursion-detection': 3.972.41
+      '@aws-sdk/middleware-user-agent': 3.972.69
+      '@aws-sdk/region-config-resolver': 3.972.43
+      '@aws-sdk/types': 3.974.2
+      '@aws-sdk/util-endpoints': 3.980.0
+      '@aws-sdk/util-user-agent-browser': 3.972.40
+      '@aws-sdk/util-user-agent-node': 3.973.55
+      '@smithy/config-resolver': 4.6.16
+      '@smithy/core': 3.31.1
+      '@smithy/fetch-http-handler': 5.6.13
+      '@smithy/hash-node': 4.4.16
+      '@smithy/invalid-dependency': 4.4.16
+      '@smithy/middleware-content-length': 4.4.16
+      '@smithy/middleware-endpoint': 4.6.16
+      '@smithy/middleware-retry': 4.7.16
+      '@smithy/middleware-serde': 4.4.16
+      '@smithy/middleware-stack': 4.4.16
+      '@smithy/node-config-provider': 4.5.16
+      '@smithy/node-http-handler': 4.9.13
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      '@smithy/url-parser': 4.4.16
+      '@smithy/util-base64': 4.5.16
+      '@smithy/util-body-length-browser': 4.4.16
+      '@smithy/util-body-length-node': 4.4.16
+      '@smithy/util-defaults-mode-browser': 4.5.16
+      '@smithy/util-defaults-mode-node': 4.4.16
+      '@smithy/util-endpoints': 3.6.16
+      '@smithy/util-middleware': 4.4.16
+      '@smithy/util-retry': 4.5.16
+      '@smithy/util-utf8': 4.4.16
+      tslib: 2.8.1
+
+  '@aws-sdk/client-sns@3.980.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/credential-provider-node': 3.972.76
+      '@aws-sdk/middleware-host-header': 3.972.40
+      '@aws-sdk/middleware-logger': 3.972.39
+      '@aws-sdk/middleware-recursion-detection': 3.972.41
+      '@aws-sdk/middleware-user-agent': 3.972.69
+      '@aws-sdk/region-config-resolver': 3.972.43
+      '@aws-sdk/types': 3.974.2
+      '@aws-sdk/util-endpoints': 3.980.0
+      '@aws-sdk/util-user-agent-browser': 3.972.40
+      '@aws-sdk/util-user-agent-node': 3.973.55
+      '@smithy/config-resolver': 4.6.16
+      '@smithy/core': 3.31.1
+      '@smithy/fetch-http-handler': 5.6.13
+      '@smithy/hash-node': 4.4.16
+      '@smithy/invalid-dependency': 4.4.16
+      '@smithy/middleware-content-length': 4.4.16
+      '@smithy/middleware-endpoint': 4.6.16
+      '@smithy/middleware-retry': 4.7.16
+      '@smithy/middleware-serde': 4.4.16
+      '@smithy/middleware-stack': 4.4.16
+      '@smithy/node-config-provider': 4.5.16
+      '@smithy/node-http-handler': 4.9.13
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      '@smithy/url-parser': 4.4.16
+      '@smithy/util-base64': 4.5.16
+      '@smithy/util-body-length-browser': 4.4.16
+      '@smithy/util-body-length-node': 4.4.16
+      '@smithy/util-defaults-mode-browser': 4.5.16
+      '@smithy/util-defaults-mode-node': 4.4.16
+      '@smithy/util-endpoints': 3.6.16
+      '@smithy/util-middleware': 4.4.16
+      '@smithy/util-retry': 4.5.16
+      '@smithy/util-utf8': 4.4.16
+      tslib: 2.8.1
+
+  '@aws-sdk/client-sqs@3.980.0':
+    dependencies:
+      '@aws-crypto/sha256-browser': 5.2.0
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/credential-provider-node': 3.972.76
+      '@aws-sdk/middleware-host-header': 3.972.40
+      '@aws-sdk/middleware-logger': 3.972.39
+      '@aws-sdk/middleware-recursion-detection': 3.972.41
+      '@aws-sdk/middleware-sdk-sqs': 3.972.39
+      '@aws-sdk/middleware-user-agent': 3.972.69
+      '@aws-sdk/region-config-resolver': 3.972.43
+      '@aws-sdk/types': 3.974.2
+      '@aws-sdk/util-endpoints': 3.980.0
+      '@aws-sdk/util-user-agent-browser': 3.972.40
+      '@aws-sdk/util-user-agent-node': 3.973.55
+      '@smithy/config-resolver': 4.6.16
+      '@smithy/core': 3.31.1
+      '@smithy/fetch-http-handler': 5.6.13
+      '@smithy/hash-node': 4.4.16
+      '@smithy/invalid-dependency': 4.4.16
+      '@smithy/md5-js': 4.4.16
       '@smithy/middleware-content-length': 4.4.16
       '@smithy/middleware-endpoint': 4.6.16
       '@smithy/middleware-retry': 4.7.16
@@ -6294,6 +7299,36 @@ snapshots:
       '@smithy/types': 4.16.1
       tslib: 2.8.1
 
+  '@aws-sdk/dynamodb-codec@3.973.39':
+    dependencies:
+      '@aws-sdk/core': 3.977.4
+      '@smithy/core': 3.31.1
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/endpoint-cache@3.972.9':
+    dependencies:
+      mnemonist: 0.38.3
+      tslib: 2.8.1
+
+  '@aws-sdk/lib-dynamodb@3.980.0(@aws-sdk/client-dynamodb@3.980.0)':
+    dependencies:
+      '@aws-sdk/client-dynamodb': 3.980.0
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/util-dynamodb': 3.980.0(@aws-sdk/client-dynamodb@3.980.0)
+      '@smithy/core': 3.31.1
+      '@smithy/smithy-client': 4.14.16
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/middleware-endpoint-discovery@3.972.27':
+    dependencies:
+      '@aws-sdk/endpoint-cache': 3.972.9
+      '@aws-sdk/types': 3.974.2
+      '@smithy/core': 3.31.1
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
   '@aws-sdk/middleware-host-header@3.972.40':
     dependencies:
       '@aws-sdk/core': 3.977.4
@@ -6307,6 +7342,22 @@ snapshots:
   '@aws-sdk/middleware-recursion-detection@3.972.41':
     dependencies:
       '@aws-sdk/core': 3.977.4
+      tslib: 2.8.1
+
+  '@aws-sdk/middleware-sdk-s3@3.972.70':
+    dependencies:
+      '@aws-sdk/core': 3.977.4
+      '@aws-sdk/signature-v4-multi-region': 3.996.43
+      '@aws-sdk/types': 3.974.2
+      '@smithy/core': 3.31.1
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/middleware-sdk-sqs@3.972.39':
+    dependencies:
+      '@aws-sdk/types': 3.974.2
+      '@smithy/core': 3.31.1
+      '@smithy/types': 4.16.1
       tslib: 2.8.1
 
   '@aws-sdk/middleware-user-agent@3.972.69':
@@ -6330,6 +7381,15 @@ snapshots:
       '@aws-sdk/core': 3.977.4
       tslib: 2.8.1
 
+  '@aws-sdk/signature-v4-multi-region@3.980.0':
+    dependencies:
+      '@aws-sdk/middleware-sdk-s3': 3.972.70
+      '@aws-sdk/types': 3.974.2
+      '@smithy/protocol-http': 5.5.16
+      '@smithy/signature-v4': 5.6.12
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
   '@aws-sdk/signature-v4-multi-region@3.996.43':
     dependencies:
       '@aws-sdk/types': 3.974.2
@@ -6349,6 +7409,11 @@ snapshots:
   '@aws-sdk/types@3.974.2':
     dependencies:
       '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/util-dynamodb@3.980.0(@aws-sdk/client-dynamodb@3.980.0)':
+    dependencies:
+      '@aws-sdk/client-dynamodb': 3.980.0
       tslib: 2.8.1
 
   '@aws-sdk/util-endpoints@3.980.0':
@@ -8615,6 +9680,11 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@smithy/md5-js@4.4.16':
+    dependencies:
+      '@smithy/core': 3.31.1
+      tslib: 2.8.1
+
   '@smithy/middleware-content-length@4.4.16':
     dependencies:
       '@smithy/core': 3.31.1
@@ -8728,6 +9798,11 @@ snapshots:
       tslib: 2.8.1
 
   '@smithy/util-utf8@4.4.16':
+    dependencies:
+      '@smithy/core': 3.31.1
+      tslib: 2.8.1
+
+  '@smithy/util-waiter@4.5.16':
     dependencies:
       '@smithy/core': 3.31.1
       tslib: 2.8.1
@@ -9189,6 +10264,15 @@ snapshots:
 
   await-lock@2.2.2: {}
 
+  aws-cdk-lib@2.263.0(constructs@10.8.0):
+    dependencies:
+      '@aws-cdk/asset-awscli-v1': 2.2.282
+      '@aws-cdk/asset-node-proxy-agent-v6': 2.1.2
+      '@aws-cdk/cloud-assembly-schema': 54.15.0
+      constructs: 10.8.0
+
+  aws-cdk@2.1134.0: {}
+
   aws-jwt-verify@5.1.0: {}
 
   babel-jest@29.7.0(@babel/core@7.29.7):
@@ -9582,6 +10666,8 @@ snapshots:
       utils-merge: 1.0.1
     transitivePeerDependencies:
       - supports-color
+
+  constructs@10.8.0: {}
 
   convert-source-map@2.0.0: {}
 
@@ -11608,6 +12694,10 @@ snapshots:
 
   mkdirp@1.0.4: {}
 
+  mnemonist@0.38.3:
+    dependencies:
+      obliterator: 1.6.1
+
   mri@1.2.0: {}
 
   ms@2.0.0: {}
@@ -11660,6 +12750,8 @@ snapshots:
       flow-enums-runtime: 0.0.6
 
   object-assign@4.1.1: {}
+
+  obliterator@1.6.1: {}
 
   obug@2.1.4: {}
 

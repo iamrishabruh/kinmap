@@ -1,0 +1,35 @@
+{
+  "name": "@family/subscription-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Store webhook verification, event normalisation and entitlement reconciliation (spec §23)",
+  "main": "./src/handler.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "lint": "eslint src tests"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.980.0",
+    "@aws-sdk/client-secrets-manager": "3.980.0",
+    "@aws-sdk/client-sqs": "3.980.0",
+    "@aws-sdk/lib-dynamodb": "3.980.0",
+    "@family/auth": "workspace:*",
+    "@family/contracts": "workspace:*",
+    "@family/observability": "workspace:*",
+    "@family/schemas": "workspace:*",
+    "aws-jwt-verify": "5.1.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@family/eslint-config": "workspace:*",
+    "@family/tsconfig": "workspace:*",
+    "@types/node": "24.13.3",
+    "eslint": "10.8.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

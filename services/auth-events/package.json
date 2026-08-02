@@ -1,0 +1,37 @@
+{
+  "name": "@family/auth-events",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cognito user-pool triggers: pre sign-up, post confirmation, token generation and custom messages.",
+  "main": "./src/handler.ts",
+  "types": "./src/handler.ts",
+  "exports": {
+    ".": "./src/handler.ts"
+  },
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly --outDir dist || true",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.980.0",
+    "@aws-sdk/lib-dynamodb": "3.980.0",
+    "@family/contracts": "workspace:*",
+    "@family/observability": "workspace:*",
+    "@family/schemas": "workspace:*",
+    "@family/validation": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@family/eslint-config": "workspace:*",
+    "@family/test-utils": "workspace:*",
+    "@family/tsconfig": "workspace:*",
+    "@types/node": "24.13.3",
+    "eslint": "10.8.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

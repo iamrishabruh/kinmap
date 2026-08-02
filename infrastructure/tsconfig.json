@@ -1,0 +1,19 @@
+{
+  "extends": "@family/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": [
+    "bin/**/*.ts",
+    "config/**/*.ts",
+    "constructs/**/*.ts",
+    "stacks/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["cdk.out", "node_modules", "dist"]
+}
