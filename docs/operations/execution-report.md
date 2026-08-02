@@ -161,17 +161,38 @@ Anything not listed here was not verified and is not claimed.
 Test counts by package: location-core 610, auth 101, validation 99, crypto 65,
 schemas 42, observability 31, api-client 26, test-utils 23, contracts 22.
 
-### Not verified
+### Native builds
 
-- **iOS compilation.** `xcodebuild` cannot resolve a build destination because
-  no iOS simulator runtime is installed (the §2 blocker). `xcodebuild
--downloadPlatform iOS` was started; until it completes and the build is run,
-  **no claim is made that the iOS app compiles.**
-- **Android compilation.** `./gradlew assembleDebug` was started; its result is
-  recorded separately. Until it reports `BUILD SUCCESSFUL`, no claim is made.
-- **Background tracking behaviour.** The native engines have never run on a real
-  device. Per spec §42, no claim is made about background-location reliability
-  until the real-device matrix has been executed.
+Both platforms compile, including the local `location-engine` module.
+
+| Platform | Command                                                                                                                                                                          | Result                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Android  | `./gradlew assembleDebug`                                                                                                                                                        | **BUILD SUCCESSFUL** — `app/build/outputs/apk/debug/app-debug.apk` (260 MB debug, all ABIs) |
+| iOS      | `xcodebuild -workspace FamilyLocationDev.xcworkspace -scheme FamilyLocationDev -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` | **BUILD SUCCEEDED** — 0 errors                                                              |
+
+Two real defects were found only by compiling, and are fixed:
+
+1. `EncryptedEventQueue.kt` called `EncryptedFile.Builder(file, context, ...)`.
+   `androidx.security:security-crypto` 1.1.x takes `(context, file, ...)` — the
+   first two arguments are reversed from the 1.0.x signature.
+2. `LocationEngineModule.swift` subclassed Expo's `Exception` and added a stored
+   `reason` property, colliding with the base class's computed property of the
+   same name. Rewritten as `GenericException<String>`, the documented pattern.
+
+Reaching an iOS build required downloading the iOS 26.5 simulator runtime
+(8.52 GB) — see §2.4. A machine or CI runner without that runtime cannot build
+this project at all.
+
+### Still not verified
+
+- **Background tracking behaviour.** The native engines compile and are wired
+  up, but have never run on a real device. Per spec §42 no claim is made about
+  background-location reliability, battery cost, geofence latency or update
+  freshness until the real-device matrix has actually been executed.
+- **Everything requiring a backend.** There is no API, so signup, login, family
+  creation, invitation acceptance, location upload, the family map, sharing
+  pause, device revocation, history authorization, push delivery, account
+  deletion and subscription purchase are all unimplemented and untested.
 
 ## 8. Next exact command
 

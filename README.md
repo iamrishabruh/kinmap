@@ -113,9 +113,10 @@ Stated plainly so nobody mistakes scaffolding for a working system:
   typechecked, but most Expo Router screens are not yet written.
 - **Nothing has been provisioned anywhere.** No GitHub repository, no AWS
   resources, no Apple or Google configuration, no RevenueCat, no Sentry.
-- **Background tracking has never run on a real device.** The native engines
-  compile, but no claim is made about their reliability until the real-device
-  matrix in `docs/architecture/mobile-location-engine.md` has been executed.
+- **Background tracking has never run on a real device.** Both native engines
+  compile (Android `assembleDebug` and iOS `xcodebuild` both succeed), but no
+  claim is made about their reliability, battery cost, or geofence latency until
+  the real-device matrix has actually been executed.
 
 `docs/operations/execution-report.md` records exactly what was verified, what
 failed, and every manual gate that remains.

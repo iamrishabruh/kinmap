@@ -107,10 +107,11 @@ class EncryptedEventQueue(context: Context) {
     // MARK: - Persistence
 
     // Re-created per call: an EncryptedFile handle is not reusable across a
-    // read and a write.
+    // read and a write. Argument order is (Context, File, MasterKey, scheme) —
+    // security-crypto 1.1.x reversed the first two from the 1.0.x signature.
     private fun encryptedFile(): EncryptedFile = EncryptedFile.Builder(
-        file,
         appContext,
+        file,
         masterKey,
         EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB,
     ).build()

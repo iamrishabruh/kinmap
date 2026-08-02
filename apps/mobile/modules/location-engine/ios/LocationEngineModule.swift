@@ -92,15 +92,12 @@ public final class LocationEngineModule: Module {
 }
 
 /// Thrown when JavaScript hands the bridge something the engine cannot use.
-final class InvalidArgumentException: Exception {
-    private let reason: String
-
-    init(_ reason: String) {
-        self.reason = reason
-        super.init()
-    }
-
-    override var description: String {
-        reason
+///
+/// `GenericException` is the Expo Modules pattern for carrying a payload into
+/// the message. Subclassing `Exception` directly and adding a stored `reason`
+/// collides with the base class's own computed property of that name.
+final class InvalidArgumentException: GenericException<String> {
+    override var reason: String {
+        param
     }
 }
