@@ -403,20 +403,24 @@ export class SecurityStack extends Stack {
       }),
     );
 
+    const deliveryChannel = new CfnDeliveryChannel(this, 'ConfigDeliveryChannel', {
+      name: config.resourcePrefix,
+      s3BucketName: configBucket.bucketName,
+      configSnapshotDeliveryProperties: { deliveryFrequency: 'TwentyFour_Hours' },
+    });
+
     const recorder = new CfnConfigurationRecorder(this, 'ConfigRecorder', {
       name: config.resourcePrefix,
       roleArn: recorderRole.roleArn,
       recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
     });
 
-    // Config refuses to start a recorder that has nowhere to deliver to, so the
-    // channel must exist first.
-    const deliveryChannel = new CfnDeliveryChannel(this, 'ConfigDeliveryChannel', {
-      name: config.resourcePrefix,
-      s3BucketName: configBucket.bucketName,
-      configSnapshotDeliveryProperties: { deliveryFrequency: 'TwentyFour_Hours' },
-    });
-    deliveryChannel.node.addDependency(recorder);
+    // Config refuses to START a recorder that has nowhere to deliver to, and
+    // CloudFormation starts it as part of creating the resource. Without this
+    // ordering the deploy fails with NoAvailableDeliveryChannelException.
+    // CloudFormation cannot infer the relationship because neither resource
+    // references the other.
+    recorder.node.addDependency(deliveryChannel);
 
     for (const rule of CONFIG_RULES) {
       const configRule = new CfnConfigRule(this, `ConfigRule${rule.id}`, {
