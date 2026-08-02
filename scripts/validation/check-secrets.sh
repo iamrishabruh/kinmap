@@ -23,15 +23,33 @@ FORBIDDEN_PATHS=(
 
 printf 'Checking tracked files for credential material…\n' >&2
 
+# Versioned by design and containing no secret. Each is the counterpart of a
+# *.local file that IS ignored.
+ALLOWED_FILES=(
+  'apps/mobile/ios/.xcode.env'   # documented by React Native as versioned
+)
+
+is_allowed() {
+  local candidate="$1" allowed
+  for allowed in "${ALLOWED_FILES[@]}"; do
+    [[ "$candidate" == "$allowed" ]] && return 0
+  done
+  return 1
+}
+
 if git rev-parse --git-dir >/dev/null 2>&1; then
   tracked="$(git ls-files || true)"
   for pattern in "${FORBIDDEN_PATHS[@]}"; do
+    # Anchor on the start of the basename, so a pattern like `.env` matches
+    # `.env` and `dir/.env` but NOT `.xcode.env`.
+    regex="(^|/)$(printf '%s' "$pattern" | sed 's/\./\\./g; s/\*/[^\/]*/g')\$"
     while IFS= read -r file; do
       [[ -z "$file" ]] && continue
       # .env.example is the documented template and holds no real values.
-      [[ "$file" == *.env.example || "$file" == *".env.example" ]] && continue
+      [[ "$file" == *.env.example ]] && continue
+      is_allowed "$file" && continue
       report "Tracked credential file: ${file}"
-    done < <(printf '%s\n' "$tracked" | grep -E "$(printf '%s' "$pattern" | sed 's/\./\\./g; s/\*/[^\/]*/g')$" || true)
+    done < <(printf '%s\n' "$tracked" | grep -E "$regex" || true)
   done
 else
   printf '  (not a git repository — skipping index check)\n' >&2
