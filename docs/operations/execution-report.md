@@ -137,7 +137,40 @@ github` performs this once configuration exists.
 - **No Apple, Google, RevenueCat, or Sentry provisioning.** All blocked on §5.
 - **No store submission of any kind.**
 
-## 7. Next exact command
+## 7. Build verification
+
+Every claim below was produced by running the command and reading its output.
+Anything not listed here was not verified and is not claimed.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Typecheck | `pnpm typecheck` | **pass** — 21/21 workspace tasks |
+| Lint | `pnpm lint` | **pass** — 21/21, zero errors |
+| Format | `pnpm format:check` | **pass** |
+| Unit tests | `pnpm test` | **pass** — 1019 tests across 9 packages |
+| Secret scan | `scripts/validation/check-secrets.sh` | **pass** |
+| CI job/ruleset agreement | `scripts/ci/verify-required-checks.sh` | **pass** — all 12 required checks map to real jobs |
+| Workflow YAML | parsed all 19 files | **pass** |
+| Native project generation | `expo prebuild --clean` | **pass** — `ios/` and `android/` generated |
+| iOS dependency install | `pod install` | **pass** — 138 pods, `LocationEngine (0.1.0)` linked |
+| Config plugins applied | inspected generated `Info.plist` / `AndroidManifest.xml` | **pass** |
+
+Test counts by package: location-core 610, auth 101, validation 99, crypto 65,
+schemas 42, observability 31, api-client 26, test-utils 23, contracts 22.
+
+### Not verified
+
+- **iOS compilation.** `xcodebuild` cannot resolve a build destination because
+  no iOS simulator runtime is installed (the §2 blocker). `xcodebuild
+  -downloadPlatform iOS` was started; until it completes and the build is run,
+  **no claim is made that the iOS app compiles.**
+- **Android compilation.** `./gradlew assembleDebug` was started; its result is
+  recorded separately. Until it reports `BUILD SUCCESSFUL`, no claim is made.
+- **Background tracking behaviour.** The native engines have never run on a real
+  device. Per spec §42, no claim is made about background-location reliability
+  until the real-device matrix has been executed.
+
+## 8. Next exact command
 
 ```bash
 cp bootstrap.config.example.json bootstrap.config.local.json

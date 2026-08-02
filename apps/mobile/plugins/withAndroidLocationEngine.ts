@@ -35,10 +35,12 @@ const withAndroidLocationEngine: ConfigPlugin = (config) => {
           'android:name': `${PACKAGE}.LiveSessionService`,
           'android:exported': 'false',
           'android:foregroundServiceType': 'location',
-          // Restarted by the system if killed mid-session so the countdown and
-          // the notification stay truthful.
-          'android:stopWithTask': 'false',
-        } as Record<string, string>,
+          // stopWithTask is deliberately left at its default: if the user
+          // dismisses the app, the live session ends with it. Surviving a swipe
+          // away would mean live tracking continuing after the user believes
+          // they closed the app, which is exactly the covert behaviour this
+          // product forbids. LiveSessionService also returns START_NOT_STICKY.
+        },
       });
     }
 
@@ -50,7 +52,7 @@ const withAndroidLocationEngine: ConfigPlugin = (config) => {
         $: {
           'android:name': `${PACKAGE}.GeofenceReceiver`,
           'android:exported': 'false',
-        } as Record<string, string>,
+        },
       });
     }
 
@@ -63,13 +65,13 @@ const withAndroidLocationEngine: ConfigPlugin = (config) => {
           'android:name': `${PACKAGE}.BootReceiver`,
           'android:exported': 'true',
           'android:enabled': 'true',
-        } as Record<string, string>,
+        },
         'intent-filter': [
           {
             action: [{ $: { 'android:name': 'android.intent.action.BOOT_COMPLETED' } }],
           },
         ],
-      } as never);
+      });
     }
 
     // Read from the environment so the key is never committed. Absent in

@@ -38,6 +38,23 @@ yarn-error.*
 
 example
 
-# generated native folders
-/ios
-/android
+# Native projects are COMMITTED, not ignored.
+#
+# The spec requires ios/ and android/ in version control so native changes are
+# reviewable in a pull request and so CI can run `pod install` / `gradlew
+# assembleDebug` against the same tree a developer builds. They are regenerated
+# with `pnpm --filter @family/mobile prebuild:clean`, and
+# scripts/validation/check-prebuild-consistency.sh fails CI if they drift from
+# app.config.ts.
+#
+# Only their build output is ignored:
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+android/.gradle/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
