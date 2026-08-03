@@ -681,7 +681,9 @@ export class ApiStack extends Stack {
     // -----------------------------------------------------------------------
     this.webAcl = new CfnWebACL(this, 'ApiWebAcl', {
       name: `${config.resourcePrefix}-api`,
-      description: `KinMap API protection (${config.envName})`,
+      // WAF validates descriptions against ^[\w+=:#@/\-,\.][\w+=:#@/\-,\.\s]+[\w+=:#@/\-,\.]$
+      // — parentheses are rejected outright, so this reads as plain words.
+      description: `Kinmap API protection - ${config.envName}`,
       scope: 'REGIONAL',
       defaultAction: { allow: {} },
       visibilityConfig: {
