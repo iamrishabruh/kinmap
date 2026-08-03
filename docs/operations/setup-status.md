@@ -80,6 +80,36 @@ SES inbound receipt rules are active for `support@`, `privacy@` and
 CloudFormation cannot do it, and without that step SES accepts mail and silently
 discards it.
 
+The public site is deployed and serving. Verified from outside AWS:
+
+```
+https://app.dev.kinmap.app/                                    -> 200
+https://dev.kinmap.app/                                        -> 200
+https://app.dev.kinmap.app/.well-known/apple-app-site-association
+    -> 200, content-type: application/json, no redirect
+    -> HH7Q2DUJ9U.app.kinmap, .dev and .staging
+```
+
+That file is the prerequisite for an invitation link opening the app rather than
+Safari. It is necessary but still not sufficient — nothing is proven until a
+signed build is installed on a device and a link is tapped.
+
+### Mobile app wiring
+
+`apps/mobile/.env.local` (git-ignored) is populated from the deployed
+CloudFormation outputs, not typed by hand: API URL `https://api.dev.kinmap.app`,
+Cognito pool `us-east-1_XXXXXXXXX`, client `xxxxxxxxxxxxxxxxxxxxxxxxxx`.
+
+The EAS project is created and linked: **`@rishabruh/kinmap`**, id
+`7cfe193d-e29a-404d-a2f2-20f858aa9c32`. `eas config --platform ios --profile
+development` resolves cleanly and reports bundle identifier `app.kinmap.dev`,
+which matches the identifier provisioned in the Apple portal.
+
+> `APP_BUNDLE_ID` in that file is the **base** id, `app.kinmap`. `app.config.ts`
+> appends the variant suffix itself, so putting the suffixed id there yields
+> `app.kinmap.dev.dev` — an identifier that exists nowhere in the Apple portal,
+> failing the build with a signing error that names the wrong cause.
+
 ### Apple Developer portal
 
 Provisioned through the App Store Connect API by `scripts/apple/bundle-ids.ts` —
@@ -149,13 +179,26 @@ The `dev.kinmap.app` **domain** identity needs nothing from you — its three DK
 CNAMEs are published and resolving publicly, and SES verifies it on its own
 schedule.
 
-### 2. Google / Firebase — only when you add Android or Google Sign-In
+### 2. Delete one stray Expo project — 30 seconds, needs your password
+
+The first `eas init` ran before `.env.local` existed, so it fell back to the
+default slug and created `@rishabruh/family-location`. The correct project,
+`@rishabruh/kinmap`, was created afterwards and is the one everything points at.
+The stray one is empty and harmless, but deleting it needs an interactive
+password confirmation that cannot be automated:
+
+```bash
+cd apps/mobile
+eas project:delete @rishabruh/family-location
+```
+
+### 3. Google / Firebase — only when you add Android or Google Sign-In
 
 Deliberately deferred while the project is iOS-first. Note that Google Sign-In
 **on iOS** also needs a Google Cloud OAuth client — if you ship Apple and email
 sign-in only, Google can be skipped entirely for now.
 
-### 3. Decisions, not tasks
+### 4. Decisions, not tasks
 
 - **COPPA.** A family location product will have children on it. This materially
   changes what may be collected and what must be disclosed. It is the first open
@@ -230,6 +273,12 @@ Stated plainly so nothing here is mistaken for working software.
 - **No end-to-end user journey has been exercised.** The API answers and rejects
   correctly at the edge, but no account has been created, no family formed and no
   location ingested.
+- **Branding is inconsistent below the surface.** The deep-link scheme is still
+  `familylocation-dev` and the iOS background task identifiers are still
+  `com.familylocation.engine.*`. Both are baked into the committed native
+  projects and the Swift engine's `BGTaskScheduler` registration, so renaming
+  them means regenerating and re-verifying the native build. Worth doing before
+  the first TestFlight submission, not after.
 - **`migrations/`** contains no migrations yet.
 
 ---
@@ -238,10 +287,13 @@ Stated plainly so nothing here is mistaken for working software.
 
 1. Click both SES verification emails, then send a test message to
    `support@dev.kinmap.app` and confirm it arrives
-2. Wire the deployed Cognito pool id and API URL into `apps/mobile/.env.local`
-3. First EAS development build, install on a real iPhone
-4. Create an account against the live development API — the first end-to-end
-   journey
+2. First EAS development build, install on a real iPhone —
+   `cd apps/mobile && eas build --profile development --platform ios`
+3. Create an account against the live development API: the first end-to-end
+   journey, and the first thing that exercises Cognito, the API and DynamoDB
+   together
+4. Tap an invitation link on the device and confirm it opens the app rather than
+   Safari — the only proof that universal links work
 5. Begin the real-device location matrix — the only thing that can substantiate
    any claim about background tracking
 6. Create the GitHub repository and push
