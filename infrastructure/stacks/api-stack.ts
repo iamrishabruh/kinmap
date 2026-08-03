@@ -65,6 +65,8 @@ import { NodeService } from '../constructs/node-service.js';
  */
 type RouteTarget =
   | 'api'
+  | 'family-service'
+  | 'invitation-service'
   | 'location-ingestion'
   | 'location-query'
   | 'revenuecat-webhook'
@@ -182,21 +184,25 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/families',
     methods: [HttpMethod.GET],
     perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+    target: 'family-service',
   },
   {
     path: '/v1/families',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
   {
     path: '/v1/families/{familyId}',
     methods: [HttpMethod.GET],
     perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+    target: 'family-service',
   },
   {
     path: '/v1/families/{familyId}',
     methods: [HttpMethod.PATCH],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
 
   // -- memberships ----------------------------------------------------------
@@ -204,21 +210,25 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/families/{familyId}/members',
     methods: [HttpMethod.GET],
     perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+    target: 'family-service',
   },
   {
     path: '/v1/families/{familyId}/members/{userId}',
     methods: [HttpMethod.GET],
     perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+    target: 'family-service',
   },
   {
     path: '/v1/families/{familyId}/members/{userId}',
     methods: [HttpMethod.PATCH, HttpMethod.DELETE],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
   {
     path: '/v1/families/{familyId}/members/{userId}/transfer-ownership',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
 
   // -- invitations ----------------------------------------------------------
@@ -226,16 +236,19 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/families/{familyId}/invitations',
     methods: [HttpMethod.GET],
     perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+    target: 'invitation-service',
   },
   {
     path: '/v1/families/{familyId}/invitations',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.INVITATION_CREATE_PER_FAMILY,
+    target: 'invitation-service',
   },
   {
     path: '/v1/families/{familyId}/invitations/{invitationId}',
     methods: [HttpMethod.DELETE],
     perPrincipalPerMinute: RATE_LIMITS.INVITATION_CREATE_PER_FAMILY,
+    target: 'invitation-service',
   },
   {
     // Token guessing is the cheapest way into a family, so the preview and the
@@ -243,11 +256,13 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/invitations/{token}',
     methods: [HttpMethod.GET],
     perPrincipalPerMinute: RATE_LIMITS.INVITATION_ACCEPT_PER_IP,
+    target: 'invitation-service',
   },
   {
     path: '/v1/invitations/{token}/accept',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.INVITATION_ACCEPT_PER_IP,
+    target: 'invitation-service',
   },
 
   // -- locations (owned by LocationStack) -----------------------------------
@@ -404,16 +419,19 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/support/reports',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
   {
     path: '/v1/support/blocks',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
   {
     path: '/v1/support/blocks/{userId}',
     methods: [HttpMethod.DELETE],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+    target: 'family-service',
   },
 
   // -- webhooks: the only unauthenticated routes on this API -----------------
@@ -447,6 +465,8 @@ export interface ApiStackProps extends DataConsumerStackProps {
   readonly userPoolClient: IUserPoolClient;
 
   /** `POST /v1/locations/batch`. Owned by LocationStack. */
+  readonly familyServiceFunction: IFunction;
+  readonly invitationServiceFunction: IFunction;
   readonly locationIngestionFunction: IFunction;
   /** Authorised current and history reads. Owned by LocationStack. */
   readonly locationQueryFunction: IFunction;
@@ -609,6 +629,11 @@ export class ApiStack extends Stack {
     // One integration per owning service, reused across that service's routes.
     const integrations: Array<[RouteTarget, HttpLambdaIntegration]> = [
       ['api', lambdaIntegration('ApiIntegration', this.apiFunction)],
+      ['family-service', lambdaIntegration('FamilyIntegration', props.familyServiceFunction)],
+      [
+        'invitation-service',
+        lambdaIntegration('InvitationIntegration', props.invitationServiceFunction),
+      ],
       [
         'location-ingestion',
         lambdaIntegration('IngestionIntegration', props.locationIngestionFunction),
@@ -685,6 +710,8 @@ export class ApiStack extends Stack {
     // ---------------------------------------------------------------------
     const backingFunctions: Array<[string, IFunction]> = [
       ['Api', this.apiFunction],
+      ['Family', props.familyServiceFunction],
+      ['Invitation', props.invitationServiceFunction],
       ['Ingestion', props.locationIngestionFunction],
       ['Query', props.locationQueryFunction],
       ['RevenueCat', props.revenueCatWebhookFunction],

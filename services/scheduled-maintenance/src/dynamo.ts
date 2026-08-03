@@ -4,7 +4,7 @@ import {
   ListEndpointsByPlatformApplicationCommand,
   type SNSClient,
 } from '@aws-sdk/client-sns';
-import { GetQueueAttributesCommand, type SQSClient } from '@aws-sdk/client-sqs';
+import { GetQueueAttributesCommand, SendMessageCommand, type SQSClient } from '@aws-sdk/client-sqs';
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
@@ -26,6 +26,9 @@ import type {
 } from './jobs.js';
 import { queueNameFromUrl } from './jobs.js';
 import type {
+  DeletionDispatcher,
+  DeletionJobRow,
+  DeletionJobStore,
   CurrentLocationStore,
   DeviceStore,
   HistoryStore,
@@ -489,5 +492,72 @@ export class SqsQueueDepthReader implements QueueDepthReader {
       void queueNameFromUrl(queueUrl);
       return null;
     }
+  }
+}
+
+/**
+ * Erasure jobs whose grace period has elapsed.
+ *
+ * Scanned rather than queried because DeletionJobs has no index on the purge
+ * time, and the table only ever holds jobs that have not finished — it is small
+ * by construction. The filter is applied server-side so a job that is not yet
+ * due never crosses the wire.
+ */
+export class DynamoDeletionJobStore implements DeletionJobStore {
+  constructor(
+    private readonly documents: DynamoDBDocumentClient,
+    private readonly tableName: string,
+  ) {}
+
+  async scanDue(input: ScanInput & { now: Date }): Promise<Page<DeletionJobRow>> {
+    const response = await this.documents.send(
+      new ScanCommand({
+        TableName: this.tableName,
+        Limit: input.limit,
+        ExclusiveStartKey: input.cursor ?? undefined,
+        FilterExpression: '#status = :pending AND scheduledFor <= :now',
+        ProjectionExpression: 'jobId, scheduledFor, #status',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: {
+          ':pending': 'PENDING',
+          ':now': input.now.toISOString(),
+        },
+      }),
+    );
+
+    const items: DeletionJobRow[] = [];
+    for (const raw of response.Items ?? []) {
+      const item = raw as Attributes;
+      const jobId = readString(item, 'jobId');
+      const scheduledFor = readString(item, 'scheduledFor');
+      const status = readString(item, 'status');
+      if (jobId === null || scheduledFor === null || status === null) continue;
+      items.push({ jobId, scheduledFor, status });
+    }
+
+    return { items, cursor: cursorOf(response.LastEvaluatedKey as Attributes | undefined) };
+  }
+}
+
+/**
+ * Hands a due job to the deletion worker.
+ *
+ * Only the job id travels. The worker loads everything else from the row, so a
+ * queue message never carries an identity, an address or anything that would
+ * make the queue itself worth reading.
+ */
+export class SqsDeletionDispatcher implements DeletionDispatcher {
+  constructor(
+    private readonly sqs: SQSClient,
+    private readonly queueUrl: string,
+  ) {}
+
+  async dispatch(input: { jobId: string }): Promise<void> {
+    await this.sqs.send(
+      new SendMessageCommand({
+        QueueUrl: this.queueUrl,
+        MessageBody: JSON.stringify({ jobId: input.jobId }),
+      }),
+    );
   }
 }

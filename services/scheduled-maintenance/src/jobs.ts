@@ -41,6 +41,7 @@ export const JOB_NAMES = [
   'emit-queue-depth-metrics',
   'sweep-expired-history',
   'reconcile-push-endpoints',
+  'dispatch-deletions',
 ] as const;
 
 export type JobName = (typeof JOB_NAMES)[number];

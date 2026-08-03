@@ -77,6 +77,30 @@ export interface PushEndpointRegistry {
   deleteEndpoint(input: { endpointArn: string }): Promise<void>;
 }
 
+/**
+ * Right-to-erasure jobs waiting for their grace period to elapse.
+ *
+ * The API writes a DeletionJobs row when someone asks to be deleted and the
+ * worker consumes messages from a queue — with nothing in between, every
+ * request was accepted and then sat in the table forever. This port is that
+ * missing step.
+ */
+export interface DeletionJobStore {
+  /** PENDING jobs whose scheduled purge time has passed. */
+  scanDue(input: ScanInput & { readonly now: Date }): Promise<Page<DeletionJobRow>>;
+}
+
+export type DeletionJobRow = {
+  readonly jobId: string;
+  readonly scheduledFor: string;
+  readonly status: string;
+};
+
+export interface DeletionDispatcher {
+  /** Hands one job to the deletion worker. Idempotent by job id downstream. */
+  dispatch(input: { jobId: string }): Promise<void>;
+}
+
 export interface QueueDepthReader {
   /** Null when the queue cannot be read; one bad queue must not fail the job. */
   read(queueUrl: string): Promise<QueueDepth | null>;

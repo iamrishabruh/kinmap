@@ -13,6 +13,8 @@ import {
   DynamoLiveSessionStore,
   SnsPushEndpointRegistry,
   SqsQueueDepthReader,
+  DynamoDeletionJobStore,
+  SqsDeletionDispatcher,
 } from './dynamo.js';
 import { loadConfig } from './env.js';
 import { isJobName, JOB_NAMES, queueNameFromUrl, type JobName } from './jobs.js';
@@ -97,6 +99,8 @@ function buildDeps(dryRun: boolean): RunnerDeps {
     currentLocations: new DynamoCurrentLocationStore(documents, config.currentLocationsTable),
     history: new DynamoHistoryStore(documents, config.locationHistoryTable),
     devices: new DynamoDeviceStore(documents, config.devicesTable),
+    deletionJobs: new DynamoDeletionJobStore(documents, config.deletionJobsTable),
+    deletions: new SqsDeletionDispatcher(sqs, config.deletionQueueUrl),
     pushEndpoints: new SnsPushEndpointRegistry(sns),
     queues: new SqsQueueDepthReader(sqs),
     metrics: metricsSink,

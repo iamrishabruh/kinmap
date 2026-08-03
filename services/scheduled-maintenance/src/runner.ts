@@ -15,6 +15,8 @@ import {
 } from './jobs.js';
 import type {
   CurrentLocationStore,
+  DeletionDispatcher,
+  DeletionJobStore,
   DeviceStore,
   HistoryStore,
   InvitationStore,
@@ -62,6 +64,8 @@ export type RunnerDeps = {
   readonly devices: DeviceStore;
   readonly pushEndpoints: PushEndpointRegistry;
   readonly queues: QueueDepthReader;
+  readonly deletionJobs: DeletionJobStore;
+  readonly deletions: DeletionDispatcher;
   readonly metrics: MaintenanceMetrics;
   readonly rateLimiter: RateLimiter;
   readonly config: RunnerConfig;
@@ -154,6 +158,43 @@ async function expireInvitations(deps: RunnerDeps): Promise<PartialOutcome> {
     examined: items.length,
     changed: deps.dryRun ? batch.length : changed,
     remaining: expired.length - batch.length,
+    truncated,
+  };
+}
+
+/**
+ * Hands every due erasure job to the deletion worker.
+ *
+ * DELETE /v1/account writes a DeletionJobs row with a purge time at the end of
+ * the grace period, and the worker consumes job ids from a queue. Nothing
+ * connected the two, so every request to be forgotten was accepted, promised a
+ * completion date, and then sat in the table untouched.
+ *
+ * Dispatch is deliberately at-least-once and never marks the row itself: the
+ * worker owns the job's status, so a message delivered twice resumes the same
+ * job rather than starting a second erasure.
+ */
+async function dispatchDeletions(deps: RunnerDeps): Promise<PartialOutcome> {
+  const now = deps.now();
+  const { items, truncated } = await collect(
+    (input) => deps.deletionJobs.scanDue({ ...input, now }),
+    deps.config.maxItemsPerJob,
+  );
+  const batch = limitBatch(items, deps.config.maxItemsPerJob);
+
+  let changed = 0;
+  if (!deps.dryRun) {
+    for (const row of batch) {
+      await deps.rateLimiter.acquire(1);
+      await deps.deletions.dispatch({ jobId: row.jobId });
+      changed += 1;
+    }
+  }
+
+  return {
+    examined: items.length,
+    changed: deps.dryRun ? batch.length : changed,
+    remaining: items.length - batch.length,
     truncated,
   };
 }
@@ -316,6 +357,7 @@ const JOBS: Record<JobName, (deps: RunnerDeps) => Promise<PartialOutcome>> = {
   'emit-queue-depth-metrics': emitQueueDepthMetrics,
   'sweep-expired-history': sweepExpiredHistory,
   'reconcile-push-endpoints': reconcilePushEndpoints,
+  'dispatch-deletions': dispatchDeletions,
 };
 
 // ---------------------------------------------------------------------------

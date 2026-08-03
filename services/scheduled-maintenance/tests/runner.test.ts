@@ -15,6 +15,9 @@ import type {
 } from '../src/jobs.js';
 import { JOB_NAMES } from '../src/jobs.js';
 import type {
+  DeletionDispatcher,
+  DeletionJobRow,
+  DeletionJobStore,
   CurrentLocationStore,
   DeviceStore,
   HistoryStore,
@@ -54,6 +57,8 @@ function pager<T>(rows: readonly T[]): (input: ScanInput) => Promise<Page<T>> {
 }
 
 type Recorder = {
+  dueDeletionJobs: DeletionJobRow[];
+  dispatchedDeletions: string[];
   liveSessionExpiries: string[];
   invitationExpiries: string[];
   staleMarks: string[];
@@ -67,6 +72,7 @@ type Recorder = {
 };
 
 type Fixture = {
+  deletionJobs?: DeletionJobRow[];
   liveSessions?: LiveSessionRow[];
   invitations?: InvitationRow[];
   currentLocations?: CurrentLocationRow[];
@@ -94,6 +100,8 @@ function build(fixture: Fixture = {}): { deps: RunnerDeps; recorder: Recorder } 
     queueDepths: [],
     failures: [],
     rateLimitUnits: [],
+    dueDeletionJobs: fixture.deletionJobs ?? [],
+    dispatchedDeletions: [],
   };
 
   const won = fixture.loseConditionalWrites !== true;
@@ -173,6 +181,15 @@ function build(fixture: Fixture = {}): { deps: RunnerDeps; recorder: Recorder } 
     },
   };
 
+  const deletionJobs: DeletionJobStore = {
+    scanDue: async () => ({ items: recorder.dueDeletionJobs, cursor: null }),
+  };
+  const deletions: DeletionDispatcher = {
+    dispatch: async ({ jobId }) => {
+      recorder.dispatchedDeletions.push(jobId);
+    },
+  };
+
   return {
     recorder,
     deps: {
@@ -183,6 +200,8 @@ function build(fixture: Fixture = {}): { deps: RunnerDeps; recorder: Recorder } 
       devices,
       pushEndpoints,
       queues,
+      deletionJobs,
+      deletions,
       metrics,
       rateLimiter,
       config: {
@@ -263,6 +282,29 @@ describe('independent invocation', () => {
 
     expect(outcome.changed).toBe(1);
     expect(recorder.staleMarks).toEqual([`${userId}/${deviceId}`]);
+  });
+
+  it('dispatches a due erasure job to the deletion worker', async () => {
+    // DELETE /v1/account writes a job row and the worker consumes job ids from
+    // a queue. Nothing joined the two, so every request to be forgotten was
+    // accepted, given a completion date, and then never acted on.
+    const { deps, recorder } = build({
+      deletionJobs: [
+        { jobId: 'job-due', scheduledFor: '2020-01-01T00:00:00.000Z', status: 'PENDING' },
+      ],
+    });
+    const outcome = await runJob('dispatch-deletions', deps);
+
+    expect(outcome.changed).toBe(1);
+    expect(recorder.dispatchedDeletions).toEqual(['job-due']);
+  });
+
+  it('dispatches nothing when no job is due', async () => {
+    const { deps, recorder } = build();
+    const outcome = await runJob('dispatch-deletions', deps);
+
+    expect(outcome.changed).toBe(0);
+    expect(recorder.dispatchedDeletions).toEqual([]);
   });
 
   it('sweeps history on its own', async () => {

@@ -56,6 +56,9 @@ export type MaintenanceConfig = {
   readonly currentLocationsTable: string;
   readonly locationHistoryTable: string;
   readonly devicesTable: string;
+  readonly deletionJobsTable: string;
+  /** Queue the deletion worker consumes. */
+  readonly deletionQueueUrl: string;
   /** Queues whose depth is published as a metric. */
   readonly monitoredQueueUrls: readonly string[];
   /** SNS platform applications swept for orphaned endpoints. */
@@ -81,6 +84,8 @@ export function loadConfig(source: EnvSource = process.env): MaintenanceConfig {
     currentLocationsTable: requireString(source, 'CURRENT_LOCATIONS_TABLE'),
     locationHistoryTable: requireString(source, 'LOCATION_HISTORY_TABLE'),
     devicesTable: requireString(source, 'DEVICES_TABLE'),
+    deletionJobsTable: requireString(source, 'DELETION_JOBS_TABLE'),
+    deletionQueueUrl: requireString(source, 'DELETION_QUEUE_URL'),
     monitoredQueueUrls: optionalList(source, 'MONITORED_QUEUE_URLS'),
     platformApplicationArns: optionalList(source, 'PLATFORM_APPLICATION_ARNS'),
     historyRetentionDays: optionalNumber(

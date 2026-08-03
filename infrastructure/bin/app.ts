@@ -10,13 +10,16 @@ import {
 import { ApiStack } from '../stacks/api-stack.js';
 import { BillingStack } from '../stacks/billing-stack.js';
 import { DataStack } from '../stacks/data-stack.js';
+import { FamilyStack } from '../stacks/family-stack.js';
 import { FoundationStack } from '../stacks/foundation-stack.js';
 import { IdentityStack } from '../stacks/identity-stack.js';
 import { LocationStack } from '../stacks/location-stack.js';
 import { MailStack } from '../stacks/mail-stack.js';
+import { MaintenanceStack } from '../stacks/maintenance-stack.js';
 import { MigrationStack } from '../stacks/migration-stack.js';
 import { NotificationStack } from '../stacks/notification-stack.js';
 import { ObservabilityStack } from '../stacks/observability-stack.js';
+import { PrivacyStack } from '../stacks/privacy-stack.js';
 import { SecurityStack } from '../stacks/security-stack.js';
 import { WebStack } from '../stacks/web-stack.js';
 
@@ -124,6 +127,47 @@ const billing = new BillingStack(app, stackName(config, 'billing'), {
 });
 billing.addDependency(notification);
 
+// Families, memberships and invitations. Their routes are integrated by the
+// API stack below, so this is created first.
+const family = new FamilyStack(app, stackName(config, 'family'), {
+  config,
+  env,
+  foundation,
+  tables,
+  userPoolId: identity.userPool.userPoolId,
+  userPoolClientId: identity.userPoolClient.userPoolClientId,
+});
+family.addDependency(identity);
+
+// Erasure and the audit trail.
+const privacy = new PrivacyStack(app, stackName(config, 'privacy'), {
+  config,
+  env,
+  foundation,
+  tables,
+  userPoolId: identity.userPool.userPoolId,
+  userPoolArn: identity.userPool.userPoolArn,
+});
+privacy.addDependency(identity);
+
+// Scheduled jobs. Last of the workers, because it dispatches onto the deletion
+// queue and reads the depth of the queues the others own.
+const maintenance = new MaintenanceStack(app, stackName(config, 'maintenance'), {
+  config,
+  env,
+  foundation,
+  tables,
+  deletionQueue: privacy.deletionQueue,
+  monitoredQueues: [
+    notification.notificationCommandsQueue,
+    location.geofenceEvaluationQueue,
+    billing.subscriptionEventsQueue,
+  ],
+});
+maintenance.addDependency(privacy);
+maintenance.addDependency(location);
+maintenance.addDependency(billing);
+
 // -- Layer 4: public surfaces ---------------------------------------------
 
 const api = new ApiStack(app, stackName(config, 'api'), {
@@ -133,6 +177,8 @@ const api = new ApiStack(app, stackName(config, 'api'), {
   tables,
   userPool: identity.userPool,
   userPoolClient: identity.userPoolClient,
+  familyServiceFunction: family.familyServiceFunction,
+  invitationServiceFunction: family.invitationServiceFunction,
   locationIngestionFunction: location.ingestionFunction,
   locationQueryFunction: location.queryFunction,
   revenueCatWebhookFunction: billing.revenueCatWebhookFunction,

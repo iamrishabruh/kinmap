@@ -455,6 +455,85 @@ describe('HTTP API', () => {
 
 const SERVICES_ROOT = path.join(REPO_ROOT, 'services');
 
+/**
+ * Routes the API declares that no service implements yet.
+ *
+ * These return 404 to an authenticated caller. They are listed rather than
+ * silently tolerated so the number is visible and shrinks as features land —
+ * and so that adding a route without a handler fails a test instead of shipping
+ * a dead endpoint.
+ */
+const ROUTES_WITHOUT_A_HANDLER: ReadonlySet<string> = new Set([
+  'GET /v1/live-sessions',
+  'POST /v1/live-sessions',
+  'POST /v1/live-sessions/{sessionId}/accept',
+  'POST /v1/live-sessions/{sessionId}/reject',
+  'POST /v1/live-sessions/{sessionId}/stop',
+  'GET /v1/places',
+  'POST /v1/places',
+  'PATCH /v1/places/{placeId}',
+  'DELETE /v1/places/{placeId}',
+  'GET /v1/notifications',
+  'POST /v1/notifications/read',
+  'GET /v1/notifications/preferences',
+  'PATCH /v1/notifications/preferences',
+  'POST /v1/subscriptions/receipt',
+]);
+
+describe('API routes have handlers', () => {
+  it('never points a route at a function with no handler for it', () => {
+    // Twenty-eight routes were integrated with services/api, which registers a
+    // handler for none of them, so the whole families, invitations, places and
+    // live-session surface answered 404 while every stack reported
+    // CREATE_COMPLETE. Nothing failed: an API Gateway route is valid whether or
+    // not the Lambda behind it knows the path.
+    const apiRoutePaths = new Set<string>();
+    const routesDir = path.join(REPO_ROOT, 'services', 'api', 'src', 'routes');
+    for (const entry of readdirSync(routesDir)) {
+      if (!entry.endsWith('.ts') || entry.endsWith('.test.ts')) continue;
+      const source = readFileSync(path.join(routesDir, entry), 'utf8');
+      for (const match of source.matchAll(/path:\s*'(\/v1\/[^']*)'/g)) {
+        const routePath = match[1];
+        if (routePath !== undefined) apiRoutePaths.add(routePath);
+      }
+    }
+    expect(apiRoutePaths.size, 'services/api must register routes').toBeGreaterThan(0);
+
+    const stack = allStacks.find(
+      (candidate) =>
+        candidate.environment === 'development' && candidate.stackName.endsWith('-api'),
+    );
+    expect(stack, 'the development API stack must synthesise').toBeDefined();
+    if (stack === undefined) return;
+
+    // Integrations whose Lambda is not services/api are backed by a dedicated
+    // function; this assertion is about the shared one.
+    const apiIntegrations = new Set<string>();
+    for (const [logicalId] of resourcesOf(stack, 'AWS::ApiGatewayV2::Integration')) {
+      if (logicalId.includes('ApiIntegration')) apiIntegrations.add(logicalId);
+    }
+
+    const orphaned: string[] = [];
+    for (const [, route] of resourcesOf(stack, 'AWS::ApiGatewayV2::Route')) {
+      const routeKey = prop(route, 'RouteKey');
+      if (typeof routeKey !== 'string') continue;
+      const target = JSON.stringify(prop(route, 'Target') ?? '');
+      if (![...apiIntegrations].some((id) => target.includes(id))) continue;
+
+      const routePath = routeKey.slice(routeKey.indexOf(' ') + 1);
+      if (apiRoutePaths.has(routePath)) continue;
+      if (ROUTES_WITHOUT_A_HANDLER.has(routeKey)) continue;
+      orphaned.push(routeKey);
+    }
+
+    expect(
+      orphaned.sort(),
+      'these routes reach services/api, which has no handler for them, so they 404:\n' +
+        orphaned.join('\n'),
+    ).toEqual([]);
+  });
+});
+
 describe('Lambda configuration', () => {
   /**
    * Every variable a service's config loader demands, read from its source.
