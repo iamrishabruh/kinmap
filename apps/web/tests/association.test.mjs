@@ -26,9 +26,7 @@ test('AASA has no file extension', async () => {
 });
 
 test('AASA declares the production app with the correct Team ID prefix', async () => {
-  const aasa = JSON.parse(
-    await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'),
-  );
+  const aasa = JSON.parse(await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'));
   const appIDs = aasa.applinks.details.flatMap((d) => d.appIDs ?? [d.appID]);
   assert.ok(
     appIDs.includes(`${TEAM_ID}.${BUNDLE_ID}`),
@@ -40,9 +38,7 @@ test('AASA declares the production app with the correct Team ID prefix', async (
 });
 
 test('AASA covers the invitation path', async () => {
-  const aasa = JSON.parse(
-    await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'),
-  );
+  const aasa = JSON.parse(await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'));
   const paths = aasa.applinks.details.flatMap((d) =>
     (d.components ?? []).map((c) => c['/']).concat(d.paths ?? []),
   );
@@ -53,9 +49,7 @@ test('AASA covers the invitation path', async () => {
 });
 
 test('webcredentials is declared so the password manager offers saved logins', async () => {
-  const aasa = JSON.parse(
-    await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'),
-  );
+  const aasa = JSON.parse(await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'));
   assert.ok(aasa.webcredentials?.apps?.includes(`${TEAM_ID}.${BUNDLE_ID}`));
 });
 
@@ -78,4 +72,43 @@ test('assetlinks fingerprint placeholder is still flagged as unset', async () =>
       'Play Console > Setup > App signing, or set ALLOW_UNSET_ANDROID_FINGERPRINT=1 ' +
       'while the project is iOS-only.',
   );
+});
+
+test('every path the association file advertises has a landing page', async () => {
+  // iOS only consults this file; it has no idea whether the path it is told to
+  // claim actually serves anything. An advertised path with no page means the
+  // link opens a browser and dies on an error, which is indistinguishable to
+  // the user from the app being broken.
+  const aasa = JSON.parse(await readFile(join(wellKnown, 'apple-app-site-association'), 'utf8'));
+  const paths = aasa.applinks.details.flatMap((d) =>
+    (d.components ?? []).map((c) => c['/']).concat(d.paths ?? []),
+  );
+
+  // Each advertised path is a prefix pattern like /invite/*; the page that
+  // serves it is <prefix>/index.html.
+  const landingPages = {
+    '/invite': 'invite/index.html',
+    '/i': 'invite/index.html',
+    '/live': 'live/index.html',
+  };
+
+  for (const pattern of new Set(paths.filter(Boolean))) {
+    const prefix = pattern.replace(/\/\*$/, '');
+    const page = landingPages[prefix];
+    assert.ok(
+      page,
+      `the association file advertises ${pattern} but no landing page is mapped for it`,
+    );
+    await assert.doesNotReject(
+      readFile(join(root, 'public', page)),
+      `${pattern} is advertised to iOS but ${page} does not exist`,
+    );
+  }
+});
+
+test('the error page the distribution points at exists', async () => {
+  // Both the 403 and 404 error responses target /404.html. When it is missing,
+  // a missing object returns the error page, which is also missing, and the
+  // visitor gets raw S3 AccessDenied XML instead.
+  await assert.doesNotReject(readFile(join(root, 'public', '404.html')));
 });

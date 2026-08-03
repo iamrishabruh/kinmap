@@ -7,6 +7,7 @@ import {
   optionalIntEnv,
   requireEnv,
   type EnvSource,
+  optionalStringEnv,
 } from './runtime/env.js';
 
 /**
@@ -29,6 +30,8 @@ export type IngestionConfig = {
   /** Optional: when absent the token's device binding is the only device check. */
   readonly devicesTable: string | null;
   readonly coordinateKeyId: string;
+  /** EMF namespace. Defaults to the convention the other services use. */
+  readonly metricsNamespace: string;
   readonly locationEventBusName: string;
   readonly locationEventSource: string;
   readonly historyRetentionDays: number;
@@ -61,6 +64,7 @@ export function loadConfig(source: EnvSource): IngestionConfig {
     usersTable: requireEnv(source, 'USERS_TABLE'),
     devicesTable: optionalEnv(source, 'DEVICES_TABLE'),
     coordinateKeyId: requireEnv(source, 'COORDINATE_KEY_ID'),
+    metricsNamespace: optionalStringEnv(source, 'METRICS_NAMESPACE', `Kinmap/${env}`),
     locationEventBusName: requireEnv(source, 'LOCATION_EVENT_BUS_NAME'),
     locationEventSource: optionalEnv(source, 'LOCATION_EVENT_SOURCE') ?? 'kinmap.location',
     historyRetentionDays: optionalIntEnv(

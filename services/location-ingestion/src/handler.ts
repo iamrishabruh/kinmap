@@ -1,7 +1,7 @@
 import { createCognitoAccessTokenVerifier, type TokenVerifier } from '@family/auth';
 import { LIMITS } from '@family/contracts';
 import { AwsKmsDataKeyProvider, EncryptionService } from '@family/crypto';
-import { createLogger } from '@family/observability';
+import { createLogger, createMetrics } from '@family/observability';
 import { LocationBatchRequestSchema } from '@family/schemas';
 import { parseOrThrow } from '@family/validation';
 
@@ -40,6 +40,11 @@ const logger = createLogger({
   service: config.serviceName,
   env: config.env,
   level: config.logLevel,
+});
+
+const metrics = createMetrics({
+  namespace: config.metricsNamespace,
+  dimensions: { service: config.serviceName, env: config.env },
 });
 
 const encryptionService = new EncryptionService({
@@ -83,6 +88,29 @@ export const handler = async (event: HttpRequest): Promise<HttpResponse> => {
       { auth, batch },
       { ...dependencies, logger: requestLogger },
     );
+
+    // The throughput signal the ingestion alarms watch. Without it a pipeline
+    // that has stopped accepting anything is indistinguishable from one nobody
+    // is using — which is precisely the outage those alarms exist to catch.
+    //
+    // Rejection reasons are a closed enum defined in @family/schemas and
+    // deliberately carry no payload, so they are safe as a dimension. A
+    // coordinate never reaches this call.
+    metrics.count('LocationEventAccepted', response.acceptedCount);
+    if (response.rejectedCount > 0) {
+      metrics.count('LocationEventRejected', response.rejectedCount);
+      for (const rejection of response.rejected) {
+        if (rejection.reason === 'DUPLICATE_EVENT') {
+          metrics.count('LocationEventDuplicate', 1);
+        } else if (
+          rejection.reason === 'ACCURACY_INVALID' ||
+          rejection.reason === 'ACCURACY_OUT_OF_BOUNDS'
+        ) {
+          metrics.count('LocationEventInvalidAccuracy', 1);
+        }
+      }
+    }
+
     return jsonResponse(200, response);
   } catch (error) {
     // The message is never taken from the thrown error: a validation failure on

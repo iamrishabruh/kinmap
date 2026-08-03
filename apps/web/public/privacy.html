@@ -12,9 +12,9 @@
 
       <div class="banner">
         <strong>⚠️ DRAFT — NOT REVIEWED BY A LAWYER.</strong>
-        This describes what the software actually does, written by its engineers. It has
-        not been reviewed by qualified legal counsel and must not be published as a
-        binding privacy policy in this form. See "Open questions for counsel" at the end.
+        This describes what the software actually does, written by its engineers. It has not been
+        reviewed by qualified legal counsel and must not be published as a binding privacy policy in
+        this form. See "Open questions for counsel" at the end.
       </div>
 
       <p class="muted">Last updated: draft, unpublished.</p>
@@ -22,70 +22,102 @@
       <h2>What we collect</h2>
       <table>
         <thead>
-          <tr><th>Data</th><th>Why</th><th>Kept for</th></tr>
+          <tr>
+            <th>Data</th>
+            <th>Why</th>
+            <th>Kept for</th>
+          </tr>
         </thead>
         <tbody>
-          <tr><td>Email address</td><td>Sign-in and account recovery</td><td>Until you delete your account</td></tr>
-          <tr><td>Precise location</td><td>To show your family where you are, while you have sharing on</td><td>30 days</td></tr>
-          <tr><td>Device identifiers</td><td>To register the device and let you revoke it</td><td>Until you revoke it</td></tr>
-          <tr><td>Battery level, permission state</td><td>So your family can tell why a location may be old</td><td>With the location record</td></tr>
-          <tr><td>Saved places</td><td>Arrival and departure alerts you set up</td><td>Until you delete them</td></tr>
-          <tr><td>Access audit records</td><td>So you can see who viewed your location</td><td>90 days</td></tr>
+          <tr>
+            <td>Email address</td>
+            <td>Sign-in and account recovery</td>
+            <td>Until you delete your account</td>
+          </tr>
+          <tr>
+            <td>Precise location</td>
+            <td>To show your family where you are, while you have sharing on</td>
+            <td>30 days</td>
+          </tr>
+          <tr>
+            <td>Device identifiers</td>
+            <td>To register the device and let you revoke it</td>
+            <td>Until you revoke it</td>
+          </tr>
+          <tr>
+            <td>Battery level, permission state</td>
+            <td>So your family can tell why a location may be old</td>
+            <td>With the location record</td>
+          </tr>
+          <tr>
+            <td>Saved places</td>
+            <td>Arrival and departure alerts you set up</td>
+            <td>Until you delete them</td>
+          </tr>
+          <tr>
+            <td>Access audit records</td>
+            <td>So you can see who viewed your location</td>
+            <td>90 days</td>
+          </tr>
         </tbody>
       </table>
 
       <h2>When we collect location</h2>
       <p>
-        Only when all of the following are true: you signed in, you joined a family, you
-        turned location sharing on, and you granted the operating-system permission. If
-        any one of those stops being true, collection stops.
+        Only when all of the following are true: you signed in, you joined a family, you turned
+        location sharing on, and you granted the operating-system permission. If any one of those
+        stops being true, collection stops.
       </p>
       <p>
-        The app collects in the background so your family can see you have arrived safely
-        without you opening it. Sharing status is always visible in the app, and a live
-        session shows an unmissable indicator to the person being located.
+        The app collects in the background so your family can see you have arrived safely without
+        you opening it. Sharing status is always visible in the app, and a live session shows an
+        unmissable indicator to the person being located.
       </p>
 
       <h2>Who can see your location</h2>
       <p>
-        Only members of a family you joined, and only while your sharing is on. Pausing
-        sharing hides your position from everyone immediately. Leaving a family, or being
-        removed, ends access at once.
+        Only members of a family you joined, and only while your sharing is on. Pausing sharing
+        hides your position from everyone immediately. Leaving a family, or being removed, ends
+        access at once.
       </p>
       <p>
-        We do not sell location data. We do not share it with advertisers or data brokers.
-        We do not use it to build advertising profiles.
+        We do not sell location data. We do not share it with advertisers or data brokers. We do not
+        use it to build advertising profiles.
       </p>
 
       <h2>How it is protected</h2>
       <ul>
         <li>Encrypted in transit with TLS.</li>
-        <li>Coordinates are additionally encrypted by the application before storage, under keys held in AWS KMS.</li>
-        <li>Precise coordinates are never written to our application logs, crash reports, metrics, or push notifications.</li>
+        <li>
+          Coordinates are additionally encrypted by the application before storage, under keys held
+          in AWS KMS.
+        </li>
+        <li>
+          Precise coordinates are never written to our application logs, crash reports, metrics, or
+          push notifications.
+        </li>
         <li>Every access to your location is authorised against family membership and recorded.</li>
       </ul>
 
       <h2>Your controls</h2>
       <p>
-        Pause sharing, control who sees you individually, revoke a device, delete your
-        history, delete your account, and review who has viewed your location — all from
-        Settings in the app. See <a href="/delete-account.html">deleting your account</a>.
+        Pause sharing, control who sees you individually, revoke a device, delete your history,
+        delete your account, and review who has viewed your location — all from Settings in the app.
+        See <a href="/delete-account.html">deleting your account</a>.
       </p>
 
       <h2>Service providers</h2>
       <p>
-        Amazon Web Services (hosting and storage, United States), Apple (push
-        notifications and sign-in), Sentry (crash reporting, with location data scrubbed
-        before transmission), and RevenueCat (subscription management) once subscriptions
-        are enabled.
+        Amazon Web Services (hosting and storage, United States), Apple (push notifications and
+        sign-in), Sentry (crash reporting, with location data scrubbed before transmission), and
+        RevenueCat (subscription management) once subscriptions are enabled.
       </p>
 
       <h2>Children</h2>
       <p>
-        Families often include children. We do not currently offer a separate child
-        account type, and this policy does not yet make the disclosures a service directed
-        to children requires. This is one of the open questions below and must be resolved
-        before launch.
+        Families often include children. We do not currently offer a separate child account type,
+        and this policy does not yet make the disclosures a service directed to children requires.
+        This is one of the open questions below and must be resolved before launch.
       </p>
 
       <h2>Contact</h2>
@@ -93,10 +125,21 @@
 
       <h2>Open questions for counsel</h2>
       <ol>
-        <li>COPPA: are children under 13 permitted, and if so what verifiable parental consent applies?</li>
-        <li>GDPR/UK GDPR: lawful basis, controller/processor roles between family members, and whether an EU representative is needed.</li>
-        <li>CCPA/CPRA and other US state privacy laws: disclosures, opt-out rights, and whether any transfer counts as a "sale" or "share".</li>
-        <li>Whether location history triggers heightened "sensitive personal information" duties.</li>
+        <li>
+          COPPA: are children under 13 permitted, and if so what verifiable parental consent
+          applies?
+        </li>
+        <li>
+          GDPR/UK GDPR: lawful basis, controller/processor roles between family members, and whether
+          an EU representative is needed.
+        </li>
+        <li>
+          CCPA/CPRA and other US state privacy laws: disclosures, opt-out rights, and whether any
+          transfer counts as a "sale" or "share".
+        </li>
+        <li>
+          Whether location history triggers heightened "sensitive personal information" duties.
+        </li>
         <li>Law-enforcement request handling and user-notification policy.</li>
         <li>Retention justification for the 30-day history and 90-day audit windows.</li>
         <li>Liability framing where one family member locates another.</li>

@@ -21,6 +21,10 @@ import {
   ResponseHeadersPolicy,
   SecurityPolicyProtocol,
   ViewerProtocolPolicy,
+  Function as CloudFrontFunction,
+  FunctionCode,
+  FunctionEventType,
+  FunctionRuntime,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import {
@@ -221,6 +225,70 @@ export class WebStack extends Stack {
         (config.webDomain === config.domain ? [] : [config.domain])),
     ];
 
+    // -----------------------------------------------------------------------
+    // Path rewriting
+    //
+    // S3 behind Origin Access Control serves objects by exact key and nothing
+    // else. It has no notion of a directory index and no notion of an implied
+    // .html, so every path the product actually publishes was returning 403:
+    //
+    //   /invite/<token>  -> no such key   (the object is invite/index.html)
+    //   /i/<token>       -> no such key
+    //   /live/<id>       -> no such key
+    //   /safety          -> no such key   (the object is safety.html)
+    //
+    // The first three are the paths the association file advertises to iOS, so
+    // every invitation link that reached a browser died here. This runs at the
+    // viewer, before the cache, and only ever rewrites the URI.
+    const rewrite = new CloudFrontFunction(this, 'PathRewrite', {
+      comment: `Kinmap ${config.envName} — directory and extensionless path rewriting`,
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+
+  // Everything under /.well-known is fetched by name, by Apple and Google, and
+  // apple-app-site-association is deliberately extensionless. Appending .html
+  // to it breaks universal links in exactly the way this rewrite exists to fix.
+  if (uri.indexOf('/.well-known/') === 0) {
+    return request;
+  }
+
+  // /i/<token> is the short form of an invitation link.
+  if (uri === '/i' || uri.indexOf('/i/') === 0) {
+    request.uri = '/invite/index.html';
+    return request;
+  }
+
+  // /invite/<token> and /live/<id> are single landing pages; the identifier is
+  // read by the app, never by this site.
+  if (uri.indexOf('/invite/') === 0) {
+    request.uri = '/invite/index.html';
+    return request;
+  }
+  if (uri.indexOf('/live/') === 0) {
+    request.uri = '/live/index.html';
+    return request;
+  }
+
+  // A trailing slash means the directory index.
+  if (uri.endsWith('/')) {
+    request.uri = uri + 'index.html';
+    return request;
+  }
+
+  // No extension in the last segment means an implied .html.
+  var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
+  if (lastSegment !== '' && lastSegment.indexOf('.') === -1) {
+    request.uri = uri + '.html';
+  }
+
+  return request;
+}
+      `),
+    });
+
     this.distribution = new Distribution(this, 'Distribution', {
       comment: `Kinmap ${config.envName} site`,
       domainNames,
@@ -243,6 +311,7 @@ export class WebStack extends Stack {
         originRequestPolicy: OriginRequestPolicy.CORS_S3_ORIGIN,
         responseHeadersPolicy: responseHeaders,
         compress: true,
+        functionAssociations: [{ function: rewrite, eventType: FunctionEventType.VIEWER_REQUEST }],
       },
       errorResponses: [
         // A missing object behind OAC surfaces as 403; showing the 404 page is

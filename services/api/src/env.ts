@@ -92,6 +92,8 @@ export type ApiConfig = {
   readonly auditIpHashSecret: string | null;
   readonly accountDeletionGraceDays: number;
   readonly idempotencyTtlSeconds: number;
+  /** EMF namespace. Defaults to the convention the other services use. */
+  readonly metricsNamespace: string;
   readonly auditRetentionDays: number;
 };
 
@@ -136,6 +138,7 @@ export function loadApiConfig(source: EnvironmentSource): ApiConfig {
     auditIpHashSecret: value.AUDIT_IP_HASH_SECRET ?? null,
     accountDeletionGraceDays: value.ACCOUNT_DELETION_GRACE_DAYS,
     idempotencyTtlSeconds: value.IDEMPOTENCY_TTL_SECONDS,
+    metricsNamespace: source['METRICS_NAMESPACE'] ?? `Kinmap/${value.APP_ENV}`,
     auditRetentionDays: value.AUDIT_RETENTION_DAYS,
   };
 }

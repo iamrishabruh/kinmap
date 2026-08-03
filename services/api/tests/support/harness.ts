@@ -180,6 +180,7 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     tables: TABLES,
     auditIpHashSecret: 'test-audit-secret',
     accountDeletionGraceDays: 30,
+    metricsNamespace: 'Kinmap/test',
     idempotencyTtlSeconds: 86_400,
     auditRetentionDays: 365,
   };

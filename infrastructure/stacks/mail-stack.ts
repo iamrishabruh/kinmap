@@ -99,7 +99,16 @@ export const SES_INBOUND_REGIONS: readonly string[] = [
 export const DEFAULT_SES_REGION = 'us-east-1';
 
 /** Local parts forwarded to a person. Every one of these is published somewhere. */
-export const DEFAULT_FORWARDED_MAILBOXES: readonly string[] = ['support', 'privacy', 'security'];
+export const DEFAULT_FORWARDED_MAILBOXES: readonly string[] = [
+  'support',
+  'privacy',
+  'security',
+  // Where CloudWatch alarms are sent. It has to be a real, deliverable mailbox:
+  // an SNS email subscription stays PendingConfirmation forever if the
+  // confirmation cannot arrive, and an alarm topic nobody confirmed is an alarm
+  // nobody receives.
+  'alerts',
+];
 
 /** Local part every forwarded copy is sent *from*. Never one we also receive. */
 const DEFAULT_FROM_LOCAL_PART = 'no-reply';

@@ -834,8 +834,30 @@ export class ObservabilityStack extends Stack {
     metricName: string,
     label: string,
     statistic: 'Sum' | 'Average' | 'Maximum' | 'Minimum' = 'Sum',
-  ): Metric {
-    return this.aggregate(id, label, this.metricNamespace, metricName, statistic);
+  ): IMetric {
+    assertNoCoordinateInTelemetry(`metric ${id}`, [id, label, metricName]);
+
+    // A CloudWatch Metrics Insights query, which is neither of the two things
+    // that do not work here.
+    //
+    // SEARCH() aggregates across dimension sets but CloudWatch rejects it on an
+    // alarm. A plain un-dimensioned Metric is accepted on an alarm but matches
+    // only datapoints published with no dimensions at all — CloudWatch does not
+    // roll dimension sets up into an aggregate stream. Services emit some of
+    // these with dimensions (`NotificationDelivered` carries `kind`) and some
+    // without (`GeofenceEventProcessed`), so an un-dimensioned alarm silently
+    // watches an empty stream for half of them.
+    //
+    // A Metrics Insights query is supported on alarms and aggregates over every
+    // dimension set, which is the behaviour these alarms were always assumed to
+    // have.
+    const aggregate = { Sum: 'SUM', Average: 'AVG', Maximum: 'MAX', Minimum: 'MIN' }[statistic];
+    return new MathExpression({
+      expression: `SELECT ${aggregate}("${metricName}") FROM "${this.metricNamespace}"`,
+      label,
+      period: FIVE_MINUTES,
+      usingMetrics: {},
+    });
   }
 
   private alarm(id: string, options: AlarmOptions): Alarm {

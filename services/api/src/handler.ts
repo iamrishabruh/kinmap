@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createCognitoAccessTokenVerifier } from '@family/auth';
 import { AppError } from '@family/contracts';
+import { createMetrics } from '@family/observability';
 
 import { loadApiConfig } from './env.js';
 import {
@@ -46,6 +47,11 @@ import type { ApiServices } from './services.js';
 const config = loadApiConfig(process.env);
 const logger = createServiceLogger(config);
 
+const metrics = createMetrics({
+  namespace: config.metricsNamespace,
+  dimensions: { service: config.serviceName, env: config.env },
+});
+
 const documentClient = createDynamoDocumentClient();
 
 const verifier = createCognitoAccessTokenVerifier({
@@ -87,6 +93,7 @@ const pipeline = createPipeline({
   router: createRouter(routes),
   services,
   logger,
+  metrics,
   verifier,
 });
 

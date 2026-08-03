@@ -33,7 +33,7 @@ export function stagingConfig(): EnvironmentConfig {
     region: envString('AWS_REGION', envString('CDK_DEFAULT_REGION', DEFAULT_REGION)),
     domain,
     apiDomain: envString('KINMAP_API_DOMAIN_STAGING', `api.${domain}`),
-    alarmEmail: envString('KINMAP_ALARM_EMAIL', 'alerts@kinmap.app'),
+    alarmEmail: envString('KINMAP_ALARM_EMAIL', `alerts@${domain}`),
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: false,
 

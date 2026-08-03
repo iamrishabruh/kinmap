@@ -1,6 +1,6 @@
 import type { AuthContext, TokenVerifier } from '@family/auth';
 import { AppError } from '@family/contracts';
-import type { Logger } from '@family/observability';
+import { type createMetrics, type Logger } from '@family/observability';
 
 import { projectEntitlements } from './domain/entitlements.js';
 import { parseBody } from './middleware/bodyParser.js';
@@ -18,6 +18,13 @@ import { enforceRateLimit, principalOf } from './middleware/rateLimit.js';
 import { createRequestContext } from './middleware/requestContext.js';
 import { ENTITLEMENT_GATES, type RegisteredRoute, type Router } from './router.js';
 import type { ApiServices } from './services.js';
+/**
+ * Failures that mean "you may not do this", as opposed to "that was malformed".
+ * FORBIDDEN and NOT_FOUND are both here because an authorization denial is
+ * deliberately reported as one or the other at random-looking boundaries, so
+ * counting only FORBIDDEN would miss half of them.
+ */
+const DENIAL_CODES: ReadonlySet<string> = new Set(['FORBIDDEN', 'UNAUTHORIZED', 'NOT_FOUND']);
 import type { AnyRouteContext, HttpRequest, HttpResponse } from './types.js';
 
 /**
@@ -50,6 +57,8 @@ export function createPipeline(input: {
   services: ApiServices;
   logger: Logger;
   verifier: TokenVerifier;
+  /** Optional so existing tests can construct a pipeline without telemetry. */
+  metrics?: ReturnType<typeof createMetrics>;
 }): Pipeline {
   return async function handle(request: HttpRequest): Promise<HttpResponse> {
     const match = input.router.match(request.method, request.path);
@@ -133,6 +142,21 @@ export function createPipeline(input: {
         body: outcome.body,
       };
     } catch (error) {
+      // The control from spec §34: authorization denials are deliberately
+      // opaque to the caller, so probing for whether a user exists, is in a
+      // family, or has merely paused sharing looks identical from outside. That
+      // is exactly why the denials have to be counted on this side — the rate
+      // is the only signal that someone is enumerating, and the alarm on it was
+      // watching a metric nothing emitted.
+      //
+      // The route template is a fixed string from the route table, never a
+      // caller-supplied path, so it is safe as a dimension.
+      if (error instanceof AppError && DENIAL_CODES.has(error.code)) {
+        input.metrics?.count('AuthorizationDenied', 1, {
+          code: error.code,
+          route: route?.path ?? 'unknown',
+        });
+      }
       return toErrorResponse(error, requestId, logger);
     }
   };

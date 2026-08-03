@@ -167,6 +167,10 @@ export class NodeService extends Construct {
       environment: {
         APP_ENV: config.envName,
         SERVICE_NAME: props.serviceName,
+        // The EMF namespace every service publishes into. Each service defaults
+        // to `Kinmap/<env>` on its own, but the alarms query one namespace by
+        // name, so it is set here rather than left to agree by coincidence.
+        METRICS_NAMESPACE: `Kinmap/${config.envName}`,
         LOG_LEVEL: config.isProduction ? 'info' : 'debug',
         // Source maps are emitted by the bundler below; without this the stack
         // traces in CloudWatch point at minified offsets.

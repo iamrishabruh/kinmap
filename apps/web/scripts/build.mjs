@@ -24,6 +24,14 @@ await cp(source, target, { recursive: true });
 const REQUIRED = [
   '.well-known/apple-app-site-association',
   '.well-known/assetlinks.json',
+  // The distribution points both its 403 and 404 error responses here. Without
+  // it a missing object returns the error page, which is also missing, and the
+  // visitor gets raw S3 AccessDenied XML.
+  '404.html',
+  // The landing pages for every path the association file advertises to iOS.
+  // If one of these is absent the deep link opens a browser and dies there.
+  'invite/index.html',
+  'live/index.html',
 ];
 
 for (const relative of REQUIRED) {

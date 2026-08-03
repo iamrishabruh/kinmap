@@ -59,8 +59,18 @@ export class QueueWithDlq extends Construct {
 
     const { config } = props;
     const baseName = qualifiedName(config.resourcePrefix, props.queueName);
+    // SSE-SQS rather than the AWS-managed KMS key, because EventBridge cannot
+    // deliver to a queue encrypted with alias/aws/sqs: there is no way to grant
+    // events.amazonaws.com kms:GenerateDataKey on an AWS-managed key. Rules
+    // deployed happily and every delivery failed, so geofence evaluation and
+    // live-session refresh were dead paths.
+    //
+    // Nothing in these queues is a coordinate — they carry identifiers and
+    // rendered copy — so SSE-SQS is the right level. A caller that needs a
+    // customer-managed key can still pass one, and must then also add
+    // events.amazonaws.com to that key's policy.
     const encryption =
-      props.encryptionKey !== undefined ? QueueEncryption.KMS : QueueEncryption.KMS_MANAGED;
+      props.encryptionKey !== undefined ? QueueEncryption.KMS : QueueEncryption.SQS_MANAGED;
     const visibilityTimeout =
       props.visibilityTimeout ?? Duration.seconds(config.lambdaTimeoutSeconds * 6);
 
