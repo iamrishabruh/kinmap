@@ -1,11 +1,13 @@
 import {
   AccessTokenClaimsSchema,
   unauthenticatedError,
+  resolveDeviceId,
   verifyAccessToken,
+  type HeaderSource,
   type AuthContext,
   type TokenVerifier,
 } from '@family/auth';
-import { DeviceIdSchema, UserIdSchema, type DeviceId } from '@family/contracts';
+import { UserIdSchema } from '@family/contracts';
 
 import { headerOf, requestIdOf, type HttpRequest } from './http.js';
 
@@ -43,23 +45,10 @@ export function normalizeGatewayClaims(raw: Record<string, unknown>): Record<str
   return normalized;
 }
 
-/**
- * `device_key` (Cognito's own device-tracking id) is deliberately ignored: only
- * `custom:device_id`, written at sign-in from our own device registry, can
- * satisfy the registered-device requirement.
- */
-function deviceIdFromClaims(claims: Record<string, unknown>): DeviceId | null {
-  const candidate = claims['custom:device_id'];
-  if (typeof candidate !== 'string') {
-    return null;
-  }
-  const parsed = DeviceIdSchema.safeParse(candidate);
-  return parsed.success ? parsed.data : null;
-}
-
 export function buildAuthContextFromClaims(
   rawClaims: Record<string, unknown>,
   requestId: string,
+  headers?: HeaderSource,
 ): AuthContext {
   const parsed = AccessTokenClaimsSchema.safeParse(normalizeGatewayClaims(rawClaims));
   if (!parsed.success) {
@@ -77,7 +66,7 @@ export function buildAuthContextFromClaims(
 
   return {
     userId: userId.data,
-    deviceId: deviceIdFromClaims(claims),
+    deviceId: resolveDeviceId({ claims, headers }),
     tokenUse: 'access',
     claims,
     requestId,
@@ -110,7 +99,7 @@ export async function authenticate(
 
   const claims = event.requestContext?.authorizer?.jwt?.claims;
   if (claims !== undefined && claims !== null) {
-    return buildAuthContextFromClaims(claims, requestId);
+    return buildAuthContextFromClaims(claims, requestId, event.headers);
   }
 
   const verifier = deps.verifier;
@@ -119,5 +108,8 @@ export async function authenticate(
     throw unauthenticatedError();
   }
 
-  return verifyAccessToken(token, { verifier, requestId });
+  const context = await verifyAccessToken(token, { verifier, requestId });
+  return context.deviceId === null
+    ? { ...context, deviceId: resolveDeviceId({ headers: event.headers }) }
+    : context;
 }
