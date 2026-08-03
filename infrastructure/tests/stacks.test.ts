@@ -453,6 +453,62 @@ describe('HTTP API', () => {
   });
 });
 
+describe('the public site', () => {
+  it('publishes content into every distribution it creates', () => {
+    // A CloudFront distribution in front of an empty bucket deploys perfectly:
+    // DNS resolves, TLS is valid, and every request returns 403. The casualty
+    // is /.well-known/apple-app-site-association, which is what makes an
+    // invitation link open the app instead of Safari — and Apple fetches it
+    // from the live domain with no way to report that it was never uploaded.
+    let distributions = 0;
+
+    for (const stack of allStacks) {
+      const dists = [...resourcesOf(stack, 'AWS::CloudFront::Distribution')];
+      if (dists.length === 0) continue;
+      distributions += dists.length;
+
+      const publishes = [...resourcesOf(stack, 'Custom::CDKBucketDeployment')];
+      expect(
+        publishes.length,
+        `${stack}: creates a CloudFront distribution but never publishes anything into its origin`,
+      ).toBeGreaterThan(0);
+    }
+
+    expect(distributions, 'the app must serve a public site').toBeGreaterThan(0);
+  });
+
+  it('serves the association file as JSON and without a long cache', () => {
+    // Apple requires content-type application/json on an extensionless file,
+    // which S3 would otherwise guess as application/octet-stream, and a stale
+    // cached copy would keep a corrected app ID from taking effect.
+    let checked = 0;
+
+    for (const stack of allStacks) {
+      for (const [logicalId, deployment] of resourcesOf(stack, 'Custom::CDKBucketDeployment')) {
+        const prefix = prop(deployment, 'DestinationBucketKeyPrefix');
+        if (prefix !== '.well-known') continue;
+        checked += 1;
+
+        // CDK folds both into SystemMetadata rather than naming them directly.
+        const metadata = prop(deployment, 'SystemMetadata') as Record<string, string> | undefined;
+
+        expect(
+          metadata?.['content-type'],
+          `${describeResource(stack, logicalId)}: iOS rejects the association file unless it is application/json`,
+        ).toBe('application/json');
+
+        const maxAge = /max-age=(\d+)/.exec(metadata?.['cache-control'] ?? '')?.[1];
+        expect(
+          maxAge === undefined ? undefined : Number(maxAge),
+          `${describeResource(stack, logicalId)}: the association file needs a short max-age so a corrected app ID takes effect`,
+        ).toBeLessThanOrEqual(3600);
+      }
+    }
+
+    expect(checked, 'the association files must be published').toBeGreaterThan(0);
+  });
+});
+
 describe('IAM', () => {
   function statementsOf(document: unknown): Array<Record<string, unknown>> {
     const statements: Array<Record<string, unknown>> = [];

@@ -1,3 +1,6 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { Annotations, CfnOutput, Duration, Stack } from 'aws-cdk-lib';
 import {
   Certificate,
@@ -28,6 +31,7 @@ import {
   type IHostedZone,
 } from 'aws-cdk-lib/aws-route53';
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
+import { BucketDeployment, CacheControl, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
 
 import { cdkEnvironment, type BaseStackProps, type FoundationResources } from '../config/index.js';
@@ -279,6 +283,55 @@ export class WebStack extends Stack {
         comment: `Kinmap ${config.envName} site`,
       });
     }
+
+    // -----------------------------------------------------------------------
+    // Publishing the site
+    //
+    // Without this the stack deploys a CloudFront distribution in front of an
+    // empty bucket: DNS resolves, TLS is valid, and every request returns 403.
+    // That is not a cosmetic gap — `/.well-known/apple-app-site-association` is
+    // what makes an invitation link open the app instead of Safari, and Apple
+    // fetches it from the live domain with no way to know it was simply never
+    // uploaded.
+    // -----------------------------------------------------------------------
+
+    const siteRoot = join(
+      dirname(fileURLToPath(import.meta.url)),
+      '..',
+      '..',
+      'apps',
+      'web',
+      'dist',
+    );
+
+    // The association files are deployed separately from the rest of the site
+    // for two reasons. Apple requires `apple-app-site-association` to be served
+    // as `application/json`, and it has no extension, so S3 would otherwise
+    // guess `application/octet-stream` and iOS would reject it. And they must
+    // not be cached for a day: changing an app ID has to take effect without
+    // waiting out a TTL.
+    new BucketDeployment(this, 'PublishAssociationFiles', {
+      sources: [Source.asset(join(siteRoot, '.well-known'))],
+      destinationBucket: this.siteBucket,
+      destinationKeyPrefix: '.well-known',
+      contentType: 'application/json',
+      cacheControl: [CacheControl.maxAge(Duration.minutes(5))],
+      distribution: this.distribution,
+      distributionPaths: ['/.well-known/*'],
+      prune: false,
+      retainOnDelete: false,
+    });
+
+    new BucketDeployment(this, 'PublishSite', {
+      sources: [Source.asset(siteRoot, { exclude: ['.well-known/**'] })],
+      destinationBucket: this.siteBucket,
+      distribution: this.distribution,
+      distributionPaths: ['/*'],
+      // Prunes the site but would otherwise delete the association files
+      // uploaded above, which live under the same bucket root.
+      prune: false,
+      retainOnDelete: false,
+    });
 
     new CfnOutput(this, 'SiteBucketNameOutput', {
       value: this.siteBucket.bucketName,
