@@ -143,6 +143,15 @@ const ENV_CODES: Record<string, string> = {
 const FIVE_MINUTES = Duration.minutes(5);
 const PERIOD_SECONDS = 300;
 
+/**
+ * Queue names, minus the environment prefix.
+ *
+ * A queue missing from this list is simply not alarmed on — `queue-inventory`
+ * in the deploy checks compares it against the queues that actually exist.
+ */
+const WORK_QUEUES = ['geofence-evaluation', 'notification-commands', 'subscription-events'];
+const DEAD_LETTER_QUEUES = [...WORK_QUEUES, 'mail-forwarder', 'migration-schedule'];
+
 type AlarmOptions = {
   readonly name: string;
   readonly metric: IMetric;
@@ -243,7 +252,13 @@ export class ObservabilityStack extends Stack {
 
     const apiVolumeAlarm = this.alarm('ApiRequestVolumeAlarm', {
       name: 'api-request-volume',
-      metric: apiRequests,
+      metric: this.apiMetric(
+        'ApiRequestVolumeAlarmMetric',
+        'API requests',
+        'Count',
+        'Sum',
+        props.apiId,
+      ),
       threshold: config.isProduction ? 200_000 : 50_000,
       evaluationPeriods: 2,
       description:
@@ -251,21 +266,27 @@ export class ObservabilityStack extends Stack {
     });
     const apiLatencyAlarm = this.alarm('ApiLatencyAlarm', {
       name: 'api-latency-p99',
-      metric: apiLatency,
+      metric: this.apiMetric(
+        'ApiLatencyAlarmMetric',
+        'API p99 (ms)',
+        'Latency',
+        'p99',
+        props.apiId,
+      ),
       threshold: config.alarmThresholds.apiLatencyP99Millis,
       evaluationPeriods: 3,
       description: 'API p99 latency is above the agreed budget.',
     });
     const api4xxAlarm = this.alarm('Api4xxAlarm', {
       name: 'api-4xx',
-      metric: api4xx,
+      metric: this.apiMetric('Api4xxAlarmMetric', 'API 4xx', '4xx', 'Sum', props.apiId),
       threshold: config.isProduction ? 500 : 200,
       evaluationPeriods: 3,
       description: 'Elevated 4xx: a client contract has probably broken.',
     });
     const api5xxAlarm = this.alarm('Api5xxAlarm', {
       name: 'api-5xx',
-      metric: api5xx,
+      metric: this.apiMetric('Api5xxAlarmMetric', 'API 5xx', '5xx', 'Sum', props.apiId),
       threshold: config.alarmThresholds.apiServerErrors,
       evaluationPeriods: 2,
       description: 'The API is returning server errors.',
@@ -328,14 +349,12 @@ export class ObservabilityStack extends Stack {
       APP_METRICS.locationFreshnessSeconds,
       'Age of newest fix (s)',
       'Average',
-      'AVG',
     );
     const staleUsers = this.appMetric(
       'StaleUsers',
       APP_METRICS.staleSharingUsers,
       'Sharing users with no recent fix',
       'Maximum',
-      'MAX',
     );
 
     const acceptedDropAlarm = this.alarm('LocationAcceptedDropAlarm', {
@@ -402,14 +421,22 @@ export class ObservabilityStack extends Stack {
 
     const queueDepthAlarm = this.alarm('QueueDepthAlarm', {
       name: 'queue-depth',
-      metric: queueDepth,
+      metric: this.queueDepthMetric(
+        'QueueDepthAlarmMetric',
+        'Visible messages',
+        WORK_QUEUES.map((q) => `${prefix}-${q}`),
+      ),
       threshold: 5000,
       evaluationPeriods: 3,
       description: 'A worker queue is backing up.',
     });
     const dlqAlarm = this.alarm('DlqMessagesAlarm', {
       name: 'dlq-messages',
-      metric: dlqDepth,
+      metric: this.queueDepthMetric(
+        'DlqDepthAlarmMetric',
+        'Dead-lettered messages',
+        DEAD_LETTER_QUEUES.map((q) => `${prefix}-${q}-dlq`),
+      ),
       threshold: config.alarmThresholds.deadLetterQueueDepth,
       comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
       evaluationPeriods: 1,
@@ -508,7 +535,6 @@ export class ObservabilityStack extends Stack {
       APP_METRICS.migrationProgressPercent,
       'Migration completion (%)',
       'Minimum',
-      'MIN',
     );
     const migrationFailed = this.appMetric(
       'MigrationFailed',
@@ -520,7 +546,6 @@ export class ObservabilityStack extends Stack {
       APP_METRICS.deletionJobOldestAgeHours,
       'Oldest pending deletion (h)',
       'Maximum',
-      'MAX',
     );
 
     const migrationStalledAlarm = this.alarm('MigrationStalledAlarm', {
@@ -565,14 +590,20 @@ export class ObservabilityStack extends Stack {
 
     const lambdaThrottleAlarm = this.alarm('LambdaThrottleAlarm', {
       name: 'lambda-throttles',
-      metric: lambdaThrottles,
+      metric: this.aggregate(
+        'LambdaThrottleAlarmMetric',
+        'Lambda throttles',
+        'AWS/Lambda',
+        'Throttles',
+        'Sum',
+      ),
       threshold: config.alarmThresholds.lambdaThrottles,
       evaluationPeriods: 2,
       description: 'Lambda concurrency is being throttled.',
     });
     const dynamoThrottleAlarm = this.alarm('DynamoThrottleAlarm', {
       name: 'dynamodb-throttles',
-      metric: dynamoThrottles,
+      metric: this.tableThrottleMetric('DynamoThrottleAlarmMetric'),
       threshold: config.alarmThresholds.tableThrottles,
       evaluationPeriods: 2,
       description: 'DynamoDB is throttling reads or writes.',
@@ -681,6 +712,101 @@ export class ObservabilityStack extends Stack {
   // -------------------------------------------------------------------------
 
   /** A search-expression metric, gated against carrying a coordinate. */
+  /**
+   * A metric aggregated across every dimension value, suitable for an alarm.
+   *
+   * Omitting dimensions makes CloudWatch roll the metric up over all of them.
+   * That used to be too broad to alarm on, which is why these were SEARCH
+   * expressions — but each environment now has its own AWS account, so "every
+   * queue in the account" and "every queue belonging to this environment" are
+   * the same set. SEARCH is kept for dashboards, where the per-resource
+   * breakdown is the point and where CloudWatch actually supports it.
+   */
+  private aggregate(
+    id: string,
+    label: string,
+    namespace: string,
+    metricName: string,
+    statistic: string,
+  ): Metric {
+    assertNoCoordinateInTelemetry(`metric ${id}`, [id, label, metricName]);
+    return new Metric({
+      namespace,
+      metricName,
+      statistic,
+      label,
+      period: FIVE_MINUTES,
+    });
+  }
+
+  /** One API Gateway metric, dimensioned by API when the id is known. */
+  private apiMetric(
+    id: string,
+    label: string,
+    metricName: string,
+    statistic: string,
+    apiId: string | undefined,
+  ): Metric {
+    assertNoCoordinateInTelemetry(`metric ${id}`, [id, label, metricName]);
+    return new Metric({
+      namespace: 'AWS/ApiGateway',
+      metricName,
+      statistic,
+      label,
+      period: FIVE_MINUTES,
+      dimensionsMap: apiId === undefined ? undefined : { ApiId: apiId },
+    });
+  }
+
+  /**
+   * Depth of the fullest queue in a named set.
+   *
+   * Named rather than searched because the alarm has to distinguish a work
+   * queue from its dead-letter queue: aggregating every queue in the account
+   * would make the DLQ alarm fire on ordinary traffic. Names are derived from
+   * the resource prefix, so this still adds no cross-stack dependency.
+   */
+  private queueDepthMetric(id: string, label: string, queueNames: string[]): IMetric {
+    assertNoCoordinateInTelemetry(`metric ${id}`, [id, label, ...queueNames]);
+    const metrics: Record<string, IMetric> = {};
+    queueNames.forEach((queueName, index) => {
+      metrics[`q${index}`] = new Metric({
+        namespace: 'AWS/SQS',
+        metricName: 'ApproximateNumberOfMessagesVisible',
+        statistic: 'Maximum',
+        period: FIVE_MINUTES,
+        dimensionsMap: { QueueName: queueName },
+      });
+    });
+    return new MathExpression({
+      expression: `MAX([${Object.keys(metrics).join(',')}])`,
+      usingMetrics: metrics,
+      label,
+      period: FIVE_MINUTES,
+    });
+  }
+
+  /** Read and write throttles are separate metrics; either one is a problem. */
+  private tableThrottleMetric(id: string): IMetric {
+    assertNoCoordinateInTelemetry(`metric ${id}`, [id]);
+    const throttle = (metricName: string): Metric =>
+      new Metric({
+        namespace: 'AWS/DynamoDB',
+        metricName,
+        statistic: 'Sum',
+        period: FIVE_MINUTES,
+      });
+    return new MathExpression({
+      expression: 'reads + writes',
+      usingMetrics: {
+        reads: throttle('ReadThrottleEvents'),
+        writes: throttle('WriteThrottleEvents'),
+      },
+      label: 'DynamoDB throttles',
+      period: FIVE_MINUTES,
+    });
+  }
+
   private search(id: string, label: string, expression: string): MathExpression {
     assertNoCoordinateInTelemetry(`metric ${id}`, [id, label, expression]);
     return new MathExpression({
@@ -701,17 +827,25 @@ export class ObservabilityStack extends Stack {
     metricName: string,
     label: string,
     statistic: 'Sum' | 'Average' | 'Maximum' | 'Minimum' = 'Sum',
-    aggregate: 'SUM' | 'AVG' | 'MAX' | 'MIN' = 'SUM',
-  ): MathExpression {
-    return this.search(
-      id,
-      label,
-      `${aggregate}(SEARCH('Namespace="${this.metricNamespace}" MetricName="${metricName}"', '${statistic}', ${PERIOD_SECONDS}))`,
-    );
+  ): Metric {
+    return this.aggregate(id, label, this.metricNamespace, metricName, statistic);
   }
 
   private alarm(id: string, options: AlarmOptions): Alarm {
     assertNoCoordinateInTelemetry(`alarm ${id}`, [id, options.name, options.description]);
+
+    // CloudWatch accepts SEARCH() on a dashboard but rejects it on an alarm:
+    //   "SEARCH is not supported on Metric Alarms."
+    // It fails only at deploy time, so this catches it at synth instead — an
+    // alarm that cannot be created is an alarm nobody is watching.
+    const expression = (options.metric as Partial<MathExpression>).expression;
+    if (typeof expression === 'string' && expression.includes('SEARCH(')) {
+      throw new Error(
+        `Alarm '${id}' uses a SEARCH expression, which CloudWatch does not support on ` +
+          'alarms. Use an un-dimensioned Metric instead — each environment has its own ' +
+          'AWS account, so aggregating across the account is already correctly scoped.',
+      );
+    }
     return new Alarm(this, id, {
       alarmName: `${this.config.resourcePrefix}-${options.name}`,
       alarmDescription: options.description,
@@ -735,15 +869,19 @@ export class ObservabilityStack extends Stack {
   /**
    * Black-box canary against the public API edge.
    *
-   * It asserts a response below 500 rather than a specific 200: an
-   * unauthenticated probe cannot present a JWT, so a 401 or 404 still proves
-   * that DNS, TLS, the custom domain and the authorizer are all alive, which is
-   * exactly what an outside-in check can honestly claim. Point
-   * `healthCheckPath` at a dedicated health route once the API exposes one.
+   * It probes `/v1/health`, the one unauthenticated route the API exposes, and
+   * asserts a response below 500 rather than a specific 200 — a probe holding
+   * no JWT gets a 401 from anything else, and that still proves DNS, TLS, the
+   * custom domain and the authorizer are alive.
+   *
+   * The default below is deliberately the real path and not `/`: pointing this
+   * at a route that does not exist produces a canary that alarms forever, which
+   * is worse than no canary, because a permanently red alarm is one nobody
+   * reads.
    */
   private createCanary(props: ObservabilityStackProps): Alarm {
     const { config } = props;
-    const url = `https://${config.apiDomain}${props.healthCheckPath ?? '/health'}`;
+    const url = `https://${config.apiDomain}${props.healthCheckPath ?? '/v1/health'}`;
 
     // No S3 server access logging: the delivery policy CDK writes onto the log
     // bucket references this bucket's ARN, which would make the foundation

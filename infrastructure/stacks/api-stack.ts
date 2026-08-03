@@ -43,11 +43,13 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import { CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { type IUserPool, type IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
+import { CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
-import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
+import { ARecord, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { ApiGatewayv2DomainProperties } from 'aws-cdk-lib/aws-route53-targets';
+import { CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
 import { type Construct, type IConstruct } from 'constructs';
 
 import { LIMITS, RATE_LIMITS } from '@family/contracts';
@@ -99,8 +101,9 @@ interface ApiRoute {
   /** Defaults to `'api'`. */
   readonly target?: RouteTarget;
   /**
-   * Unauthenticated routes. Only webhooks may set this; each verifies its
-   * provider's signature before doing anything with the payload.
+   * Unauthenticated routes. Only the webhooks — each of which verifies its
+   * provider's signature before touching the payload — and the liveness probe,
+   * which reads nothing and returns a constant.
    */
   readonly unauthenticated?: boolean;
 }
@@ -111,9 +114,10 @@ interface ApiRoute {
  * `/v1/auth/*` is deliberately absent: tokens are issued, refreshed and revoked
  * against Cognito directly, so no unauthenticated token endpoint is exposed
  * here. `/v1/configuration/bootstrap` is described in the schemas package as a
- * pre-authentication payload but is still served behind the authorizer, because
- * webhooks are the only unauthenticated routes this API permits; a genuinely
- * anonymous cold-start document belongs on the static web surface instead.
+ * pre-authentication payload but is still served behind the authorizer; a
+ * genuinely anonymous cold-start document belongs on the static web surface
+ * instead. The only routes that answer without a token are the provider
+ * webhooks and `/v1/health`.
  */
 const API_ROUTES: ApiRoute[] = [
   // -- account --------------------------------------------------------------
@@ -131,6 +135,17 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/account/deletion/cancel',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+  },
+
+  // -- health ---------------------------------------------------------------
+  // Unauthenticated because the CloudWatch Synthetics canary probes it from
+  // outside the account and cannot hold a Cognito token. It returns a fixed
+  // {"status":"ok"} and reads nothing, so there is no surface behind it.
+  {
+    path: '/v1/health',
+    methods: [HttpMethod.GET],
+    perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+    unauthenticated: true,
   },
 
   // -- configuration --------------------------------------------------------
@@ -542,6 +557,21 @@ export class ApiStack extends Stack {
     this.domainName = new DomainName(this, 'ApiDomainName', {
       domainName: config.apiDomain,
       certificate: foundation.certificate,
+    });
+
+    // A custom domain with no DNS record fails silently in the worst way: API
+    // Gateway reports AVAILABLE, the certificate is ISSUED, and every client
+    // still gets NXDOMAIN. Nothing in the deploy complains.
+    new ARecord(this, 'ApiAliasRecord', {
+      zone: foundation.hostedZone,
+      recordName: config.apiDomain,
+      target: RecordTarget.fromAlias(
+        new ApiGatewayv2DomainProperties(
+          this.domainName.regionalDomainName,
+          this.domainName.regionalHostedZoneId,
+        ),
+      ),
+      comment: `Kinmap ${config.envName} API`,
     });
 
     this.httpApi = new HttpApi(this, 'HttpApi', {

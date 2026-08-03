@@ -3,6 +3,7 @@ import type { RegisteredRoute } from '../router.js';
 import { accountRoutes } from './account.js';
 import { configurationRoutes } from './configuration.js';
 import { deviceRoutes } from './devices.js';
+import { healthRoutes } from './health.js';
 import { privacyRoutes } from './privacy.js';
 import { subscriptionRoutes } from './subscriptions.js';
 import { supportRoutes } from './support.js';
@@ -21,6 +22,7 @@ export const routes: RegisteredRoute[] = [
   ...accountRoutes,
   ...configurationRoutes,
   ...deviceRoutes,
+  ...healthRoutes,
   ...privacyRoutes,
   ...subscriptionRoutes,
   ...supportRoutes,
@@ -30,6 +32,7 @@ export {
   accountRoutes,
   configurationRoutes,
   deviceRoutes,
+  healthRoutes,
   privacyRoutes,
   subscriptionRoutes,
   supportRoutes,

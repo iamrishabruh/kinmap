@@ -192,7 +192,7 @@ const observability = new ObservabilityStack(app, stackName(config, 'observabili
   foundation,
   tables,
   apiId: api.httpApi.apiId,
-  healthCheckPath: '/health',
+  healthCheckPath: '/v1/health',
 });
 observability.addDependency(api);
 observability.addDependency(location);

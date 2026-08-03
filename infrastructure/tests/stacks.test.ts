@@ -424,6 +424,33 @@ describe('HTTP API', () => {
     expect(routeCount, 'the app must define an HTTP API').toBeGreaterThan(0);
     expect(guardedCount, 'the app must define authorised routes').toBeGreaterThan(0);
   });
+
+  it('gives every custom domain a DNS record pointing at it', () => {
+    // An API Gateway custom domain reports AVAILABLE and its certificate reports
+    // ISSUED whether or not anything resolves to it, so a missing alias record
+    // is invisible until a client gets NXDOMAIN.
+    let checked = 0;
+
+    for (const stack of allStacks) {
+      const aliasTargets = new Set<string>();
+      for (const [, record] of resourcesOf(stack, 'AWS::Route53::RecordSet')) {
+        const name = prop(record, 'Name');
+        if (typeof name === 'string') aliasTargets.add(name.replace(/\.$/, ''));
+      }
+
+      for (const [logicalId, domain] of resourcesOf(stack, 'AWS::ApiGatewayV2::DomainName')) {
+        const domainName = prop(domain, 'DomainName');
+        if (typeof domainName !== 'string') continue;
+        checked += 1;
+        expect(
+          aliasTargets.has(domainName),
+          `${describeResource(stack, logicalId)}: ${domainName} has no Route 53 record, so it will not resolve`,
+        ).toBe(true);
+      }
+    }
+
+    expect(checked, 'the API must define a custom domain').toBeGreaterThan(0);
+  });
 });
 
 describe('IAM', () => {
