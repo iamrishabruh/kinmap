@@ -527,6 +527,7 @@ export class ApiStack extends Stack {
         SAVED_PLACES_TABLE: tables.savedPlaces.tableName,
         NOTIFICATION_PREFERENCES_TABLE: tables.notificationPreferences.tableName,
         LIVE_SESSIONS_TABLE: tables.liveSessions.tableName,
+        NOTIFICATIONS_TABLE: tables.notifications.tableName,
         SUBSCRIPTIONS_TABLE: tables.subscriptions.tableName,
         AUDIT_EVENTS_TABLE: tables.auditEvents.tableName,
         IDEMPOTENCY_TABLE: tables.idempotency.tableName,
@@ -550,6 +551,7 @@ export class ApiStack extends Stack {
     tables.savedPlaces.grantReadWriteData(this.apiFunction);
     tables.notificationPreferences.grantReadWriteData(this.apiFunction);
     tables.liveSessions.grantReadWriteData(this.apiFunction);
+    tables.notifications.grantReadWriteData(this.apiFunction);
     tables.idempotency.grantReadWriteData(this.apiFunction);
     // Erasure is asynchronous: the API records the request and a worker
     // performs the deletion, so the API needs the job table but not the data.

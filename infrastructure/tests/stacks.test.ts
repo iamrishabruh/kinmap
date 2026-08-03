@@ -458,27 +458,13 @@ const SERVICES_ROOT = path.join(REPO_ROOT, 'services');
 /**
  * Routes the API declares that no service implements yet.
  *
- * These return 404 to an authenticated caller. They are listed rather than
- * silently tolerated so the number is visible and shrinks as features land —
- * and so that adding a route without a handler fails a test instead of shipping
- * a dead endpoint.
+ * Empty, and worth keeping that way. It held fourteen entries — saved places,
+ * live sessions, notifications and receipt submission — every one of which
+ * returned 404 to an authenticated caller while every stack reported
+ * CREATE_COMPLETE. The list exists so that a route added without a handler
+ * fails a test instead of shipping as a dead endpoint.
  */
-const ROUTES_WITHOUT_A_HANDLER: ReadonlySet<string> = new Set([
-  'GET /v1/live-sessions',
-  'POST /v1/live-sessions',
-  'POST /v1/live-sessions/{sessionId}/accept',
-  'POST /v1/live-sessions/{sessionId}/reject',
-  'POST /v1/live-sessions/{sessionId}/stop',
-  'GET /v1/places',
-  'POST /v1/places',
-  'PATCH /v1/places/{placeId}',
-  'DELETE /v1/places/{placeId}',
-  'GET /v1/notifications',
-  'POST /v1/notifications/read',
-  'GET /v1/notifications/preferences',
-  'PATCH /v1/notifications/preferences',
-  'POST /v1/subscriptions/receipt',
-]);
+const ROUTES_WITHOUT_A_HANDLER: ReadonlySet<string> = new Set([]);
 
 describe('API routes have handlers', () => {
   it('never points a route at a function with no handler for it', () => {

@@ -8,6 +8,12 @@ import type { DevicesRepository } from './repositories/devices.js';
 import type { FamiliesRepository, MembershipsRepository } from './repositories/families.js';
 import type { IdempotencyStore } from './repositories/idempotency.js';
 import type { JobsRepository } from './repositories/jobs.js';
+import type { LiveSessionsRepository } from './repositories/live-sessions.js';
+import type {
+  NotificationPreferencesRepository,
+  NotificationsRepository,
+} from './repositories/notifications.js';
+import type { PlacesRepository } from './repositories/places.js';
 import type { SubscriptionsRepository } from './repositories/subscriptions.js';
 import type { SupportRepository } from './repositories/support.js';
 
@@ -29,6 +35,10 @@ export type ApiServices = {
   readonly audit: AuditRepository;
   readonly support: SupportRepository;
   readonly jobs: JobsRepository;
+  readonly places: PlacesRepository;
+  readonly liveSessions: LiveSessionsRepository;
+  readonly notifications: NotificationsRepository;
+  readonly notificationPreferences: NotificationPreferencesRepository;
   readonly configuration: RemoteConfigurationRepository;
   readonly idempotency: IdempotencyStore;
   readonly rateLimiter: RateLimiter;

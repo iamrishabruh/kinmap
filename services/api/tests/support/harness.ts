@@ -29,6 +29,12 @@ import {
   createTokenBucketStore,
 } from '../../src/repositories/idempotency.js';
 import { createJobsRepository } from '../../src/repositories/jobs.js';
+import { createLiveSessionsRepository } from '../../src/repositories/live-sessions.js';
+import {
+  createNotificationPreferencesRepository,
+  createNotificationsRepository,
+} from '../../src/repositories/notifications.js';
+import { createPlacesRepository } from '../../src/repositories/places.js';
 import { createSubscriptionsRepository } from '../../src/repositories/subscriptions.js';
 import { createSupportRepository } from '../../src/repositories/support.js';
 import { createRouter } from '../../src/router.js';
@@ -53,6 +59,10 @@ export const TABLES = {
   idempotency: 'Idempotency',
   remoteConfiguration: 'RemoteConfiguration',
   deletionJobs: 'DeletionJobs',
+  savedPlaces: 'SavedPlaces',
+  liveSessions: 'LiveSessions',
+  notifications: 'Notifications',
+  notificationPreferences: 'NotificationPreferences',
 } as const;
 
 const TABLE_DEFINITIONS: TableDefinition[] = [
@@ -63,6 +73,24 @@ const TABLE_DEFINITIONS: TableDefinition[] = [
     indexes: { byDeviceId: { partitionKey: 'deviceId' } },
   },
   { name: TABLES.families, keySchema: { partitionKey: 'familyId' } },
+  {
+    name: TABLES.savedPlaces,
+    keySchema: { partitionKey: 'familyId', sortKey: 'placeId' },
+    indexes: { byCreator: { partitionKey: 'createdBy', sortKey: 'placeId' } },
+  },
+  {
+    name: TABLES.liveSessions,
+    keySchema: { partitionKey: 'sessionId' },
+    indexes: {
+      byTarget: { partitionKey: 'targetUserId', sortKey: 'startedAt' },
+      byRequester: { partitionKey: 'requesterUserId', sortKey: 'startedAt' },
+    },
+  },
+  { name: TABLES.notifications, keySchema: { partitionKey: 'userId', sortKey: 'sortKey' } },
+  {
+    name: TABLES.notificationPreferences,
+    keySchema: { partitionKey: 'userId', sortKey: 'familyId' },
+  },
   {
     name: TABLES.familyMemberships,
     keySchema: { partitionKey: 'familyId', sortKey: 'userId' },
@@ -203,6 +231,13 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     audit: createAuditRepository(client, TABLES.auditEvents, config.auditRetentionDays),
     support: createSupportRepository(client, TABLES.auditEvents),
     jobs: createJobsRepository(client, TABLES.deletionJobs),
+    places: createPlacesRepository(client, TABLES.savedPlaces),
+    liveSessions: createLiveSessionsRepository(client, TABLES.liveSessions),
+    notifications: createNotificationsRepository(client, TABLES.notifications),
+    notificationPreferences: createNotificationPreferencesRepository(
+      client,
+      TABLES.notificationPreferences,
+    ),
     configuration: createRemoteConfigurationRepository(client, TABLES.remoteConfiguration),
     idempotency: createIdempotencyStore(client, TABLES.idempotency, config.idempotencyTtlSeconds),
     rateLimiter: createTokenBucketRateLimiter(createTokenBucketStore(client, TABLES.idempotency), {

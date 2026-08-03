@@ -233,6 +233,7 @@ export interface DataTables {
   readonly savedPlaces: ITable;
   readonly geofenceState: ITable;
   readonly notificationPreferences: ITable;
+  readonly notifications: ITable;
   readonly liveSessions: ITable;
   readonly subscriptions: ITable;
   readonly auditEvents: ITable;

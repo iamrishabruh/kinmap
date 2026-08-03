@@ -24,6 +24,12 @@ import { createDynamoDocumentClient } from './repositories/dynamo-document-clien
 import { createFamiliesRepository, createMembershipsRepository } from './repositories/families.js';
 import { createIdempotencyStore, createTokenBucketStore } from './repositories/idempotency.js';
 import { createJobsRepository } from './repositories/jobs.js';
+import { createLiveSessionsRepository } from './repositories/live-sessions.js';
+import {
+  createNotificationPreferencesRepository,
+  createNotificationsRepository,
+} from './repositories/notifications.js';
+import { createPlacesRepository } from './repositories/places.js';
 import { createSubscriptionsRepository } from './repositories/subscriptions.js';
 import { createSupportRepository } from './repositories/support.js';
 import { createRouter } from './router.js';
@@ -73,6 +79,13 @@ const services: ApiServices = {
   ),
   support: createSupportRepository(documentClient, config.tables.auditEvents),
   jobs: createJobsRepository(documentClient, config.tables.deletionJobs),
+  places: createPlacesRepository(documentClient, config.tables.savedPlaces),
+  liveSessions: createLiveSessionsRepository(documentClient, config.tables.liveSessions),
+  notifications: createNotificationsRepository(documentClient, config.tables.notifications),
+  notificationPreferences: createNotificationPreferencesRepository(
+    documentClient,
+    config.tables.notificationPreferences,
+  ),
   configuration: createRemoteConfigurationRepository(
     documentClient,
     config.tables.remoteConfiguration,

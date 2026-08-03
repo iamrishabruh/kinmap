@@ -47,6 +47,10 @@ const ApiEnvironmentSchema = z.object({
   DEVICES_TABLE: NonEmpty,
   FAMILIES_TABLE: NonEmpty,
   FAMILY_MEMBERSHIPS_TABLE: NonEmpty,
+  SAVED_PLACES_TABLE: NonEmpty,
+  LIVE_SESSIONS_TABLE: NonEmpty,
+  NOTIFICATIONS_TABLE: NonEmpty,
+  NOTIFICATION_PREFERENCES_TABLE: NonEmpty,
   SUBSCRIPTIONS_TABLE: NonEmpty,
   AUDIT_EVENTS_TABLE: NonEmpty,
   IDEMPOTENCY_TABLE: NonEmpty,
@@ -74,6 +78,10 @@ export type ApiTables = {
   readonly devices: string;
   readonly families: string;
   readonly familyMemberships: string;
+  readonly savedPlaces: string;
+  readonly liveSessions: string;
+  readonly notifications: string;
+  readonly notificationPreferences: string;
   readonly subscriptions: string;
   readonly auditEvents: string;
   readonly idempotency: string;
@@ -129,6 +137,10 @@ export function loadApiConfig(source: EnvironmentSource): ApiConfig {
       devices: value.DEVICES_TABLE,
       families: value.FAMILIES_TABLE,
       familyMemberships: value.FAMILY_MEMBERSHIPS_TABLE,
+      savedPlaces: value.SAVED_PLACES_TABLE,
+      liveSessions: value.LIVE_SESSIONS_TABLE,
+      notifications: value.NOTIFICATIONS_TABLE,
+      notificationPreferences: value.NOTIFICATION_PREFERENCES_TABLE,
       subscriptions: value.SUBSCRIPTIONS_TABLE,
       auditEvents: value.AUDIT_EVENTS_TABLE,
       idempotency: value.IDEMPOTENCY_TABLE,

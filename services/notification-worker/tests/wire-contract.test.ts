@@ -85,7 +85,13 @@ describe('the live-session refresh wire contract', () => {
     // that is a notification every few seconds carrying nothing the app had not
     // already fetched.
     const message = JSON.parse(
-      buildMessage('IOS', 'unused', 'unused', { ...BASE_PAYLOAD, kind: 'LIVE_SESSION_REFRESH' }, false),
+      buildMessage(
+        'IOS',
+        'unused',
+        'unused',
+        { ...BASE_PAYLOAD, kind: 'LIVE_SESSION_REFRESH' },
+        false,
+      ),
     ) as Record<string, string>;
     const apns = JSON.parse(message['APNS'] ?? '{}') as { aps: Record<string, unknown> };
 

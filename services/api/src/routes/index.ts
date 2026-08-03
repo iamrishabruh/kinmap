@@ -4,6 +4,9 @@ import { accountRoutes } from './account.js';
 import { configurationRoutes } from './configuration.js';
 import { deviceRoutes } from './devices.js';
 import { healthRoutes } from './health.js';
+import { liveSessionRoutes } from './live-sessions.js';
+import { notificationRoutes } from './notifications.js';
+import { placeRoutes } from './places.js';
 import { privacyRoutes } from './privacy.js';
 import { subscriptionRoutes } from './subscriptions.js';
 import { supportRoutes } from './support.js';
@@ -23,6 +26,9 @@ export const routes: RegisteredRoute[] = [
   ...configurationRoutes,
   ...deviceRoutes,
   ...healthRoutes,
+  ...liveSessionRoutes,
+  ...notificationRoutes,
+  ...placeRoutes,
   ...privacyRoutes,
   ...subscriptionRoutes,
   ...supportRoutes,
@@ -33,6 +39,9 @@ export {
   configurationRoutes,
   deviceRoutes,
   healthRoutes,
+  liveSessionRoutes,
+  notificationRoutes,
+  placeRoutes,
   privacyRoutes,
   subscriptionRoutes,
   supportRoutes,

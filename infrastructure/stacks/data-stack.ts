@@ -41,6 +41,7 @@ export const TABLE_ENVIRONMENT_VARIABLES = {
   savedPlaces: 'SAVED_PLACES_TABLE',
   geofenceState: 'GEOFENCE_STATE_TABLE',
   notificationPreferences: 'NOTIFICATION_PREFERENCES_TABLE',
+  notifications: 'NOTIFICATIONS_TABLE',
   liveSessions: 'LIVE_SESSIONS_TABLE',
   subscriptions: 'SUBSCRIPTIONS_TABLE',
   auditEvents: 'AUDIT_EVENTS_TABLE',
@@ -67,6 +68,7 @@ export function tableEnvironment(tables: DataTables): Record<string, string> {
     [TABLE_ENVIRONMENT_VARIABLES.savedPlaces]: tables.savedPlaces.tableName,
     [TABLE_ENVIRONMENT_VARIABLES.geofenceState]: tables.geofenceState.tableName,
     [TABLE_ENVIRONMENT_VARIABLES.notificationPreferences]: tables.notificationPreferences.tableName,
+    [TABLE_ENVIRONMENT_VARIABLES.notifications]: tables.notifications.tableName,
     [TABLE_ENVIRONMENT_VARIABLES.liveSessions]: tables.liveSessions.tableName,
     [TABLE_ENVIRONMENT_VARIABLES.subscriptions]: tables.subscriptions.tableName,
     [TABLE_ENVIRONMENT_VARIABLES.auditEvents]: tables.auditEvents.tableName,
@@ -110,6 +112,7 @@ export class DataStack extends Stack implements DataTables {
   readonly savedPlaces: Table;
   readonly geofenceState: Table;
   readonly notificationPreferences: Table;
+  readonly notifications: Table;
   readonly liveSessions: Table;
   readonly subscriptions: Table;
   readonly auditEvents: Table;
@@ -241,6 +244,18 @@ export class DataStack extends Stack implements DataTables {
       sortKey: str('familyId'),
     });
 
+    // The in-app notification list. Partitioned by recipient and sorted by
+    // time, so a read is one query of one person's own rows and can never
+    // return somebody else's. Rows name a person and a place; they carry no
+    // coordinate, which is what makes them safe to hold beyond the push.
+    this.notifications = new GuardedTable(this, 'Notifications', {
+      ...shared,
+      tableName: 'Notifications',
+      partitionKey: str('userId'),
+      sortKey: str('sortKey'),
+      timeToLiveAttribute: 'expiresAt',
+    });
+
     this.liveSessions = new GuardedTable(this, 'LiveSessions', {
       ...shared,
       tableName: 'LiveSessions',
@@ -339,6 +354,7 @@ export class DataStack extends Stack implements DataTables {
       savedPlaces: this.savedPlaces,
       geofenceState: this.geofenceState,
       notificationPreferences: this.notificationPreferences,
+      notifications: this.notifications,
       liveSessions: this.liveSessions,
       subscriptions: this.subscriptions,
       auditEvents: this.auditEvents,
