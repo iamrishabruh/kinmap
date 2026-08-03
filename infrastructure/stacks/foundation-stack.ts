@@ -262,7 +262,16 @@ export class FoundationStack extends Stack implements FoundationResources {
 
     new CfnBudget(globalScope, 'MonthlyBudget', {
       budget: {
-        budgetName: `${config.resourcePrefix}-monthly`,
+        // Deliberately unnamed. Changing a subscriber — which is what happens
+        // whenever the alarm address moves — forces CloudFormation to replace
+        // the budget, and Budgets refuses to create a second one with the same
+        // name while the first still exists:
+        //
+        //   A budget or resource with the same name but a different internalId
+        //   already exists.
+        //
+        // The stack then wedges on a cost alert, which is a silly thing to be
+        // blocked by. A generated name lets the replacement happen.
         budgetType: 'COST',
         timeUnit: 'MONTHLY',
         budgetLimit: { amount: config.monthlyBudgetUsd, unit: 'USD' },

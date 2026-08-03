@@ -309,11 +309,27 @@ export class LocationStack extends Stack {
         // import keeps the target while leaving the policy to NotificationStack,
         // which grants EventBridge access by source-ARN pattern instead.
         new SqsQueue(importedNotificationQueue, {
+          // A complete NotificationCommand, not a fragment. The worker parses
+          // this with a strict schema, so the previous four-field message was
+          // rejected on arrival and dead-lettered — every live-session refresh
+          // that has ever been raised was silently discarded.
+          //
+          // `deviceId` is deliberately absent: the command schema has no such
+          // field, and a strict object rejects the whole message for one extra
+          // key. Nothing here carries a place, a transition or a position.
           message: RuleTargetInput.fromObject({
+            commandId: EventField.fromPath('$.id'),
             kind: 'LIVE_SESSION_REFRESH',
+            familyId: EventField.fromPath('$.detail.coordinateScopeFamilyId'),
             subjectUserId: EventField.fromPath('$.detail.subjectUserId'),
-            deviceId: EventField.fromPath('$.detail.deviceId'),
-            capturedAt: EventField.fromPath('$.detail.capturedAt'),
+            // Null fans out to the subject's family, and every recipient is
+            // re-authorised individually before anything is sent.
+            recipientUserIds: null,
+            placeId: null,
+            transition: null,
+            liveSessionId: null,
+            occurredAt: EventField.fromPath('$.detail.capturedAt'),
+            sourceEventId: EventField.fromPath('$.detail.eventId'),
           }),
         }),
       ],

@@ -136,6 +136,7 @@ const PREFERENCE_CATEGORY: Record<
   LIVE_SESSION_ACCEPTED: 'liveSessions',
   LIVE_SESSION_REJECTED: 'liveSessions',
   LIVE_SESSION_ENDED: 'liveSessions',
+  LIVE_SESSION_REFRESH: 'liveSessions',
   MEMBER_JOINED: 'membership',
   MEMBER_LEFT: 'membership',
   INVITATION_ACCEPTED: 'membership',

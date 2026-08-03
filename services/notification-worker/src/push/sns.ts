@@ -61,7 +61,11 @@ function classify(error: unknown): PushSendOutcome {
   return { status: 'RETRYABLE', reason: name };
 }
 
-function buildMessage(
+/**
+ * Exported for the wire-contract test: whether a push is silent is a product
+ * decision, not an implementation detail, and it is worth asserting directly.
+ */
+export function buildMessage(
   platform: Platform,
   title: string,
   body: string,
@@ -70,19 +74,33 @@ function buildMessage(
 ): string {
   const message: Record<string, string> = { default: body };
 
+  // A refresh is a nudge to the app, not a message to the person. It is raised
+  // for every accepted fix while a live session runs, so delivering it as an
+  // alert would buzz the watcher's pocket every few seconds for the length of
+  // the session — and each buzz would carry no information the app had not
+  // already fetched.
+  const silent = payload.kind === 'LIVE_SESSION_REFRESH';
+
   if (platform === 'IOS') {
     const apns = JSON.stringify({
-      aps: {
-        alert: { title, body },
-        sound: 'default',
-        'thread-id': payload.familyId ?? 'account',
-      },
+      aps: silent
+        ? // No alert and no sound: content-available wakes the app to refetch
+          // and nothing is shown. `apns-push-type: background` and priority 5
+          // are set by SNS from the absence of an alert.
+          { 'content-available': 1 }
+        : {
+            alert: { title, body },
+            sound: 'default',
+            'thread-id': payload.familyId ?? 'account',
+          },
       payload,
     });
     message[useSandbox ? 'APNS_SANDBOX' : 'APNS'] = apns;
   } else {
     message.GCM = JSON.stringify({
-      notification: { title, body },
+      // A data-only message on Android, for the same reason: it wakes the app
+      // without posting anything to the shade.
+      ...(silent ? {} : { notification: { title, body } }),
       // FCM data values must be strings; the structured payload is carried as
       // one JSON string the app parses after the tap.
       data: { payload: JSON.stringify(payload) },

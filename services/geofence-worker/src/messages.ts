@@ -8,7 +8,7 @@ import {
   PlaceIdSchema,
   UserIdSchema,
 } from '@family/contracts';
-import { EncryptedCoordinateRecordSchema, KeyContextSchema } from '@family/crypto';
+import { EncryptedCoordinateRecordSchema } from '@family/crypto';
 import { IsoDateTimeSchema, NotificationKindSchema } from '@family/schemas';
 
 /**
@@ -27,16 +27,55 @@ import { IsoDateTimeSchema, NotificationKindSchema } from '@family/schemas';
  * it renders anything.
  */
 
-export const AcceptedLocationEventSchema = z.strictObject({
+/**
+ * What `services/location-ingestion` actually publishes.
+ *
+ * This schema and the producer had drifted apart in three ways at once, and
+ * because the schema is strict every single message failed to parse and was
+ * dead-lettered — so geofence evaluation had never once run. The producer sends
+ * `subjectUserId`, not `userId`; it sends the ciphertext under `sealed`, not
+ * split into `encryptedCoordinate` and `keyContext`; and it sends five further
+ * fields that a strict object rejects outright.
+ *
+ * The producer is the authority here — it is deployed and its shape is the one
+ * on the wire — so the consumer moves. Strictness is kept: an unknown field
+ * arriving from the bus should still be a loud failure rather than something
+ * that silently flows into a decrypt call.
+ */
+const PublishedAcceptedLocationSchema = z.strictObject({
   eventId: EventIdSchema,
-  userId: UserIdSchema,
+  subjectUserId: UserIdSchema,
   deviceId: DeviceIdSchema,
+  sequenceNumber: z.number(),
   capturedAt: IsoDateTimeSchema,
+  receivedAt: IsoDateTimeSchema,
+  trackingMode: z.string(),
+  motionState: z.string(),
   horizontalAccuracy: z.number().nonnegative(),
-  /** Context the coordinate was sealed under; also the AAD binding. */
-  keyContext: z.strictObject(KeyContextSchema.shape),
-  encryptedCoordinate: z.strictObject(EncryptedCoordinateRecordSchema.shape),
+  coordinateScopeFamilyId: FamilyIdSchema,
+  /** Ciphertext only. The bus, its rules and its targets never see a position. */
+  sealed: z.strictObject(EncryptedCoordinateRecordSchema.shape),
 });
+
+/**
+ * The shape the worker reasons about, normalised from the wire format. The key
+ * context is reconstructed from the scope the producer sealed under — the same
+ * two values, which is what makes the AAD binding verify on decrypt.
+ */
+export const AcceptedLocationEventSchema = PublishedAcceptedLocationSchema.transform(
+  (published) => ({
+    eventId: published.eventId,
+    userId: published.subjectUserId,
+    deviceId: published.deviceId,
+    capturedAt: published.capturedAt,
+    horizontalAccuracy: published.horizontalAccuracy,
+    keyContext: {
+      familyId: published.coordinateScopeFamilyId,
+      userId: published.subjectUserId,
+    },
+    encryptedCoordinate: published.sealed,
+  }),
+);
 export type AcceptedLocationEvent = z.infer<typeof AcceptedLocationEventSchema>;
 
 /**

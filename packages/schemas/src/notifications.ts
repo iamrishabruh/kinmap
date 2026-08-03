@@ -32,6 +32,12 @@ export const NotificationKindSchema = z.enum([
   'LIVE_SESSION_ACCEPTED',
   'LIVE_SESSION_REJECTED',
   'LIVE_SESSION_ENDED',
+  /**
+   * Silent nudge: a fix arrived during a live session, so the watcher's app
+   * should refetch. It carries no place, no transition and no position — the
+   * app performs an ordinary authorised read to obtain the location itself.
+   */
+  'LIVE_SESSION_REFRESH',
   'MEMBER_JOINED',
   'MEMBER_LEFT',
   'INVITATION_ACCEPTED',

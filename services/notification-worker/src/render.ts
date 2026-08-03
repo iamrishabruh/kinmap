@@ -61,6 +61,11 @@ function copyFor(kind: NotificationKind, subject: string, place: string): Copy {
       return { title: 'Live location declined', body: `${subject} declined the live request.` };
     case 'LIVE_SESSION_ENDED':
       return { title: 'Live location ended', body: `${subject} stopped sharing live location.` };
+    case 'LIVE_SESSION_REFRESH':
+      // Never surfaced. A refresh is a silent nudge telling the watcher's app to
+      // refetch; copy exists only because the renderer is total, and showing it
+      // would mean a buzz in someone's pocket for every fix during a session.
+      return { title: 'Live location updated', body: `${subject} moved.` };
     case 'MEMBER_JOINED':
       return { title: 'New family member', body: `${subject} joined your family.` };
     case 'MEMBER_LEFT':
@@ -100,6 +105,7 @@ function deepLinkFor(command: NotificationCommand): string | null {
     case 'LIVE_SESSION_ACCEPTED':
     case 'LIVE_SESSION_REJECTED':
     case 'LIVE_SESSION_ENDED':
+    case 'LIVE_SESSION_REFRESH':
       return command.liveSessionId === null ? '/map' : `/live/${command.liveSessionId}`;
     case 'MEMBER_JOINED':
     case 'MEMBER_LEFT':
