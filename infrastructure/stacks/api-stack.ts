@@ -47,7 +47,7 @@ import { type IUserPool, type IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { CfnWebACL, CfnWebACLAssociation } from 'aws-cdk-lib/aws-wafv2';
-import { type Construct } from 'constructs';
+import { type Construct, type IConstruct } from 'constructs';
 
 import { LIMITS, RATE_LIMITS } from '@family/contracts';
 
@@ -598,19 +598,23 @@ export class ApiStack extends Stack {
     // that opts out of authentication opts out in exactly the same way.
     const noAuthorizer = new HttpNoneAuthorizer();
 
+    const allRoutes: IConstruct[] = [];
+
     for (const [target, integration] of integrations) {
       for (const route of API_ROUTES) {
         if ((route.target ?? 'api') !== target) {
           continue;
         }
-        this.httpApi.addRoutes({
-          path: route.path,
-          methods: route.methods,
-          integration,
-          // `undefined` inherits the API's default JWT authorizer; only the
-          // webhooks opt out of it.
-          authorizer: route.unauthenticated === true ? noAuthorizer : undefined,
-        });
+        allRoutes.push(
+          ...this.httpApi.addRoutes({
+            path: route.path,
+            methods: route.methods,
+            integration,
+            // `undefined` inherits the API's default JWT authorizer; only the
+            // webhooks opt out of it.
+            authorizer: route.unauthenticated === true ? noAuthorizer : undefined,
+          }),
+        );
       }
     }
 
@@ -631,6 +635,14 @@ export class ApiStack extends Stack {
       autoDeploy: true,
       domainMapping: { domainName: this.domainName },
     });
+
+    // RouteSettings names each route by key, and API Gateway validates those
+    // keys when the stage is created — "Unable to find Route by key ..." if a
+    // route does not exist yet. CloudFormation sees no reference between the
+    // stage and the routes, so the ordering has to be stated explicitly.
+    for (const route of allRoutes) {
+      this.stage.node.addDependency(route);
+    }
 
     const cfnStage = this.stage.node.defaultChild as CfnStage;
     const concurrency = config.isProduction
