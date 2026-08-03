@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.example.familylocation.dev'
+    namespace 'app.kinmap.dev'
     defaultConfig {
-        applicationId 'com.example.familylocation.dev'
+        applicationId 'app.kinmap.dev'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
