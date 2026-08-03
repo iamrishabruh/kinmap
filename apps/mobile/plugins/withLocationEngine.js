@@ -1,4 +1,5 @@
-import { type ConfigPlugin, withEntitlementsPlist, withInfoPlist } from 'expo/config-plugins';
+// @ts-check
+const { withEntitlementsPlist, withInfoPlist } = require('expo/config-plugins');
 
 /**
  * iOS configuration for the native location engine (spec §9, §25).
@@ -10,14 +11,32 @@ import { type ConfigPlugin, withEntitlementsPlist, withInfoPlist } from 'expo/co
  *
  * Usage strings live in app.config.ts rather than here so a reviewer reads them
  * in one place next to the rest of the public configuration.
+ *
+ * WHY THIS IS JAVASCRIPT AND NOT TYPESCRIPT
+ *
+ * The EAS CLI resolves config plugins with a plain `require`, which cannot load
+ * a `.ts` file — `node -e "require('./plugins/withLocationEngine')"` fails with
+ * MODULE_NOT_FOUND. The Expo CLI registers a TypeScript loader first, so
+ * `expo config` and `expo prebuild` resolved these happily while every
+ * `eas build` died at:
+ *
+ *   Failed to resolve plugin for module "./plugins/withLocationEngine"
+ *
+ * That divergence is why the failure looked intermittent and why `eas config`
+ * appeared to prove the plugins were fine — it does not evaluate them. Type
+ * checking is preserved through `// @ts-check` and JSDoc rather than lost.
  */
 
-/** Must match the identifiers the Swift engine registers with BGTaskScheduler. */
-export const BACKGROUND_TASK_IDENTIFIERS = [
+/**
+ * Must match the identifiers the Swift engine registers with BGTaskScheduler.
+ * @type {string[]}
+ */
+const BACKGROUND_TASK_IDENTIFIERS = [
   'com.familylocation.engine.refresh',
   'com.familylocation.engine.processing',
 ];
 
+/** @type {string[]} */
 const REQUIRED_USAGE_KEYS = [
   'NSLocationWhenInUseUsageDescription',
   'NSLocationAlwaysAndWhenInUseUsageDescription',
@@ -31,7 +50,11 @@ const REQUIRED_USAGE_KEYS = [
  */
 const MIN_USAGE_DESCRIPTION_LENGTH = 60;
 
-const withLocationEngine: ConfigPlugin = (config) => {
+/**
+ * @param {import('expo/config-plugins').ExpoConfig} config
+ * @returns {import('expo/config-plugins').ExpoConfig}
+ */
+const withLocationEngine = (config) => {
   // Each `with*` helper returns a new config rather than mutating in place, so
   // the result is threaded through a local instead of reassigning the parameter.
   let next = withInfoPlist(config, (mod) => {
@@ -55,15 +78,13 @@ const withLocationEngine: ConfigPlugin = (config) => {
     // Registered so the engine can schedule deferred upload and maintenance
     // work; without this the BGTaskScheduler registration throws at runtime.
     const existing = Array.isArray(plist.BGTaskSchedulerPermittedIdentifiers)
-      ? (plist.BGTaskSchedulerPermittedIdentifiers as string[])
+      ? plist.BGTaskSchedulerPermittedIdentifiers
       : [];
     plist.BGTaskSchedulerPermittedIdentifiers = [
       ...new Set([...existing, ...BACKGROUND_TASK_IDENTIFIERS]),
     ];
 
-    const modes = Array.isArray(plist.UIBackgroundModes)
-      ? (plist.UIBackgroundModes as string[])
-      : [];
+    const modes = Array.isArray(plist.UIBackgroundModes) ? plist.UIBackgroundModes : [];
     plist.UIBackgroundModes = [...new Set([...modes, 'location', 'fetch', 'processing'])];
 
     return mod;
@@ -78,4 +99,6 @@ const withLocationEngine: ConfigPlugin = (config) => {
   return next;
 };
 
-export default withLocationEngine;
+module.exports = withLocationEngine;
+module.exports.default = withLocationEngine;
+module.exports.BACKGROUND_TASK_IDENTIFIERS = BACKGROUND_TASK_IDENTIFIERS;

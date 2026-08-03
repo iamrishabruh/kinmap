@@ -1,4 +1,5 @@
-import { AndroidConfig, type ConfigPlugin, withAndroidManifest } from 'expo/config-plugins';
+// @ts-check
+const { AndroidConfig, withAndroidManifest } = require('expo/config-plugins');
 
 /**
  * Android configuration for the native location engine (spec §9).
@@ -10,11 +11,19 @@ import { AndroidConfig, type ConfigPlugin, withAndroidManifest } from 'expo/conf
  * The foreground service is declared with `foregroundServiceType="location"`
  * and is used ONLY for live sessions, which are visible to the person being
  * located. Its notification is never hidden or disguised (spec §9).
+ *
+ * JavaScript rather than TypeScript for the same reason as its iOS sibling: the
+ * EAS CLI resolves config plugins with a plain `require`, which cannot load a
+ * `.ts` file. See withLocationEngine.js for the full account.
  */
 
 const PACKAGE = 'com.familylocation.locationengine';
 
-const withAndroidLocationEngine: ConfigPlugin = (config) => {
+/**
+ * @param {import('expo/config-plugins').ExpoConfig} config
+ * @returns {import('expo/config-plugins').ExpoConfig}
+ */
+const withAndroidLocationEngine = (config) => {
   return withAndroidManifest(config, (mod) => {
     const application = AndroidConfig.Manifest.getMainApplicationOrThrow(mod.modResults);
 
@@ -85,4 +94,5 @@ const withAndroidLocationEngine: ConfigPlugin = (config) => {
   });
 };
 
-export default withAndroidLocationEngine;
+module.exports = withAndroidLocationEngine;
+module.exports.default = withAndroidLocationEngine;

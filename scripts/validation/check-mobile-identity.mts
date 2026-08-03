@@ -66,4 +66,71 @@ if (failed) {
   process.exit(1);
 }
 
-console.log('Mobile identity check passed.');
+// ---------------------------------------------------------------------------
+// Config plugins must be resolvable the way the EAS CLI resolves them.
+//
+// The EAS CLI requires a plugin with plain `require`, which cannot load a .ts
+// file. The Expo CLI registers a TypeScript loader first, so `expo config` and
+// `expo prebuild` resolved TypeScript plugins happily while every `eas build`
+// died on them. `eas config` does not evaluate plugins at all, which is why it
+// looked like proof that they were fine.
+// ---------------------------------------------------------------------------
+
+const { execFileSync } = await import('node:child_process');
+const { readdirSync } = await import('node:fs');
+const path = await import('node:path');
+const { fileURLToPath } = await import('node:url');
+
+const pluginsDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'apps',
+  'mobile',
+  'plugins',
+);
+
+let pluginsChecked = 0;
+for (const entry of readdirSync(pluginsDir)) {
+  if (!/^with.*\.(js|cjs|mjs|ts)$/.test(entry)) continue;
+  pluginsChecked += 1;
+  const specifier = `./${entry.replace(/\.(js|cjs|mjs|ts)$/, '')}`;
+
+  // A plain `node` subprocess on purpose. Running this in-process would prove
+  // nothing: this script runs under tsx, which patches require to understand
+  // TypeScript — exactly the capability EAS lacks. The first version of this
+  // check did that and passed happily against a .ts plugin.
+  try {
+    execFileSync(
+      process.execPath,
+      [
+        '-e',
+        `const m = require(${JSON.stringify(specifier)}); if (typeof (m.default ?? m) !== 'function') { throw new Error('did not export a function'); }`,
+      ],
+      { cwd: pluginsDir, stdio: 'pipe' },
+    );
+    console.log(`  ok   plugin ${specifier} resolves via a plain require`);
+  } catch (error) {
+    failed = true;
+    const stderr = (error as { stderr?: Buffer }).stderr?.toString() ?? '';
+    const reason = /Cannot find module|MODULE_NOT_FOUND/.test(stderr)
+      ? 'cannot be resolved by a plain require (is it TypeScript?)'
+      : (stderr.split('\n').find((line) => line.includes('Error')) ?? 'failed to load');
+    console.error(`  FAIL plugin ${specifier}: ${reason}`);
+    console.error('');
+    console.error('       The EAS CLI resolves plugins with a plain require and cannot load');
+    console.error('       TypeScript. `expo prebuild` still works, and `eas config` does not');
+    console.error('       evaluate plugins at all, so this only surfaces as a failed build.');
+  }
+}
+
+if (pluginsChecked === 0) {
+  failed = true;
+  console.error('  FAIL no config plugins found — the check is looking in the wrong place');
+}
+
+if (failed) {
+  process.exit(1);
+}
+
+console.log('Mobile identity and plugin checks passed.');
