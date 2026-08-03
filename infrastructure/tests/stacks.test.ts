@@ -453,6 +453,42 @@ describe('HTTP API', () => {
   });
 });
 
+describe('outbound mail', () => {
+  it('never grants ses:SendRawEmail without pinning the From address', () => {
+    // The resource on an SES send grant is not a reliable restriction: SES also
+    // authorises against the recipient identity while an account is in the
+    // sandbox, so a resource-scoped grant fails after the mail has already been
+    // accepted and stored. `ses:FromAddress` is the control that actually binds,
+    // so it is the one this asserts on.
+    let grants = 0;
+
+    for (const stack of allStacks) {
+      for (const [logicalId, policy] of resourcesOf(stack, 'AWS::IAM::Policy')) {
+        const document = prop(policy, 'PolicyDocument') as
+          { Statement?: Array<Record<string, unknown>> } | undefined;
+
+        for (const statement of document?.Statement ?? []) {
+          const actions = JSON.stringify(statement['Action'] ?? '');
+          if (!actions.includes('ses:SendRawEmail') && !actions.includes('ses:SendEmail')) {
+            continue;
+          }
+          if (statement['Effect'] !== 'Allow') continue;
+          grants += 1;
+
+          const condition = JSON.stringify(statement['Condition'] ?? {});
+          expect(
+            condition.includes('ses:FromAddress'),
+            `${describeResource(stack, logicalId)}: an SES send grant must pin ses:FromAddress, ` +
+              'or the principal can send as any address on the account',
+          ).toBe(true);
+        }
+      }
+    }
+
+    expect(grants, 'the mail forwarder must be able to send').toBeGreaterThan(0);
+  });
+});
+
 describe('the public site', () => {
   it('publishes content into every distribution it creates', () => {
     // A CloudFront distribution in front of an empty bucket deploys perfectly:

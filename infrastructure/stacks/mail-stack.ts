@@ -413,11 +413,28 @@ export class MailStack extends Stack {
 
     // Send only, raw only, as one address only. `grantSendEmail` would also add
     // `ses:SendEmail`, which is a second way to send that nothing here needs.
+    //
+    // The resource is `*` and the restriction lives entirely in the condition,
+    // because SES does not authorise this call against the sending identity
+    // alone. While the account is in the sandbox it also evaluates the
+    // *recipient* as an identity, so scoping the resource to our own domain
+    // produced:
+    //
+    //   not authorized to perform `ses:SendRawEmail' on resource
+    //   `arn:aws:ses:...:identity/<forwarding destination>'
+    //
+    // — - after SES had accepted the mail, stored it, and invoked this
+    // function. Nothing failed until the last call, and the only visible
+    // symptom was mail that never arrived.
+    //
+    // `ses:FromAddress` is the control that actually matters and it is
+    // unchanged: this function can only ever send as one address, whatever the
+    // resource says.
     forwarder.fn.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['ses:SendRawEmail'],
-        resources: [this.emailIdentity.emailIdentityArn],
+        resources: ['*'],
         conditions: { StringEquals: { 'ses:FromAddress': fromAddress } },
       }),
     );
