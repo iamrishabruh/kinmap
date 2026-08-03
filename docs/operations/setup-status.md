@@ -1,10 +1,8 @@
 # Setup status
 
 What is provisioned, what is written but not yet run, and what still needs a
-human. Kept honest: nothing is listed as done unless it was verified by running
-the command.
-
-Last verified: the commit that introduced this file.
+human. Kept honest: nothing is listed as done unless a command was run and its
+output checked. Where something is unproven, it says so.
 
 ---
 
@@ -14,7 +12,7 @@ Last verified: the commit that introduced this file.
 
 |                |                                                                       |
 | -------------- | --------------------------------------------------------------------- |
-| Monorepo       | pnpm + Turborepo, 27 workspace projects                               |
+| Monorepo       | pnpm + Turborepo, 38 workspace projects                               |
 | Mobile         | Expo SDK 57.0.9, React Native 0.86.2, committed `ios/` and `android/` |
 | Native engines | iOS Swift + Android Kotlin location engine; **both compile**          |
 | Backend        | 12 Lambda services                                                    |
@@ -22,8 +20,12 @@ Last verified: the commit that introduced this file.
 | Public site    | `apps/web`, including the universal-link association files            |
 | CI             | 15 workflows, all 12 required status checks map to real jobs          |
 
-Quality gates, all green: `typecheck` 37/37, `lint` 37/37 zero errors,
-`test` 37/37 with **1,553 tests**, `format:check` clean, secret scan clean.
+Quality gates, all green: `typecheck` 38/38, `lint` 38/38 zero errors, `test`
+38/38 with **1,584 tests**, `format:check` clean, secret scan clean.
+
+> TypeScript is pinned to **6.0.3, not the "latest" 7.0.2** — `typescript-eslint`
+> caps at `<6.1.0`, so TS 7 breaks linting across the repo. The Expo 57 template
+> independently pins the same version.
 
 ### Toolchain
 
@@ -31,11 +33,7 @@ Node 24.18.1 (LTS), pnpm 11.12.0, TypeScript 6.0.3, OpenJDK 21, Android SDK 36,
 Xcode 26.5 with the iOS 26.5 simulator runtime, CocoaPods 1.17.0, AWS CLI 2.36,
 CDK 2.1134.0, EAS CLI 21.4.0, Sentry CLI 0.40.0.
 
-> TypeScript is pinned to **6.0.3, not the "latest" 7.0.2** — `typescript-eslint`
-> caps at `<6.1.0`, so TS 7 breaks linting across the repo. The Expo 57 template
-> independently pins the same version.
-
-### AWS
+### AWS accounts
 
 Four accounts in organization `o-xxxxxxxxxx`, split across NonProduction and
 Production OUs. Four permission sets, scoped so that routine production access
@@ -43,18 +41,7 @@ Production OUs. Four permission sets, scoped so that routine production access
 
 Root user has MFA enabled and is no longer in routine use.
 
-### Development environment — DEPLOYED
-
-AWS account `000000000000`. Ten stacks live, including all 17 DynamoDB tables.
-Verified on the real tables: PAY_PER_REQUEST billing, customer-managed KMS
-encryption, point-in-time recovery enabled, and TTL on `expiresAt` for
-`LocationHistory` (the 30-day retention promise) and `Invitations`.
-
-SES inbound is active for `support@`, `privacy@`, `security@dev.kinmap.app`.
-The receipt rule set had to be activated by hand — CloudFormation cannot do it,
-and without that step SES accepts mail and silently discards it.
-
-**The location-data guardrail is proven, not just configured.** Scanning a
+**The location-data guardrail is proven, not merely configured.** Scanning a
 location table with the production deploy role returns:
 
 > `AccessDeniedException ... is not authorized to perform: dynamodb:Scan on
@@ -62,12 +49,41 @@ resource: .../kinmap-production-CurrentLocations with an explicit deny in an
 identity-based policy`
 
 while the same role scanning a non-location table returns `ResourceNotFound` —
-i.e. the call was permitted. The deny is scoped exactly to location data.
+i.e. that call was permitted. The deny is scoped exactly to location data.
+
+### Development environment — deployed and answering
+
+AWS account `000000000000`, region `us-east-1`. **Twelve of twelve stacks
+`CREATE_COMPLETE`**: foundation, security, data, identity, notification,
+location, billing, mail, migration, web, api, observability.
+
+The API is live on its real hostname, verified end to end from outside AWS:
+
+```
+GET https://api.dev.kinmap.app/v1/health   -> 200  {"status":"ok"}
+GET https://api.dev.kinmap.app/v1/account  -> 401  (no token presented)
+GET https://api.dev.kinmap.app/v1/nope     -> 404  (route table is not enumerable)
+```
+
+TLS verifies against the ACM certificate, DNS resolves through the delegated
+`dev.kinmap.app` zone, and the CloudWatch Synthetics canary — which runs outside
+the account and holds no credentials — is **passing**. **Zero alarms are
+firing**, metric or composite.
+
+Verified on the real DynamoDB tables (all 17): `PAY_PER_REQUEST` billing,
+customer-managed KMS encryption, point-in-time recovery enabled, and TTL on
+`expiresAt` for `LocationHistory` (the 30-day retention promise) and
+`Invitations`.
+
+SES inbound receipt rules are active for `support@`, `privacy@` and
+`security@dev.kinmap.app`. The rule set had to be activated by hand —
+CloudFormation cannot do it, and without that step SES accepts mail and silently
+discards it.
 
 ### Apple Developer portal
 
-Provisioned through the App Store Connect API by `scripts/apple/bundle-ids.ts`
-— no console clicking. Verified idempotent: a third consecutive run changes
+Provisioned through the App Store Connect API by `scripts/apple/bundle-ids.ts` —
+no console clicking. Verified idempotent: a third consecutive run changes
 nothing.
 
 | Bundle ID            | Resource     | Capabilities                                               |
@@ -79,8 +95,7 @@ nothing.
 > Associated Domains being enabled is necessary but **not sufficient** for
 > universal links. `https://kinmap.app/.well-known/apple-app-site-association`
 > must also be served over HTTPS with `content-type: application/json` and no
-> redirect. That file exists in `apps/web` and is asserted by tests, but it is
-> not deployed until `WebStack` is.
+> redirect.
 
 ### Identifiers on file
 
@@ -89,6 +104,7 @@ Everything below is recorded in `bootstrap.config.local.json` (git-ignored).
 |               |                                                             |
 | ------------- | ----------------------------------------------------------- |
 | Domain        | `kinmap.app`, hosted zone `Z00000000000000000`           |
+| Dev subdomain | `dev.kinmap.app`, delegated zone `Z00000000000000000`    |
 | Apple Team ID | `HH7Q2DUJ9U` (Individual enrollment)                        |
 | ASC API key   | `XXXXXXXXXX`, issuer `00000000-0000-0000-0000-000000000000` |
 | Bundle IDs    | `app.kinmap`, `.dev`, `.staging`                            |
@@ -104,77 +120,99 @@ It is never committed, never logged, and never passed as a command-line argument
 
 ## Blocked on you
 
-### 1. Sign in to AWS — blocks every deployment
+### 1. Click two SES verification emails — blocks all mail forwarding
+
+Both non-production accounts are in the **SES sandbox**, which means mail can
+only be delivered to a verified address. `rchouhan.network@gmail.com` is
+registered as an identity in each account but is **not yet verified**, so
+forwarding to it silently fails.
+
+Fresh verification emails were sent from both accounts. Two separate emails, two
+separate clicks — one is not enough:
+
+| From account | ID             | Subject                                                  |
+| ------------ | -------------- | -------------------------------------------------------- |
+| development  | `000000000000` | Amazon Web Services – Email Address Verification Request |
+| staging      | `000000000000` | same, sent separately                                    |
+
+Confirm with:
 
 ```bash
-aws sso login --profile kinmap-development
-aws sts get-caller-identity --profile kinmap-development
+aws sesv2 list-email-identities --profile kinmap-development --region us-east-1 \
+  --query 'EmailIdentities[].[IdentityName,VerifiedForSendingStatus]' --output text
 ```
 
-The ARN should contain `KinmapAdmin` and account `000000000000`. One login covers
-every profile. Until this runs, nothing can be bootstrapped or deployed.
+Both should read `true`. If a link has expired, resend with
+`aws ses verify-email-identity --email-address rchouhan.network@gmail.com --profile <profile> --region us-east-1`.
+
+The `dev.kinmap.app` **domain** identity needs nothing from you — its three DKIM
+CNAMEs are published and resolving publicly, and SES verifies it on its own
+schedule.
 
 ### 2. Google / Firebase — only when you add Android or Google Sign-In
 
-Deliberately deferred while the project is iOS-first. Note that **Google Sign-In
-on iOS also needs a Google Cloud OAuth client** — if you ship Apple + email
-sign-in only, you can skip Google entirely for now.
+Deliberately deferred while the project is iOS-first. Note that Google Sign-In
+**on iOS** also needs a Google Cloud OAuth client — if you ship Apple and email
+sign-in only, Google can be skipped entirely for now.
 
 ### 3. Decisions, not tasks
 
-- **Seller name.** Individual enrollment means the App Store lists
-  **Rishabh Chouhan**. Switching to an Organization enrollment needs a D-U-N-S
-  number and is far easier before the first publish than after. You have said
-  this is fine — recorded.
 - **COPPA.** A family location product will have children on it. This materially
-  changes what you may collect and must disclose. It is the first open question
-  in `apps/web/public/privacy.html` and needs a lawyer before launch, not after.
+  changes what may be collected and what must be disclosed. It is the first open
+  question in `apps/web/public/privacy.html` and needs a lawyer before launch,
+  not after.
+- **WAF architecture.** See the gap below — two options, both a deliberate
+  trade-off rather than a fix.
+- **Seller name.** Individual enrollment means the App Store lists **Rishabh
+  Chouhan**. Switching to Organization enrollment needs a D-U-N-S number and is
+  far easier before the first publish than after. You have said this is fine.
 
 ---
 
 ## Written but not yet run
 
-These exist in the repository and are ready; they need the AWS login above, or a
-deliberate decision to run them.
-
 | What                           | Where                                           | Needs                  |
 | ------------------------------ | ----------------------------------------------- | ---------------------- |
-| CDK bootstrap of all accounts  | `scripts/aws/bootstrap-accounts.sh`             | AWS login              |
-| Development stack deploy       | `pnpm cdk:deploy`                               | AWS login              |
-| SES mail forwarding            | `infrastructure/stacks/mail-stack.ts`           | AWS login              |
+| Staging stack deploy           | `CDK_ENVIRONMENT=staging pnpm cdk:deploy`       | a decision             |
+| Production stack deploy        | `CDK_ENVIRONMENT=production pnpm cdk:deploy`    | **explicit approval**  |
 | Service Control Policies       | `scripts/aws/service-control-policies.sh`       | a decision — see below |
 | GitHub repository and rulesets | `scripts/bootstrap/bootstrap.sh --phase github` | a decision — see below |
 
+Staging and production accounts are CDK-bootstrapped (`CDKToolkit` is their only
+stack) but carry no application infrastructure.
+
 SCPs are not attached yet because they restrict what the accounts can do, and
-there is nothing in them worth protecting until the first deploy lands.
+development is still the only account holding anything.
 
 The GitHub repository has **not** been created. The work is committed locally on
-`main` and `development`, with no remote configured. Creating and pushing to a
+`main` and `development`, with no remote configured. Creating and pushing a
 repository is outward-facing, so it waits for you to say go.
 
 ---
 
-## Known architectural gap: WAF is not protecting the API
+## Known gap: WAF is not protecting the API
 
 WAFv2 attaches only to an ALB, an API Gateway **REST** API, AppSync, a Cognito
 user pool, App Runner, or CloudFront. This platform uses an API Gateway **HTTP**
 API, which is not on that list — the association fails at deploy time with a
-misleading "The ARN isn't valid" error. The ARN is correct; the resource type is
+misleading `The ARN isn't valid`. The ARN is correct; the resource type is
 unsupported.
 
-The WebACL and its rules are still defined and versioned so they are ready to
-attach. Two ways to close it, both a deliberate decision rather than a fix:
+The WebACL and its rules are still defined, deployed and versioned, so they are
+ready to attach. Two ways to close it:
 
 1. **CloudFront in front of the API**, with the ACL moved to CLOUDFRONT scope.
-   The usual answer, and it also buys edge caching. Adds a hop and a cache
+   The usual answer, and it buys edge caching. Adds a hop and a cache
    invalidation story.
-2. **Migrate to a REST API.** Roughly 3.5x the per-request cost and loses the
+2. **Migrate to a REST API.** Roughly 3.5× the per-request cost, and it loses the
    JWT authorizer this design relies on.
 
-What IS active in the meantime: API Gateway per-route throttling, and the
-per-principal token bucket in `services/api` — the control that the rate limits
-in `@family/contracts` actually describe. What is missing is the managed rule
-groups (common exploits, bad inputs) and the IP-based rate rule.
+Active in the meantime: API Gateway per-route throttling, and the per-principal
+token bucket in `services/api` — the control the rate limits in
+`@family/contracts` actually describe. Missing are the managed rule groups
+(common exploits, bad inputs) and the IP-based rate rule.
+
+---
 
 ## Not built
 
@@ -183,25 +221,29 @@ Stated plainly so nothing here is mistaken for working software.
 - **Most mobile screens.** The feature layer beneath them — auth, billing, live
   sessions, location engine integration, privacy caches, map models — is
   implemented and tested. The Expo Router screens on top mostly are not.
-- **Nothing is deployed anywhere.** No AWS resources beyond the accounts and
-  access configuration themselves. No app has been built through EAS, submitted
-  to TestFlight, or run on a physical device.
 - **Background tracking has never run on a real device.** Both native engines
   compile. No claim is made about reliability, battery cost, geofence latency or
   update freshness until the real-device matrix in
   `docs/architecture/mobile-location-engine.md` has actually been executed.
+- **No app has been built through EAS**, submitted to TestFlight, or run on a
+  physical device.
+- **No end-to-end user journey has been exercised.** The API answers and rejects
+  correctly at the edge, but no account has been created, no family formed and no
+  location ingested.
 - **`migrations/`** contains no migrations yet.
 
 ---
 
 ## Order of operations from here
 
-1. `aws sso login --profile kinmap-development`
-2. CDK bootstrap the three accounts
-3. Deploy the development stack, confirm it comes up
-4. Deploy mail forwarding, verify `support@kinmap.app` reaches your inbox
-5. Deploy `WebStack` so the association file is actually served
-6. Create the GitHub repository and push
-7. First EAS development build, install on a real iPhone
-8. Begin the real-device location matrix — the only thing that can substantiate
+1. Click both SES verification emails, then send a test message to
+   `support@dev.kinmap.app` and confirm it arrives
+2. Wire the deployed Cognito pool id and API URL into `apps/mobile/.env.local`
+3. First EAS development build, install on a real iPhone
+4. Create an account against the live development API — the first end-to-end
+   journey
+5. Begin the real-device location matrix — the only thing that can substantiate
    any claim about background tracking
+6. Create the GitHub repository and push
+7. Decide the WAF architecture, then deploy staging
+8. Production, only with explicit approval

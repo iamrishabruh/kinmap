@@ -363,7 +363,14 @@ export class ObservabilityStack extends Stack {
       threshold: config.isProduction ? 100 : 1,
       comparisonOperator: ComparisonOperator.LESS_THAN_THRESHOLD,
       evaluationPeriods: 3,
-      treatMissingData: TreatMissingData.BREACHING,
+      // An ingestion pipeline that goes silent is precisely the outage this
+      // alarm exists to catch, so in production no data is bad data. Below
+      // production there are no users: "no events" is the normal state, and
+      // breaching would hold the alarm red forever, which is how a team learns
+      // to ignore its alarms.
+      treatMissingData: config.isProduction
+        ? TreatMissingData.BREACHING
+        : TreatMissingData.NOT_BREACHING,
       description: 'Accepted location events have collapsed; ingestion is probably broken.',
     });
     const rejectedAlarm = this.alarm('LocationRejectedAlarm', {
