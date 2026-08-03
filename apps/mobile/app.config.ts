@@ -216,7 +216,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // location behaviour (spec §24) — those require a store release.
     fallbackToCacheTimeout: 0,
   },
-  runtimeVersion: { policy: 'appVersion' },
+  // A literal, not { policy: 'appVersion' }.
+  //
+  // Runtime version policies are only supported in the managed workflow. This
+  // project commits ios/ and android/, which makes it bare, and EAS refuses the
+  // build outright:
+  //
+  //   You're currently using the bare workflow, where runtime version policies
+  //   are not supported.
+  //
+  // It tracks `version` above by hand. Both must move together: the runtime
+  // version is what decides whether an over-the-air update is compatible with
+  // an installed binary, so letting them drift would ship JS to a native build
+  // that cannot run it.
+  runtimeVersion: '0.1.0',
 });
 
 // Referenced so `required` participates in typechecking even while the public

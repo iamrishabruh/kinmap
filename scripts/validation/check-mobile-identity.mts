@@ -124,6 +124,25 @@ for (const entry of readdirSync(pluginsDir)) {
   }
 }
 
+// The runtime version decides whether an OTA update may run against an
+// installed binary. A policy object is rejected outright in the bare workflow,
+// and a literal that has drifted from `version` is worse than either: it ships
+// JS to a native build that cannot run it.
+const runtimeVersion = config['runtimeVersion'];
+if (typeof runtimeVersion !== 'string') {
+  failed = true;
+  console.error(
+    `  FAIL runtimeVersion: must be a literal string in the bare workflow, got ${JSON.stringify(runtimeVersion)}`,
+  );
+} else if (runtimeVersion !== config['version']) {
+  failed = true;
+  console.error(
+    `  FAIL runtimeVersion '${runtimeVersion}' has drifted from version '${String(config['version'])}'`,
+  );
+} else {
+  console.log(`  ok   runtimeVersion: ${runtimeVersion} (matches version)`);
+}
+
 if (pluginsChecked === 0) {
   failed = true;
   console.error('  FAIL no config plugins found — the check is looking in the wrong place');
