@@ -403,11 +403,30 @@ export class SecurityStack extends Stack {
       }),
     );
 
-    const deliveryChannel = new CfnDeliveryChannel(this, 'ConfigDeliveryChannel', {
-      name: config.resourcePrefix,
-      s3BucketName: configBucket.bucketName,
-      configSnapshotDeliveryProperties: { deliveryFrequency: 'TwentyFour_Hours' },
-    });
+    // ---------------------------------------------------------------------
+    // AWS Config: production only, and deliberately so.
+    //
+    // Config's recorder and delivery channel are mutually dependent in a way
+    // CloudFormation cannot express:
+    //
+    //   PutDeliveryChannel        fails with NoAvailableConfigurationRecorderException
+    //                             when no recorder exists;
+    //   StartConfigurationRecorder fails with NoAvailableDeliveryChannelException
+    //                             when no channel exists.
+    //
+    // CloudFormation performs the put and the start as one resource operation,
+    // so BOTH orderings fail — verified against a real account, in both
+    // directions. Breaking the cycle needs a custom resource that creates the
+    // recorder, then the channel, then starts the recorder as three separate
+    // calls, or an account baseline tool such as Control Tower.
+    //
+    // Continuous configuration recording is a production detective control and
+    // is billed per configuration item, so a development account gains little
+    // from it and was paying for it with an environment that would not deploy.
+    // It is scoped to production until the sequencing is done properly.
+    if (!config.isProduction) {
+      return configBucket;
+    }
 
     const recorder = new CfnConfigurationRecorder(this, 'ConfigRecorder', {
       name: config.resourcePrefix,
@@ -415,12 +434,12 @@ export class SecurityStack extends Stack {
       recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
     });
 
-    // Config refuses to START a recorder that has nowhere to deliver to, and
-    // CloudFormation starts it as part of creating the resource. Without this
-    // ordering the deploy fails with NoAvailableDeliveryChannelException.
-    // CloudFormation cannot infer the relationship because neither resource
-    // references the other.
-    recorder.node.addDependency(deliveryChannel);
+    const deliveryChannel = new CfnDeliveryChannel(this, 'ConfigDeliveryChannel', {
+      name: config.resourcePrefix,
+      s3BucketName: configBucket.bucketName,
+      configSnapshotDeliveryProperties: { deliveryFrequency: 'TwentyFour_Hours' },
+    });
+    deliveryChannel.node.addDependency(recorder);
 
     for (const rule of CONFIG_RULES) {
       const configRule = new CfnConfigRule(this, `ConfigRule${rule.id}`, {
