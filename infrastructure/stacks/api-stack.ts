@@ -43,6 +43,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { type IUserPool, type IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
@@ -635,6 +636,52 @@ export class ApiStack extends Stack {
       autoDeploy: true,
       domainMapping: { domainName: this.domainName },
     });
+
+    // ---------------------------------------------------------------------
+    // Collapse per-route Lambda permissions into one wildcard per function.
+    //
+    // HttpLambdaIntegration adds an AWS::Lambda::Permission for every route it
+    // backs, each scoped to that route's execute-api ARN. A Lambda resource
+    // policy is capped at 20 KB and 53 routes overflow it:
+    //
+    //   The final policy size (20721) is bigger than the limit (20480).
+    //
+    // One statement per function, scoped to this API, keeps the policy at six
+    // statements. The grant is broader — any route on this API rather than an
+    // enumerated one — but every route on this API already targets one of these
+    // functions, so nothing new becomes reachable. Authorisation is enforced by
+    // the JWT authorizer and, beyond it, by each service's own membership
+    // checks; this permission only decides whether API Gateway may invoke.
+    // ---------------------------------------------------------------------
+    const backingFunctions: Array<[string, IFunction]> = [
+      ['Api', this.apiFunction],
+      ['Ingestion', props.locationIngestionFunction],
+      ['Query', props.locationQueryFunction],
+      ['RevenueCat', props.revenueCatWebhookFunction],
+      ['AppleWebhook', props.appleWebhookFunction],
+      ['GoogleWebhook', props.googleWebhookFunction],
+    ];
+    const backingArns = new Set(backingFunctions.map(([, fn]) => fn.functionArn));
+
+    for (const node of this.httpApi.node.findAll()) {
+      if (node instanceof CfnPermission && backingArns.has(node.functionName)) {
+        node.node.scope?.node.tryRemoveChild(node.node.id);
+      }
+    }
+
+    const invokeSourceArn = Stack.of(this).formatArn({
+      service: 'execute-api',
+      resource: this.httpApi.apiId,
+      resourceName: '*/*/*',
+    });
+    for (const [label, fn] of backingFunctions) {
+      new CfnPermission(this, `Invoke${label}Permission`, {
+        action: 'lambda:InvokeFunction',
+        functionName: fn.functionArn,
+        principal: 'apigateway.amazonaws.com',
+        sourceArn: invokeSourceArn,
+      });
+    }
 
     // RouteSettings names each route by key, and API Gateway validates those
     // keys when the stage is created — "Unable to find Route by key ..." if a
