@@ -121,6 +121,7 @@ machine.
 
 - **No SCPs are attached.** `scripts/aws/service-control-policies.sh` creates
   them; they are not applied until the accounts carry something worth protecting.
+  Development now carries fifteen stacks, so this is worth revisiting.
 - **All three environments share one Route 53 hosted zone** in the management
   account (`Z00000000000000000`), with development and staging as subdomains.
   Splitting DNS per account is worth doing before production carries real users.
