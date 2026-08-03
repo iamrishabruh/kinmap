@@ -43,6 +43,27 @@ Production OUs. Four permission sets, scoped so that routine production access
 
 Root user has MFA enabled and is no longer in routine use.
 
+### Development environment — DEPLOYED
+
+AWS account `000000000000`. Ten stacks live, including all 17 DynamoDB tables.
+Verified on the real tables: PAY_PER_REQUEST billing, customer-managed KMS
+encryption, point-in-time recovery enabled, and TTL on `expiresAt` for
+`LocationHistory` (the 30-day retention promise) and `Invitations`.
+
+SES inbound is active for `support@`, `privacy@`, `security@dev.kinmap.app`.
+The receipt rule set had to be activated by hand — CloudFormation cannot do it,
+and without that step SES accepts mail and silently discards it.
+
+**The location-data guardrail is proven, not just configured.** Scanning a
+location table with the production deploy role returns:
+
+> `AccessDeniedException ... is not authorized to perform: dynamodb:Scan on
+resource: .../kinmap-production-CurrentLocations with an explicit deny in an
+identity-based policy`
+
+while the same role scanning a non-location table returns `ResourceNotFound` —
+i.e. the call was permitted. The deny is scoped exactly to location data.
+
 ### Apple Developer portal
 
 Provisioned through the App Store Connect API by `scripts/apple/bundle-ids.ts`
