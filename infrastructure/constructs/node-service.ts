@@ -13,6 +13,7 @@ import {
   SystemLogLevel,
   Tracing,
   type ILayerVersion,
+  type CfnFunction,
 } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, type RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -122,6 +123,15 @@ export class NodeService extends Construct {
 
     const { config } = props;
     const functionName = qualifiedName(config.resourcePrefix, props.serviceName);
+
+    // Which service's code this function actually runs. Usually the same as
+    // `serviceName`, but not always: the three billing webhooks all run
+    // services/subscription-worker. Recorded on the resource because the
+    // environment a function needs is decided by its BUNDLE, not its name, and
+    // without this the template gives no way to check one against the other.
+    const bundle = path.basename(
+      path.dirname(path.dirname(props.entry ?? serviceEntry(props.serviceName))),
+    );
     const removalPolicy = props.removalPolicy ?? config.removalPolicy;
 
     this.logGroup = new LogGroup(this, 'LogGroup', {
@@ -184,6 +194,8 @@ export class NodeService extends Construct {
         define: props.bundlingDefine,
       },
     });
+
+    (this.function.node.defaultChild as CfnFunction).addMetadata('kinmap:bundle', bundle);
 
     this.errorAlarm = new Alarm(this, 'ErrorAlarm', {
       alarmName: `${functionName}-errors`,

@@ -153,6 +153,7 @@ export class LocationStack extends Stack {
         LOCATION_EVENT_BUS_NAME: this.locationEventBus.eventBusName,
         LOCATION_EVENT_SOURCE,
         HISTORY_RETENTION_DAYS: String(config.historyRetentionDays),
+        USERS_TABLE: tables.users.tableName,
       },
     });
     this.ingestionFunction = ingestion.function;
@@ -164,6 +165,7 @@ export class LocationStack extends Stack {
     tables.locationHistory.grantWriteData(this.ingestionFunction);
     tables.familyMemberships.grantReadData(this.ingestionFunction);
     tables.idempotency.grantReadWriteData(this.ingestionFunction);
+    tables.users.grantReadData(this.ingestionFunction);
     foundation.coordinateKey.grantEncrypt(this.ingestionFunction);
     this.locationEventBus.grantPutEventsTo(this.ingestionFunction);
 
@@ -189,6 +191,9 @@ export class LocationStack extends Stack {
         SAVED_PLACES_TABLE: tables.savedPlaces.tableName,
         AUDIT_EVENTS_TABLE: tables.auditEvents.tableName,
         COORDINATE_KEY_ID: foundation.coordinateKey.keyId,
+        USERS_TABLE: tables.users.tableName,
+        DEVICES_TABLE: tables.devices.tableName,
+        SUBSCRIPTIONS_TABLE: tables.subscriptions.tableName,
       },
     });
     this.queryFunction = query.function;
@@ -198,6 +203,11 @@ export class LocationStack extends Stack {
     tables.familyMemberships.grantReadData(this.queryFunction);
     tables.savedPlaces.grantReadData(this.queryFunction);
     tables.auditEvents.grantWriteData(this.queryFunction);
+    // Entitlements gate how far back history may be read, so the query path has
+    // to resolve the caller's plan and device before it answers.
+    tables.users.grantReadData(this.queryFunction);
+    tables.devices.grantReadData(this.queryFunction);
+    tables.subscriptions.grantReadData(this.queryFunction);
     foundation.coordinateKey.grantDecrypt(this.queryFunction);
 
     // -----------------------------------------------------------------------

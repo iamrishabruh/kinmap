@@ -404,6 +404,9 @@ export class NotificationStack extends Stack {
       NOTIFICATION_PREFERENCES_TABLE: tables.notificationPreferences.tableName,
       FAMILY_MEMBERSHIPS_TABLE: tables.familyMemberships.tableName,
       LIVE_SESSIONS_TABLE: tables.liveSessions.tableName,
+      USERS_TABLE: tables.users.tableName,
+      SAVED_PLACES_TABLE: tables.savedPlaces.tableName,
+      IDEMPOTENCY_TABLE: tables.idempotency.tableName,
     };
     for (const [variable, arn] of platformApplicationArns) {
       workerEnvironment[variable] = arn;
@@ -426,6 +429,14 @@ export class NotificationStack extends Stack {
     tables.notificationPreferences.grantReadData(this.notificationWorkerFunction);
     tables.familyMemberships.grantReadData(this.notificationWorkerFunction);
     tables.liveSessions.grantReadData(this.notificationWorkerFunction);
+    // The rendered copy names the person and the place ("Ada arrived at
+    // School"), so the worker resolves both. The place name is all it takes —
+    // it never reads a coordinate.
+    tables.users.grantReadData(this.notificationWorkerFunction);
+    tables.savedPlaces.grantReadData(this.notificationWorkerFunction);
+    // SQS redelivery is at-least-once, and a duplicate push is a duplicate
+    // buzz in someone's pocket.
+    tables.idempotency.grantReadWriteData(this.notificationWorkerFunction);
 
     // A token rejected by APNs or FCM has to be retired immediately, and that
     // is the only mutation the worker is allowed to make to a device record.

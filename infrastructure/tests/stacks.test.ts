@@ -14,7 +14,7 @@
  * administrator-shaped IAM policy.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -450,6 +450,83 @@ describe('HTTP API', () => {
     }
 
     expect(checked, 'the API must define a custom domain').toBeGreaterThan(0);
+  });
+});
+
+const SERVICES_ROOT = path.join(REPO_ROOT, 'services');
+
+describe('Lambda configuration', () => {
+  /**
+   * Every variable a service's config loader demands, read from its source.
+   *
+   * The loaders call `requireEnv`/`requireString` at module scope, so a missing
+   * variable is not a degraded feature — the module throws before the handler
+   * exists and every invocation fails with an opaque 502.
+   */
+  function requiredEnvironment(serviceName: string): Set<string> {
+    const root = path.join(SERVICES_ROOT, serviceName, 'src');
+    const required = new Set<string>();
+    if (!existsSync(root)) return required;
+
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) {
+          const source = readFileSync(full, 'utf8');
+          for (const match of source.matchAll(
+            /require(?:Env|String|Number)\((?:source,\s*)?'([A-Z_]+)'\)/g,
+          )) {
+            const name = match[1];
+            if (name !== undefined) required.add(name);
+          }
+        }
+      }
+    };
+    walk(root);
+    return required;
+  }
+
+  it('gives every function every environment variable its code requires', () => {
+    // This is the defect that took the whole product down while every stack
+    // reported CREATE_COMPLETE: seven functions were deployed without variables
+    // their own config loaders demanded. CloudFormation does not compare a
+    // Lambda's environment against the code that reads it, and a function that
+    // is never invoked never reports the crash, so nothing anywhere went red.
+    let checked = 0;
+    const failures: string[] = [];
+
+    for (const stack of allStacks) {
+      for (const [logicalId, fn] of resourcesOf(stack, 'AWS::Lambda::Function')) {
+        // NodeService stamps the service whose code this function runs. It is
+        // not always the function's own name — all three billing webhooks run
+        // services/subscription-worker — and the environment a function needs
+        // is decided by its bundle.
+        const metadata = fn['Metadata'] as Record<string, unknown> | undefined;
+        const serviceName = metadata?.['kinmap:bundle'];
+        if (typeof serviceName !== 'string') continue;
+
+        const required = requiredEnvironment(serviceName);
+        if (required.size === 0) continue;
+        checked += 1;
+
+        const environment = (fn['Properties'] as Record<string, unknown> | undefined)?.[
+          'Environment'
+        ] as { Variables?: Record<string, unknown> } | undefined;
+        const provided = new Set(Object.keys(environment?.Variables ?? {}));
+
+        const missing = [...required].filter((name) => !provided.has(name)).sort();
+        if (missing.length > 0) {
+          failures.push(
+            `${describeResource(stack, logicalId)} (services/${serviceName}): missing ${missing.join(', ')}`,
+          );
+        }
+      }
+    }
+
+    expect(failures, failures.join('\n')).toEqual([]);
+    expect(checked, 'the app must deploy service functions').toBeGreaterThan(0);
   });
 });
 

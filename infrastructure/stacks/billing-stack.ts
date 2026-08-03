@@ -81,6 +81,16 @@ interface WebhookServiceOptions {
   readonly secretArn: string | undefined;
   readonly idempotencyTable: ITable;
   readonly queue: IQueue;
+  /**
+   * The webhook entry points share one bundle with services/subscription-worker,
+   * whose config loader runs at module scope and requires every variable any
+   * entry point in that bundle reads. A webhook that only enqueues still has to
+   * be given all of them or it throws before its handler is ever called.
+   */
+  readonly subscriptionsTable: ITable;
+  readonly familyMembershipsTable: ITable;
+  readonly savedPlacesTable: ITable;
+  readonly notificationCommandsQueue: IQueue;
 }
 
 export class BillingStack extends Stack {
@@ -134,6 +144,10 @@ export class BillingStack extends Stack {
       secretArn: secrets.revenueCatSecretArn,
       idempotencyTable: tables.idempotency,
       queue: this.subscriptionEventsQueue,
+      subscriptionsTable: tables.subscriptions,
+      familyMembershipsTable: tables.familyMemberships,
+      savedPlacesTable: tables.savedPlaces,
+      notificationCommandsQueue: props.notificationCommandsQueue,
     });
 
     this.appleWebhookFunction = this.addWebhookService({
@@ -145,6 +159,10 @@ export class BillingStack extends Stack {
       secretArn: secrets.appleSecretArn,
       idempotencyTable: tables.idempotency,
       queue: this.subscriptionEventsQueue,
+      subscriptionsTable: tables.subscriptions,
+      familyMembershipsTable: tables.familyMemberships,
+      savedPlacesTable: tables.savedPlaces,
+      notificationCommandsQueue: props.notificationCommandsQueue,
     });
 
     this.googleWebhookFunction = this.addWebhookService({
@@ -156,6 +174,10 @@ export class BillingStack extends Stack {
       secretArn: secrets.googleSecretArn,
       idempotencyTable: tables.idempotency,
       queue: this.subscriptionEventsQueue,
+      subscriptionsTable: tables.subscriptions,
+      familyMembershipsTable: tables.familyMemberships,
+      savedPlacesTable: tables.savedPlaces,
+      notificationCommandsQueue: props.notificationCommandsQueue,
     });
 
     // -----------------------------------------------------------------------
@@ -172,6 +194,12 @@ export class BillingStack extends Stack {
       IDEMPOTENCY_TABLE: tables.idempotency.tableName,
       NOTIFICATION_COMMANDS_QUEUE_URL: props.notificationCommandsQueue.queueUrl,
       RECONCILIATION_TASK_NAME: RECONCILIATION_TASK,
+      // Downgrading a plan prunes saved places back to the free allowance, so
+      // the worker needs the table even though it never reads a coordinate.
+      SAVED_PLACES_TABLE: tables.savedPlaces.tableName,
+      // The worker shares one bundle with the three webhook handlers, and that
+      // bundle's config loader requires every variable any entry point uses.
+      SUBSCRIPTION_EVENTS_QUEUE_URL: this.subscriptionEventsQueue.queueUrl,
     };
 
     // Reconciliation calls the stores directly, so it needs the same
@@ -203,6 +231,8 @@ export class BillingStack extends Stack {
     tables.subscriptions.grantReadWriteData(this.subscriptionWorkerFunction);
     tables.familyMemberships.grantReadData(this.subscriptionWorkerFunction);
     tables.idempotency.grantReadWriteData(this.subscriptionWorkerFunction);
+    // A downgrade prunes saved places back to the free allowance.
+    tables.savedPlaces.grantReadWriteData(this.subscriptionWorkerFunction);
     props.notificationCommandsQueue.grantSendMessages(this.subscriptionWorkerFunction);
     this.grantSecretRead(this.subscriptionWorkerFunction, workerSecretArns);
 
@@ -261,6 +291,10 @@ export class BillingStack extends Stack {
     const environment: Record<string, string> = {
       IDEMPOTENCY_TABLE: options.idempotencyTable.tableName,
       SUBSCRIPTION_EVENTS_QUEUE_URL: options.queue.queueUrl,
+      SUBSCRIPTIONS_TABLE: options.subscriptionsTable.tableName,
+      FAMILY_MEMBERSHIPS_TABLE: options.familyMembershipsTable.tableName,
+      SAVED_PLACES_TABLE: options.savedPlacesTable.tableName,
+      NOTIFICATION_COMMANDS_QUEUE_URL: options.notificationCommandsQueue.queueUrl,
     };
     const secretArn =
       options.secretArn !== undefined && options.secretArn !== '' ? options.secretArn : undefined;
