@@ -140,6 +140,9 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Secret scan
         run: ./scripts/validation/check-secrets.sh
+
+      - name: Mobile app resolves its own identity without .env.local
+        run: pnpm run validate:mobile-identity
       - name: Fail if a native permission string is vague
         # App Review rejects vague copy, and vague copy is dishonest to users.
         run: |

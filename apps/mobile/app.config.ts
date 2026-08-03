@@ -60,7 +60,16 @@ const bundleIdentifier = `${BASE_BUNDLE_ID}${variant.suffix}`;
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: variant.name,
-  slug: process.env.EXPO_PROJECT_SLUG ?? 'family-location',
+  // Defaulted to the real values rather than left to the environment.
+  //
+  // The EAS CLI does not load .env.local the way the Expo CLI does, so running
+  // `eas build` in an ordinary shell resolved neither of these. The slug fell
+  // back to a placeholder, EAS could not find the linked project, and it
+  // silently created a second one under the wrong name. The identity of this
+  // app is not configuration — it is a fact — and it is public, so there is
+  // nothing gained by sourcing it from an untracked file.
+  owner: process.env.EXPO_ACCOUNT_OWNER ?? 'rishabruh',
+  slug: process.env.EXPO_PROJECT_SLUG ?? 'kinmap',
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -182,7 +191,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     router: {},
     eas: {
-      projectId: optional('EAS_PROJECT_ID'),
+      projectId: optional('EAS_PROJECT_ID') ?? '7cfe193d-e29a-404d-a2f2-20f858aa9c32',
     },
     // Public runtime configuration, validated at startup by src/config/env.ts.
     appEnv: VARIANT,

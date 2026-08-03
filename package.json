@@ -36,6 +36,7 @@
     "mobile:submit:ios": "pnpm --filter @family/mobile exec eas submit --profile production --platform ios",
     "mobile:submit:android": "pnpm --filter @family/mobile exec eas submit --profile production --platform android",
     "validate:secrets": "./scripts/validation/check-secrets.sh",
+    "validate:mobile-identity": "tsx scripts/validation/check-mobile-identity.mts",
     "validate:prebuild": "./scripts/validation/check-prebuild-consistency.sh",
     "bootstrap": "./scripts/bootstrap/bootstrap.sh",
     "changeset": "changeset",
