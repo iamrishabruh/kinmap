@@ -154,6 +154,28 @@ repository is outward-facing, so it waits for you to say go.
 
 ---
 
+## Known architectural gap: WAF is not protecting the API
+
+WAFv2 attaches only to an ALB, an API Gateway **REST** API, AppSync, a Cognito
+user pool, App Runner, or CloudFront. This platform uses an API Gateway **HTTP**
+API, which is not on that list — the association fails at deploy time with a
+misleading "The ARN isn't valid" error. The ARN is correct; the resource type is
+unsupported.
+
+The WebACL and its rules are still defined and versioned so they are ready to
+attach. Two ways to close it, both a deliberate decision rather than a fix:
+
+1. **CloudFront in front of the API**, with the ACL moved to CLOUDFRONT scope.
+   The usual answer, and it also buys edge caching. Adds a hop and a cache
+   invalidation story.
+2. **Migrate to a REST API.** Roughly 3.5x the per-request cost and loses the
+   JWT authorizer this design relies on.
+
+What IS active in the meantime: API Gateway per-route throttling, and the
+per-principal token bucket in `services/api` — the control that the rate limits
+in `@family/contracts` actually describe. What is missing is the managed rule
+groups (common exploits, bad inputs) and the IP-based rate rule.
+
 ## Not built
 
 Stated plainly so nothing here is mistaken for working software.

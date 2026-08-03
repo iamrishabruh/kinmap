@@ -813,13 +813,34 @@ export class ApiStack extends Stack {
     });
 
     const stageArn = `arn:${Aws.PARTITION}:apigateway:${this.region}::/apis/${this.httpApi.apiId}/stages/${this.stage.stageName}`;
-    const association = new CfnWebACLAssociation(this, 'ApiWebAclAssociation', {
-      resourceArn: stageArn,
-      webAclArn: this.webAcl.attrArn,
-    });
-    // The ARN is assembled from tokens, so the ordering dependency on the stage
-    // it points at has to be stated rather than inferred.
-    association.node.addDependency(this.stage);
+    // WAF is NOT associated with this API, and cannot be.
+    //
+    // WAFv2 attaches only to an Application Load Balancer, an API Gateway REST
+    // API, an AppSync API, a Cognito user pool, an App Runner service, or a
+    // CloudFront distribution. An API Gateway **HTTP** API (v2) is not on that
+    // list, and the association fails at deploy time with a misleading error
+    // about the ARN being malformed:
+    //
+    //   The ARN isn't valid ... parameter:
+    //   arn:aws:apigateway:us-east-1::/apis/<id>/stages/$default
+    //
+    // The ARN is in fact correct; the resource type is simply unsupported.
+    //
+    // The WebACL is still defined so the rules are reviewed, versioned and
+    // ready, but attaching it needs one of:
+    //   * a CloudFront distribution in front of this API, with the ACL moved to
+    //     CLOUDFRONT scope — the usual answer, and it also buys edge caching
+    //     for the static routes;
+    //   * migrating to a REST API, which costs roughly 3.5x per request and
+    //     loses the JWT authorizer used here.
+    //
+    // Until that decision is made, request protection comes from two layers
+    // that ARE active: API Gateway per-route throttling configured above, and
+    // the per-principal token bucket in services/api, which is the control the
+    // rate limits in @family/contracts actually describe.
+    //
+    // Tracked in docs/operations/setup-status.md.
+    void stageArn;
 
     // -----------------------------------------------------------------------
     // Outputs
