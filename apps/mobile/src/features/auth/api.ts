@@ -4,11 +4,8 @@ import { z } from 'zod';
 
 import {
   AcceptTermsResponseSchema,
-  AcknowledgedResponseSchema,
   AccountSchema,
-  AuthSessionSchema,
   GetAccountResponseSchema,
-  StartOtpResponseSchema,
   UpdateAccountResponseSchema,
   type Account,
   type AuthIdentifier,
@@ -16,18 +13,30 @@ import {
   type Platform,
 } from '@family/schemas';
 
-import { env } from '@/config/env';
 import type { PolicyVersions } from '@/features/consent/versions';
 import { request } from '@/lib/api';
 
-import type { PendingChallenge, SocialCredential } from './types';
+import { CHALLENGE_SESSION_TTL_MS } from './cognito/config';
+import { globalSignOut, revokeToken } from './cognito/idp-client';
+import {
+  answerMfaChallenge,
+  signInWithPassword,
+  type CognitoSignInOutcome,
+} from './cognito/password-auth';
+import type { PendingChallenge, StoredSession } from './types';
 
 /**
  * Auth and account endpoints.
  *
- * Every path and payload here comes from `@family/schemas`; nothing is invented
- * locally. Responses are parsed against the contract before any of it reaches
- * state — an auth response is the last place to trust a shape.
+ * TOKENS DO NOT COME FROM THE API. There is no `/v1/auth/*` and there never
+ * will be: the comment above `API_ROUTES` in `infrastructure/stacks/api-stack.ts`
+ * says so, and the deployed route table matches. Sign-in, refresh and
+ * revocation go to the Cognito user pool directly (see `./cognito`), and the
+ * API only ever verifies the access token that comes back. Everything below the
+ * account divider still goes through `request()`, and every path and payload
+ * there comes from `@family/schemas`; nothing is invented locally. Responses
+ * are parsed against the contract before any of it reaches state — an auth
+ * response is the last place to trust a shape.
  */
 
 // ---------------------------------------------------------------------------
@@ -87,153 +96,136 @@ export function maskIdentifier(identifier: AuthIdentifier): string {
 }
 
 // ---------------------------------------------------------------------------
-// POST /v1/auth/otp/start
+// Sign-in (Cognito, SRP)
 // ---------------------------------------------------------------------------
 
-/**
- * Starts a one-time-code challenge.
- *
- * The response deliberately does not say whether the identifier already has an
- * account, so the UI must not either: both "sign in" and "create account" lead
- * to the identical "check your inbox" screen. Anything else turns this endpoint
- * into an account-existence oracle, which for a location product is a way to
- * confirm someone uses it.
- */
-export async function startOtpChallenge(
-  identifier: AuthIdentifier,
-  kind: PendingChallenge['kind'] = 'OTP',
-): Promise<PendingChallenge> {
-  const response = await request({
-    method: 'POST',
-    path: '/v1/auth/otp/start',
-    body: {
-      identifier,
-      locale: currentLocale(),
-      platform: currentPlatform(),
-      appVersion: env.appVersion,
-    },
-    schema: StartOtpResponseSchema,
-    anonymous: true,
-  });
+/** The pool's sign-in alias is `email`; phone sign-in is not configured. */
+export type EmailIdentifier = Extract<AuthIdentifier, { kind: 'EMAIL' }>;
 
-  return {
-    kind,
-    challengeId: response.challengeId,
-    maskedIdentifier: maskIdentifier(identifier),
-    expiresAt: response.expiresAt,
-    resendAvailableAt: response.resendAvailableAt,
-    codeLength: response.codeLength,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// POST /v1/auth/otp/verify
-// ---------------------------------------------------------------------------
-
-/**
- * A verified code either completes the sign-in or produces a further challenge
- * (step-up / second factor). Both arms are contract shapes: `AuthSession` and
- * `StartOtpResponse`. They cannot be confused for one another — both are strict
- * objects with disjoint required keys.
- */
-const VerifyOutcomeSchema = z.union([
-  AuthSessionSchema.transform((session) => ({ kind: 'session' as const, session })),
-  StartOtpResponseSchema.transform((challenge) => ({ kind: 'challenge' as const, challenge })),
-]);
-
-export type VerifyOutcome =
+export type SignInOutcome =
   { kind: 'session'; session: AuthSession } | { kind: 'challenge'; challenge: PendingChallenge };
 
-export async function verifyOtpCode(
-  challenge: PendingChallenge,
-  code: string,
-): Promise<VerifyOutcome> {
-  const outcome = await request({
-    method: 'POST',
-    path: '/v1/auth/otp/verify',
-    body: {
-      challengeId: challenge.challengeId,
-      code,
-      // No client-built device fingerprint. Device identity is established by
-      // the separate, consented device-registration step; silently profiling
-      // the handset during sign-in is exactly the behaviour this app rejects.
-      deviceFingerprint: null,
-    },
-    schema: VerifyOutcomeSchema,
-    anonymous: true,
-  });
+/** Software-token MFA is six digits. */
+const MFA_CODE_LENGTH = 6;
 
-  if (outcome.kind === 'session') return outcome;
-
+function toPendingChallenge(
+  outcome: Extract<CognitoSignInOutcome, { kind: 'mfa' }>,
+  maskedIdentifier: string,
+): PendingChallenge {
+  const expiresAt = new Date(Date.now() + CHALLENGE_SESSION_TTL_MS).toISOString();
   return {
-    kind: 'challenge',
-    challenge: {
-      // A challenge issued in response to a correct first code is a second
-      // factor by definition.
-      kind: 'MFA',
-      challengeId: outcome.challenge.challengeId,
-      maskedIdentifier: challenge.maskedIdentifier,
-      expiresAt: outcome.challenge.expiresAt,
-      resendAvailableAt: outcome.challenge.resendAvailableAt,
-      codeLength: outcome.challenge.codeLength,
-    },
+    // A challenge issued in response to a correct password is a second factor
+    // by definition.
+    kind: 'MFA',
+    challengeId: outcome.challenge.session,
+    subjectId: outcome.challenge.userIdForSrp,
+    maskedIdentifier,
+    expiresAt,
+    // A time-based code from an authenticator app has nothing to resend, so the
+    // resend affordance is never offered inside this challenge's lifetime.
+    resendAvailableAt: expiresAt,
+    codeLength: MFA_CODE_LENGTH,
   };
 }
 
-// ---------------------------------------------------------------------------
-// POST /v1/auth/oauth/{provider}
-// ---------------------------------------------------------------------------
+/**
+ * Signs in with an email address and a password.
+ *
+ * THIS MUST NOT BECOME AN ACCOUNT-EXISTENCE ORACLE. The response deliberately
+ * does not say whether the address has an account, so the UI must not either:
+ * a failed sign-in and a sign-in against an address nobody has registered lead
+ * to the identical screen and the identical wording. Anything else turns this
+ * into a way to confirm that a given person uses a location product, which for
+ * this product is a way to confirm where to look for them.
+ *
+ * Three things hold that property up, and all three have to stay:
+ * `PreventUserExistenceErrors` is enabled on the pool, so Cognito answers an
+ * unknown address with a decoy salt and `SRP_B` and fails at the same step;
+ * `cognito/errors.ts` collapses every credential-shaped failure onto one fixed
+ * string and never repeats Cognito's own; and nothing here inspects the failure
+ * to decide which screen to show.
+ *
+ * No client-built device fingerprint is sent. Device identity is established by
+ * the separate, consented device-registration step; silently profiling the
+ * handset during sign-in is exactly the behaviour this app rejects. It is also
+ * why the Cognito device-tracking handshake is never completed — see
+ * `cognito/password-auth.ts`.
+ */
+export async function signIn(
+  identifier: EmailIdentifier,
+  password: string,
+): Promise<SignInOutcome> {
+  const outcome = await signInWithPassword(identifier.email, password);
+  if (outcome.kind === 'session') {
+    return { kind: 'session', session: outcome.session };
+  }
+  return { kind: 'challenge', challenge: toPendingChallenge(outcome, maskIdentifier(identifier)) };
+}
 
-export async function signInWithSocialCredential(
-  credential: SocialCredential,
-): Promise<AuthSession> {
-  const path = credential.provider === 'APPLE' ? '/v1/auth/oauth/apple' : '/v1/auth/oauth/google';
-
-  return request({
-    method: 'POST',
-    path,
-    body: {
-      provider: credential.provider,
-      identityToken: credential.identityToken,
-      authorizationCode: credential.authorizationCode,
-      nonce: credential.nonce,
-      displayName: credential.displayName,
-      platform: currentPlatform(),
-      appVersion: env.appVersion,
-    },
-    schema: AuthSessionSchema,
-    anonymous: true,
-  });
+/**
+ * Answers an outstanding second-factor challenge.
+ *
+ * Failures here may be specific — "that code is not right" — because the caller
+ * has already proved the password. Nothing is disclosed that they did not
+ * already know.
+ */
+export async function submitMfaCode(
+  challenge: PendingChallenge,
+  code: string,
+): Promise<SignInOutcome> {
+  const outcome = await answerMfaChallenge(
+    { session: challenge.challengeId, userIdForSrp: challenge.subjectId },
+    code,
+  );
+  if (outcome.kind === 'session') {
+    return { kind: 'session', session: outcome.session };
+  }
+  return { kind: 'challenge', challenge: toPendingChallenge(outcome, challenge.maskedIdentifier) };
 }
 
 // ---------------------------------------------------------------------------
-// POST /v1/auth/logout
+// Revocation
 // ---------------------------------------------------------------------------
 
-export async function revokeSession(refreshToken: string, allDevices: boolean): Promise<void> {
-  await request({
-    method: 'POST',
-    path: '/v1/auth/logout',
-    body: { refreshToken, allDevices },
-    schema: AcknowledgedResponseSchema,
-    anonymous: true,
-  });
+/**
+ * Ends the session server-side.
+ *
+ * Two different calls, because they need different credentials and have
+ * different blast radii. `RevokeToken` retires this device's refresh token and,
+ * because token revocation is enabled on the app client, every access token
+ * issued from it. `GlobalSignOut` ends every session the account has anywhere,
+ * and is authorised by the access token rather than the refresh token — which
+ * is why the whole stored session is passed in rather than one string.
+ *
+ * Neither is allowed to be the thing that makes signing out fail: the caller
+ * has already destroyed the local credentials before this runs.
+ */
+export async function revokeSession(session: StoredSession, allDevices: boolean): Promise<void> {
+  if (allDevices) {
+    await globalSignOut(session.accessToken);
+    return;
+  }
+  await revokeToken(session.refreshToken);
 }
 
 // ---------------------------------------------------------------------------
-// POST /v1/auth/terms
+// Terms acceptance
 // ---------------------------------------------------------------------------
 
+/**
+ * Records that this person accepted a specific version of the terms.
+ *
+ * It is a PATCH on the account, not a POST to `/v1/auth/terms`. Consent is a
+ * fact about the person rather than about a session, the account is where it is
+ * read back from, and `/v1/auth/*` is a surface this API deliberately does not
+ * expose — nobody should be able to accept terms without being signed in as the
+ * person accepting them.
+ */
 export async function acceptTerms(versions: PolicyVersions): Promise<void> {
   await request({
-    method: 'POST',
-    path: '/v1/auth/terms',
-    body: {
-      termsVersion: versions.termsVersion,
-      privacyPolicyVersion: versions.privacyPolicyVersion,
-      acceptedAt: new Date().toISOString(),
-      timeZone: currentTimeZone(),
-    },
+    method: 'PATCH',
+    path: '/v1/account',
+    body: { acceptedTermsVersion: versions.termsVersion },
     schema: AcceptTermsResponseSchema,
   });
 }

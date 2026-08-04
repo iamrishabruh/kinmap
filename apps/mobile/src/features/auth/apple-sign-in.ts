@@ -1,86 +1,52 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as SecureStore from 'expo-secure-store';
 
-import { createNoncePair } from './nonce';
-import {
-  SocialSignInCancelledError,
-  SocialSignInUnavailableError,
-  type SocialCredential,
-} from './types';
+import type { AuthSession } from '@family/schemas';
+
+import { HostedSignInCancelledError, signInWithHostedProvider } from './cognito/hosted-ui';
+import { SocialSignInCancelledError, SocialSignInUnavailableError } from './types';
 
 /**
  * Sign in with Apple.
  *
- * Two Apple-specific behaviours drive everything in this file.
+ * WHERE THE APPLE CREDENTIAL WENT. This used to call
+ * `AppleAuthentication.signInAsync` and post the resulting identity token to
+ * `/v1/auth/oauth/apple`. That endpoint is gone and is not coming back, and the
+ * token cannot simply be redirected at Cognito instead: a Cognito USER POOL has
+ * no API that accepts a provider identity token. Federation into a user pool
+ * happens only through the hosted UI's authorization-code grant, which is what
+ * `identity-stack.ts` provisions — a `SignInWithApple` provider, the `kinmap://`
+ * callback, and PKCE on a public client. So the exchange runs there, and this
+ * module keeps the two Apple-specific facts that still matter.
  *
  * 1. THE NAME IS RETURNED EXACTLY ONCE. `fullName` is populated on the first
  *    authorisation for a given Apple ID and is `null` on every subsequent one,
- *    forever, unless the user removes the app from their Apple ID settings. If
- *    the first sign-in's network call fails after Apple handed us the name, the
- *    name is gone. So it is stashed in the keychain, keyed by Apple's stable
- *    user identifier, the moment we receive it, and only cleared once the
- *    server has acknowledged it.
+ *    forever, unless the user removes the app from their Apple ID settings.
+ *    Nothing downstream may depend on it being present — which is why the
+ *    Cognito provider in `identity-stack.ts` maps only `sub` and `email`, and
+ *    why the display name is asked for in the app, on a screen the user can
+ *    return to, rather than captured from a one-shot value that a failed
+ *    network call would destroy. There is no name to stash any more, and
+ *    therefore no keychain entry keyed by an Apple user id to keep either.
  *
- * 2. THE EMAIL MAY BE A RELAY ADDRESS. With Hide My Email, `email` is an
- *    `@privaterelay.appleid.com` forwarder — also first-authorisation-only. It
- *    is a perfectly good account identifier, but "check your email" copy has to
- *    change, so the fact is surfaced on the credential rather than re-derived
- *    later from a string comparison buried in a screen.
+ * 2. THE EMAIL MAY BE A RELAY ADDRESS. With Hide My Email, the address Apple
+ *    releases is an `@privaterelay.appleid.com` forwarder — also
+ *    first-authorisation-only. It is a perfectly good account identifier, and
+ *    the app never needs to know which kind it got: it does not send mail, and
+ *    the one place the distinction would have changed the copy ("check your
+ *    email") no longer exists, because Cognito owns verification and recovery.
+ *    Treating a relay address as second-class is exactly the behaviour Apple
+ *    forbids, so nothing here inspects it.
+ *
+ * The native module is still imported, for the one thing only it can answer:
+ * whether this device can do Sign in with Apple at all. Asking it costs no
+ * prompt and no user data.
  */
-
-const APPLE_PRIVATE_RELAY_DOMAIN = '@privaterelay.appleid.com';
-
-const NAME_STASH_PREFIX = 'family.auth.appleName.';
-const STASH_OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainService: 'family-location.auth',
-  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-};
-
-/** Apple's user identifier is opaque, but it identifies a person: keep it out of logs. */
-function stashKey(appleUserId: string): string {
-  // SecureStore keys must be alphanumeric/._- ; Apple ids contain dots already.
-  return `${NAME_STASH_PREFIX}${appleUserId.replace(/[^A-Za-z0-9._-]/g, '')}`;
-}
-
-function composeDisplayName(
-  fullName: AppleAuthentication.AppleAuthenticationFullName | null,
-): string | null {
-  if (fullName === null) return null;
-  const parts = [fullName.givenName, fullName.familyName].filter(
-    (part): part is string => typeof part === 'string' && part.trim().length > 0,
-  );
-  if (parts.length === 0) return null;
-  // DisplayNameSchema caps at 80 characters.
-  return parts.join(' ').trim().slice(0, 80);
-}
-
-async function stashDisplayName(appleUserId: string, displayName: string): Promise<void> {
-  try {
-    await SecureStore.setItemAsync(stashKey(appleUserId), displayName, STASH_OPTIONS);
-  } catch {
-    // Best effort. Worst case the user re-types their name in settings.
-  }
-}
-
-async function recallDisplayName(appleUserId: string): Promise<string | null> {
-  try {
-    return await SecureStore.getItemAsync(stashKey(appleUserId), STASH_OPTIONS);
-  } catch {
-    return null;
-  }
-}
 
 /**
- * Called once the server has accepted the credential. Until then the stash is
- * the only copy of a name Apple will never hand over again.
+ * Cognito's provider name for Sign in with Apple. Fixed by Cognito, and must
+ * match `APPLE_PROVIDER_NAME` in `infrastructure/stacks/identity-stack.ts`.
  */
-export async function clearStashedAppleDisplayName(appleUserId: string): Promise<void> {
-  try {
-    await SecureStore.deleteItemAsync(stashKey(appleUserId), STASH_OPTIONS);
-  } catch {
-    // Nothing actionable.
-  }
-}
+const APPLE_PROVIDER = 'SignInWithApple';
 
 export async function isAppleSignInAvailable(): Promise<boolean> {
   try {
@@ -90,13 +56,14 @@ export async function isAppleSignInAvailable(): Promise<boolean> {
   }
 }
 
-export type AppleSignInResult = {
-  credential: SocialCredential;
-  /** Apple's stable user id, needed to clear the name stash after success. */
-  appleUserId: string;
-};
-
-export async function signInWithApple(): Promise<AppleSignInResult> {
+/**
+ * Runs the whole Apple sign-in and returns a live Cognito session.
+ *
+ * @throws SocialSignInCancelledError   when the user dismisses the sheet.
+ * @throws SocialSignInUnavailableError when the device cannot do it at all.
+ * @throws AppError                     for network and service failures.
+ */
+export async function signInWithApple(): Promise<AuthSession> {
   if (!(await isAppleSignInAvailable())) {
     throw new SocialSignInUnavailableError(
       'APPLE',
@@ -104,65 +71,12 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     );
   }
 
-  const nonce = await createNoncePair();
-
-  let credential: AppleAuthentication.AppleAuthenticationCredential;
   try {
-    credential = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-      nonce: nonce.hashed,
-    });
+    return await signInWithHostedProvider(APPLE_PROVIDER);
   } catch (cause) {
-    if (isAppleCancellation(cause)) {
+    if (cause instanceof HostedSignInCancelledError) {
       throw new SocialSignInCancelledError('APPLE');
     }
-    throw new SocialSignInUnavailableError(
-      'APPLE',
-      'Sign in with Apple could not be completed. Please try again.',
-    );
+    throw cause;
   }
-
-  if (credential.identityToken === null) {
-    throw new SocialSignInUnavailableError(
-      'APPLE',
-      'Apple did not return a sign-in token. Please try again.',
-    );
-  }
-
-  const appleUserId = credential.user;
-
-  // First authorisation: capture the name before anything can fail.
-  const freshName = composeDisplayName(credential.fullName);
-  if (freshName !== null) {
-    await stashDisplayName(appleUserId, freshName);
-  }
-  const displayName = freshName ?? (await recallDisplayName(appleUserId));
-
-  const email = credential.email;
-  const isPrivateRelayEmail =
-    typeof email === 'string' && email.toLowerCase().endsWith(APPLE_PRIVATE_RELAY_DOMAIN);
-
-  return {
-    appleUserId,
-    credential: {
-      provider: 'APPLE',
-      identityToken: credential.identityToken,
-      authorizationCode: credential.authorizationCode,
-      nonce: nonce.raw,
-      displayName,
-      isPrivateRelayEmail,
-    },
-  };
-}
-
-function isAppleCancellation(cause: unknown): boolean {
-  return (
-    typeof cause === 'object' &&
-    cause !== null &&
-    'code' in cause &&
-    (cause as { code?: unknown }).code === 'ERR_REQUEST_CANCELED'
-  );
 }

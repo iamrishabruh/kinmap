@@ -34,7 +34,12 @@ import {
   createNotificationPreferencesRepository,
   createNotificationsRepository,
 } from '../../src/repositories/notifications.js';
+import {
+  createLocationCountsRepository,
+  type CountingClient,
+} from '../../src/repositories/location-counts.js';
 import { createPlacesRepository } from '../../src/repositories/places.js';
+import { createPrivacyExportsRepository } from '../../src/repositories/privacy-exports.js';
 import { createSubscriptionsRepository } from '../../src/repositories/subscriptions.js';
 import { createSupportRepository } from '../../src/repositories/support.js';
 import { createRouter } from '../../src/router.js';
@@ -63,6 +68,10 @@ export const TABLES = {
   liveSessions: 'LiveSessions',
   notifications: 'Notifications',
   notificationPreferences: 'NotificationPreferences',
+  // Declared so a count can be exercised. Nothing in the service reads a row
+  // from either of them; see createFakeCountingClient below.
+  currentLocations: 'CurrentLocations',
+  locationHistory: 'LocationHistory',
 } as const;
 
 const TABLE_DEFINITIONS: TableDefinition[] = [
@@ -87,6 +96,9 @@ const TABLE_DEFINITIONS: TableDefinition[] = [
     },
   },
   { name: TABLES.notifications, keySchema: { partitionKey: 'userId', sortKey: 'sortKey' } },
+  { name: TABLES.currentLocations, keySchema: { partitionKey: 'userId', sortKey: 'deviceId' } },
+  // pk: USER#<userId>#DAY#<yyyy-mm-dd>   sk: TIME#<iso>#EVENT#<eventId>
+  { name: TABLES.locationHistory, keySchema: { partitionKey: 'pk', sortKey: 'sk' } },
   {
     name: TABLES.notificationPreferences,
     keySchema: { partitionKey: 'userId', sortKey: 'familyId' },
@@ -157,6 +169,31 @@ export function createFakeDocumentClient(store: InMemoryDocumentClient): Documen
     },
     async transactWrite(input) {
       await store.send(TransactWriteCommand({ TransactItems: [...input.TransactItems] }));
+    },
+  };
+}
+
+/**
+ * The counting seam, wired to the fake exactly as the Lambda wires it to
+ * DynamoDB: `Select: 'COUNT'` goes down, a number comes back. A test therefore
+ * cannot accidentally prove the count works by reading rows the service is not
+ * allowed to read.
+ */
+export function createFakeCountingClient(store: InMemoryDocumentClient): CountingClient {
+  return {
+    async count(input) {
+      const page = (await store.send(QueryCommand({ ...input, Select: 'COUNT' }))) as {
+        Count?: number;
+        Items?: Item[];
+        LastEvaluatedKey?: Item;
+      };
+      // The fake returns Items even for a COUNT; the real client cannot. Reading
+      // only the length keeps the seam honest — a test must not be able to prove
+      // a count works by looking at rows the service may not read.
+      return {
+        Count: page.Count ?? page.Items?.length ?? 0,
+        LastEvaluatedKey: page.LastEvaluatedKey,
+      };
     },
   };
 }
@@ -232,6 +269,11 @@ export function createHarness(options: HarnessOptions = {}): Harness {
     support: createSupportRepository(client, TABLES.auditEvents),
     jobs: createJobsRepository(client, TABLES.deletionJobs),
     places: createPlacesRepository(client, TABLES.savedPlaces),
+    privacyExports: createPrivacyExportsRepository(client, TABLES.deletionJobs, TABLES.users),
+    locationCounts: createLocationCountsRepository(createFakeCountingClient(store), {
+      currentLocations: TABLES.currentLocations,
+      locationHistory: TABLES.locationHistory,
+    }),
     liveSessions: createLiveSessionsRepository(client, TABLES.liveSessions),
     notifications: createNotificationsRepository(client, TABLES.notifications),
     notificationPreferences: createNotificationPreferencesRepository(
@@ -440,6 +482,44 @@ export function seedDevice(
       lastSeenAt: null,
       lastUploadAt: null,
       revokedAt: null,
+    },
+  ]);
+}
+
+/**
+ * A history row, keyed the way services/location-ingestion keys one:
+ * `USER#<userId>#DAY#<day>` / `TIME#<iso>#EVENT#<eventId>`.
+ *
+ * `sealed` stands in for the ciphertext. It is deliberately a recognisable
+ * marker rather than a realistic blob, so a test can assert that no part of a
+ * stored point reached a response body or a log line.
+ */
+export function seedHistoryPoint(
+  harness: Harness,
+  input: { userId: UserId; day: string; eventId: string; sealed?: string },
+): void {
+  harness.store.seed(TABLES.locationHistory, [
+    {
+      pk: `USER#${input.userId}#DAY#${input.day}`,
+      sk: `TIME#${input.day}T09:00:00.000Z#EVENT#${input.eventId}`,
+      userId: input.userId,
+      eventId: input.eventId,
+      capturedAt: `${input.day}T09:00:00.000Z`,
+      sealed: input.sealed ?? 'sealed-history-payload',
+    },
+  ]);
+}
+
+export function seedCurrentLocation(
+  harness: Harness,
+  input: { userId: UserId; deviceId: DeviceId; sealed?: string },
+): void {
+  harness.store.seed(TABLES.currentLocations, [
+    {
+      userId: input.userId,
+      deviceId: input.deviceId,
+      capturedAt: harness.now().toISOString(),
+      sealed: input.sealed ?? 'sealed-current-payload',
     },
   ]);
 }

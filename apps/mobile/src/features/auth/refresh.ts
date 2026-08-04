@@ -1,14 +1,14 @@
 import { AppError } from '@family/contracts';
-import { RefreshSessionResponseSchema } from '@family/schemas';
 
-import { isUnauthenticated, request } from '@/lib/api';
+import { isUnauthenticated } from '@/lib/api';
 
+import { refreshTokens } from './cognito/password-auth';
 import { clearStoredSession, saveStoredSession } from './secure-token-storage';
 import { useSessionStore } from './session-store';
 import type { StoredSession } from './types';
 
 /**
- * Access-token refresh.
+ * Access-token refresh, against Cognito.
  *
  * Two properties matter here.
  *
@@ -16,12 +16,15 @@ import type { StoredSession } from './types';
  * all fire at once. If every one of them noticed the same expired token and
  * refreshed independently, a server that rotates refresh tokens would invalidate
  * the winner's token and sign the user out. Concurrent callers therefore share
- * one in-flight promise.
+ * one in-flight promise. This is not hypothetical here: refresh-token rotation
+ * IS enabled on this app client, with a 60-second grace period that covers a
+ * client which lost the response to a refresh it had already made — a margin,
+ * not a licence to fan out.
  *
- * TRANSIENT vs DEFINITIVE. Being offline is not being signed out. Only a 401
- * from the refresh endpoint itself — the refresh token is expired, revoked, or
- * belongs to a device an admin removed — ends the session. Everything else
- * propagates as an error and leaves the credentials in place.
+ * TRANSIENT vs DEFINITIVE. Being offline is not being signed out. Only a
+ * definitive answer from Cognito — the refresh token is expired, revoked, or
+ * was retired by a rotation long past its grace period — ends the session.
+ * Everything else propagates as an error and leaves the credentials in place.
  */
 
 /** Refresh this far ahead of expiry so a request never races the boundary. */
@@ -47,14 +50,14 @@ async function performRefresh(current: StoredSession): Promise<StoredSession | n
   }
 
   try {
-    const response = await request({
-      method: 'POST',
-      path: '/v1/auth/refresh',
-      body: { refreshToken: current.refreshToken },
-      schema: RefreshSessionResponseSchema,
-      // Anonymous: the refresh token IS the credential, and routing this
-      // through the bridge would recurse into this function.
-      anonymous: true,
+    // Straight to the pool rather than through `@/lib/api`: the refresh token
+    // IS the credential, there is no API endpoint that would take it, and
+    // routing this through the auth bridge would recurse into this function.
+    const response = await refreshTokens({
+      refreshToken: current.refreshToken,
+      // Carried forward, not recomputed. A rotation replaces the token, not
+      // the grant behind it.
+      refreshTokenExpiresAt: current.refreshTokenExpiresAt,
     });
 
     const next: StoredSession = {

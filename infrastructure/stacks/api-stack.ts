@@ -44,6 +44,7 @@ import {
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { type IUserPool, type IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
@@ -132,6 +133,14 @@ const API_ROUTES: ApiRoute[] = [
     path: '/v1/account',
     methods: [HttpMethod.PATCH, HttpMethod.DELETE],
     perPrincipalPerMinute: RATE_LIMITS.ACCOUNT_MUTATION_PER_USER,
+  },
+  {
+    // What an irreversible action would actually destroy, shown before it is
+    // taken. It counts location rows without being able to read one: the grant
+    // below is dynamodb:Query conditioned on Select being COUNT.
+    path: '/v1/account/deletion/preview',
+    methods: [HttpMethod.GET],
+    perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
   },
   {
     path: '/v1/account/deletion/cancel',
@@ -377,6 +386,28 @@ const API_ROUTES: ApiRoute[] = [
     perPrincipalPerMinute: RATE_LIMITS.HISTORY_READ_PER_USER,
   },
   {
+    // Asking for a copy of your own data, and collecting the state of that
+    // request. The archive itself never travels this way: it is built by a
+    // worker that holds the location grants this function deliberately does not,
+    // and delivered as a short-lived signed link.
+    path: '/v1/privacy/exports',
+    methods: [HttpMethod.GET, HttpMethod.POST],
+    perPrincipalPerMinute: RATE_LIMITS.HISTORY_READ_PER_USER,
+  },
+  {
+    path: '/v1/privacy/exports/{exportId}',
+    methods: [HttpMethod.GET],
+    perPrincipalPerMinute: RATE_LIMITS.HISTORY_READ_PER_USER,
+  },
+  {
+    // Read-only, and deliberately so: nothing in the platform honours a
+    // per-user retention preference, so an endpoint that accepted one would
+    // report a promise it does not keep.
+    path: '/v1/privacy/retention',
+    methods: [HttpMethod.GET],
+    perPrincipalPerMinute: GENERAL_READ_PER_MINUTE,
+  },
+  {
     path: '/v1/privacy/export',
     methods: [HttpMethod.POST],
     perPrincipalPerMinute: RATE_LIMITS.HISTORY_READ_PER_USER,
@@ -528,6 +559,8 @@ export class ApiStack extends Stack {
         NOTIFICATION_PREFERENCES_TABLE: tables.notificationPreferences.tableName,
         LIVE_SESSIONS_TABLE: tables.liveSessions.tableName,
         NOTIFICATIONS_TABLE: tables.notifications.tableName,
+        CURRENT_LOCATIONS_TABLE: tables.currentLocations.tableName,
+        LOCATION_HISTORY_TABLE: tables.locationHistory.tableName,
         SUBSCRIPTIONS_TABLE: tables.subscriptions.tableName,
         AUDIT_EVENTS_TABLE: tables.auditEvents.tableName,
         IDEMPOTENCY_TABLE: tables.idempotency.tableName,
@@ -552,6 +585,23 @@ export class ApiStack extends Stack {
     tables.notificationPreferences.grantReadWriteData(this.apiFunction);
     tables.liveSessions.grantReadWriteData(this.apiFunction);
     tables.notifications.grantReadWriteData(this.apiFunction);
+
+    // Counting, and only counting.
+    //
+    // The deletion preview has to say how many location rows an account would
+    // lose, and being wrong about that is how somebody deletes more than they
+    // meant to. But this function holds no coordinate key, and it must not be
+    // able to read a row either — so the grant is Query conditioned on Select
+    // being COUNT. A query that asked for attributes is denied by IAM, not by a
+    // convention someone has to remember.
+    this.apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['dynamodb:Query'],
+        resources: [tables.currentLocations.tableArn, tables.locationHistory.tableArn],
+        conditions: { StringEquals: { 'dynamodb:Select': 'COUNT' } },
+      }),
+    );
     tables.idempotency.grantReadWriteData(this.apiFunction);
     // Erasure is asynchronous: the API records the request and a worker
     // performs the deletion, so the API needs the job table but not the data.

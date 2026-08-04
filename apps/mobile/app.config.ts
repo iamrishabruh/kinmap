@@ -73,7 +73,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: variant.scheme,
+  // Two schemes. The variant's own is what deep links use; `kinmap` is what the
+  // Cognito app client's CallbackURLs are built from in identity-stack.ts, and
+  // the binary has to register it or the hosted UI's redirect is delivered to
+  // nothing and Sign in with Apple hangs on a browser that never closes.
+  scheme: [variant.scheme, 'kinmap'],
   userInterfaceStyle: 'automatic',
   // The New Architecture is the default and no longer a config flag in SDK 57.
   assetBundlePatterns: ['**/*'],

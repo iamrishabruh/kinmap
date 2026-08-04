@@ -99,15 +99,16 @@ function screenSegmentOf(segments: readonly string[]): string | null {
   return segments.length > 0 ? (segments[segments.length - 1] ?? null) : null;
 }
 
+/**
+ * Cognito's only interactive second step is a TOTP code, so `ChallengeKind` has
+ * one member and this maps to one screen. The switch is kept rather than
+ * collapsed to a ternary because adding a challenge kind must fail here, at the
+ * routing decision, rather than silently fall through to sign-in.
+ */
 export function challengeRoute(challenge: PendingChallenge | null): AppRoute {
   switch (challenge?.kind) {
     case 'MFA':
       return ROUTES.mfaChallenge;
-    case 'ACCOUNT_RECOVERY':
-      return ROUTES.resetPassword;
-    case 'OTP':
-    case 'EMAIL_VERIFICATION':
-      return ROUTES.verifyEmail;
     default:
       // A 'challenge' status with no challenge is unrecoverable state; send the
       // user back to the start rather than stranding them on a blank screen.

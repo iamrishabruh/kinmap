@@ -62,5 +62,6 @@ export function toProfilePatch(request: UpdateAccountRequest): ProfilePatch {
     avatarUrl: request.avatarUrl,
     locale: request.locale,
     timeZone: request.timeZone,
+    acceptedTermsVersion: request.acceptedTermsVersion,
   };
 }

@@ -63,6 +63,7 @@ export type ProfilePatch = {
   readonly avatarUrl?: string | null;
   readonly locale?: string;
   readonly timeZone?: string;
+  readonly acceptedTermsVersion?: string;
 };
 
 export interface AccountsRepository extends UserAccountRepository {

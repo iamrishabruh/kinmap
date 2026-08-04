@@ -520,6 +520,87 @@ describe('API routes have handlers', () => {
   });
 });
 
+describe('the mobile client and the API agree', () => {
+  /**
+   * Every (method, path) the app asks for, read from its source.
+   *
+   * The two sides talk over HTTP and nothing type-checks between them. They had
+   * drifted until fourteen of the twenty-one paths the app called did not exist
+   * on the deployed API — including every authentication endpoint, so the app
+   * could not sign in at all. Nothing failed at build time on either side.
+   */
+  function clientCalls(): Array<{ method: string; path: string; file: string }> {
+    const calls: Array<{ method: string; path: string; file: string }> = [];
+    const root = path.join(REPO_ROOT, 'apps', 'mobile', 'src');
+
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith('.ts') || entry.name.endsWith('.test.ts')) continue;
+        const source = readFileSync(full, 'utf8');
+        // Both orderings appear in the client, both span lines, and a
+        // parameterised path is a template literal — `/v1/devices/${id}`.
+        // Matching only quoted strings would silently skip every route with a
+        // parameter in it, which is most of the interesting ones.
+        for (const match of source.matchAll(
+          /method:\s*'([A-Z]+)',\s*path:\s*['`](\/v1\/[^'`]*)['`]|path:\s*['`](\/v1\/[^'`]*)['`],\s*method:\s*'([A-Z]+)'/g,
+        )) {
+          const method = match[1] ?? match[4];
+          const raw = match[2] ?? match[3];
+          if (method === undefined || raw === undefined) continue;
+          // `${anything}` is a path parameter by construction.
+          const routePath = raw.replace(/\$\{[^}]*\}/g, '{}');
+          calls.push({ method, path: routePath, file: path.relative(REPO_ROOT, full) });
+        }
+      }
+    };
+
+    walk(root);
+    return calls;
+  }
+
+  it('never calls an endpoint the API does not declare', () => {
+    const stack = allStacks.find(
+      (candidate) =>
+        candidate.environment === 'development' && candidate.stackName.endsWith('-api'),
+    );
+    expect(stack, 'the development API stack must synthesise').toBeDefined();
+    if (stack === undefined) return;
+
+    // Path parameters are named differently on each side ({userId} vs {id}), and
+    // the names are not part of the contract — the shape is.
+    const shapeOf = (value: string): string => value.replace(/\{[^}]+\}/g, '{}');
+
+    const declared = new Set<string>();
+    for (const [, route] of resourcesOf(stack, 'AWS::ApiGatewayV2::Route')) {
+      const routeKey = prop(route, 'RouteKey');
+      if (typeof routeKey !== 'string') continue;
+      const [method, routePath] = routeKey.split(' ');
+      if (method === undefined || routePath === undefined) continue;
+      declared.add(`${method} ${shapeOf(routePath)}`);
+    }
+    expect(declared.size, 'the API must declare routes').toBeGreaterThan(0);
+
+    const calls = clientCalls();
+    expect(calls.length, 'the client must call the API').toBeGreaterThan(0);
+
+    const missing = calls
+      .filter((call) => !declared.has(`${call.method} ${shapeOf(call.path)}`))
+      .map((call) => `${call.method} ${call.path}  (${call.file})`)
+      .sort();
+
+    expect(
+      [...new Set(missing)],
+      'the app calls these, and the API does not declare them, so they 404 on a device:\n' +
+        [...new Set(missing)].join('\n'),
+    ).toEqual([]);
+  });
+});
+
 describe('Lambda configuration', () => {
   /**
    * Every variable a service's config loader demands, read from its source.

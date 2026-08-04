@@ -29,6 +29,17 @@ set -euo pipefail
 profile="${1:-development}"
 shift || true
 
+# The profile is this script's first argument. Passing --profile as well makes
+# the EAS CLI fail with "Flag --profile can only be specified once", which reads
+# like a bug in the wrapper rather than a duplicated argument.
+for arg in "$@"; do
+  if [[ "$arg" == "--profile" || "$arg" == --profile=* ]]; then
+    echo "The profile is the first argument to this script — do not pass --profile too." >&2
+    echo "  pnpm build:ios ${profile}" >&2
+    exit 2
+  fi
+done
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root/apps/mobile"
 

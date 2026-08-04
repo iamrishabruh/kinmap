@@ -43,15 +43,15 @@ export type SessionStatus =
 // Challenges
 // ---------------------------------------------------------------------------
 
-export type ChallengeKind =
-  /** Passwordless sign-in: a one-time code was sent to the identifier. */
-  | 'OTP'
-  /** Password sign-in succeeded; a second factor is outstanding. */
-  | 'MFA'
-  /** Account exists but the address has not been confirmed yet. */
-  | 'EMAIL_VERIFICATION'
-  /** Recovery flow: prove ownership of the address, then revoke other devices. */
-  | 'ACCOUNT_RECOVERY';
+/**
+ * The pool's only interactive second step is a TOTP code: MFA is optional and
+ * TOTP-only, because SMS recovery is a SIM-swap route into somebody's location
+ * history. The passwordless-OTP, email-verification and account-recovery
+ * challenges this union used to carry belonged to the retired `/v1/auth/*`
+ * surface; Cognito services the equivalents itself, without an in-app
+ * challenge screen.
+ */
+export type ChallengeKind = 'MFA';
 
 /**
  * An in-flight challenge.
@@ -59,10 +59,20 @@ export type ChallengeKind =
  * `maskedIdentifier` is the only form of the address held here. The full
  * address is never persisted alongside a challenge, never put in a route param,
  * and never sent to telemetry.
+ *
+ * `challengeId` is Cognito's opaque challenge session. It is not a token and
+ * grants nothing on its own, but it is credential-adjacent and short-lived: it
+ * lives in the in-memory session store for the length of the challenge, is
+ * never written to the keychain, and is never logged.
  */
 export type PendingChallenge = {
   kind: ChallengeKind;
   challengeId: string;
+  /**
+   * The pool's own identifier for the account, echoed back when the challenge
+   * is answered. Deliberately not the address the user typed.
+   */
+  subjectId: string;
   maskedIdentifier: string;
   expiresAt: string;
   resendAvailableAt: string;

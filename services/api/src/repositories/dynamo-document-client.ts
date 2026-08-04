@@ -20,6 +20,7 @@ import type {
   TransactWriteInput,
   UpdateInput,
 } from './document-client.js';
+import type { CountQuery, CountResult, CountingClient } from './location-counts.js';
 
 /**
  * The only module in this service that imports the AWS SDK.
@@ -182,6 +183,38 @@ export function createDynamoDocumentClient(): DocumentClient {
           })),
         }),
       );
+    },
+  };
+}
+
+/**
+ * The count-only seam onto the two location tables.
+ *
+ * A separate client rather than an option on the document client, because
+ * `Select` there would be one forgotten field away from returning rows. This one
+ * always sets `COUNT`, reads only the count and the paging key, and has no shape
+ * in which an attribute could reach a caller. The function's IAM policy enforces
+ * the same rule from the other side, and it holds no coordinate key either way.
+ * It reuses the module-scope document client, so a count costs no extra
+ * connection.
+ */
+export function createCountingQueryClient(): CountingClient {
+  return {
+    async count(input: CountQuery): Promise<CountResult> {
+      const result = await documentClient.send(
+        new QueryCommand({
+          TableName: input.TableName,
+          KeyConditionExpression: input.KeyConditionExpression,
+          ExpressionAttributeNames: input.ExpressionAttributeNames,
+          ExpressionAttributeValues: toDocumentOrUndefined(input.ExpressionAttributeValues),
+          ExclusiveStartKey: toDocumentOrUndefined(input.ExclusiveStartKey),
+          Select: 'COUNT',
+        }),
+      );
+      return {
+        Count: result.Count ?? 0,
+        LastEvaluatedKey: fromDocument(result.LastEvaluatedKey),
+      };
     },
   };
 }

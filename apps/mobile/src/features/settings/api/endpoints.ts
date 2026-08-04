@@ -37,6 +37,9 @@ import {
   type UpdateSharingRequest,
 } from './contracts';
 
+/** Only used to turn a pause duration into the instant the server validates. */
+const MILLISECONDS_PER_MINUTE = 60_000;
+
 /**
  * Typed calls for every endpoint the settings surface touches. One function per
  * endpoint, each validating its own response, so a screen never sees an
@@ -74,27 +77,40 @@ export async function fetchPrivacyAudit(params: {
 // ---------------------------------------------------------------------------
 
 export async function fetchSharingSettings(signal?: AbortSignal): Promise<SharingSettings> {
-  return apiRequest({ method: 'GET', path: '/v1/sharing', signal }, SharingSettingsSchema);
+  return apiRequest({ method: 'GET', path: '/v1/privacy/sharing', signal }, SharingSettingsSchema);
 }
 
 export async function updateSharingSettings(body: UpdateSharingRequest): Promise<SharingSettings> {
   return apiRequest(
-    { method: 'PATCH', path: '/v1/sharing', body, idempotencyKey: newIdempotencyKey() },
+    { method: 'PATCH', path: '/v1/privacy/sharing', body, idempotencyKey: newIdempotencyKey() },
     SharingSettingsSchema,
   );
 }
 
 /**
- * `durationMinutes: null` pauses until the user explicitly resumes. The server
- * is the authority on `pausedUntil` — the client never computes it, because a
- * device with a wrong clock must not be able to un-pause itself.
+ * Pausing and resuming are the same endpoint as any other sharing change.
+ *
+ * There is no /pause or /resume: the server models consent as one PATCH whose
+ * body says what the state should become. That is deliberate — a single write
+ * cannot leave sharing half-changed, and there is exactly one place that
+ * decides who loses sight of somebody.
+ *
+ * `durationMinutes: null` pauses until the user explicitly resumes. The auto-
+ * resume instant is computed HERE only as an offset the server then validates;
+ * the server remains the authority on `pausedUntil`, because a device with a
+ * wrong clock must not be able to un-pause itself.
  */
 export async function pauseSharing(durationMinutes: number | null): Promise<SharingSettings> {
+  const pauseUntil =
+    durationMinutes === null
+      ? null
+      : new Date(Date.now() + durationMinutes * MILLISECONDS_PER_MINUTE).toISOString();
+
   return apiRequest(
     {
-      method: 'POST',
-      path: '/v1/sharing/pause',
-      body: { durationMinutes },
+      method: 'PATCH',
+      path: '/v1/privacy/sharing',
+      body: { scope: 'GLOBAL', familyId: null, sharing: false, pauseUntil },
       idempotencyKey: newIdempotencyKey(),
     },
     SharingSettingsSchema,
@@ -103,7 +119,13 @@ export async function pauseSharing(durationMinutes: number | null): Promise<Shar
 
 export async function resumeSharing(): Promise<SharingSettings> {
   return apiRequest(
-    { method: 'POST', path: '/v1/sharing/resume', idempotencyKey: newIdempotencyKey() },
+    {
+      method: 'PATCH',
+      path: '/v1/privacy/sharing',
+      // An auto-resume time cannot be set while resuming; the server rejects it.
+      body: { scope: 'GLOBAL', familyId: null, sharing: true, pauseUntil: null },
+      idempotencyKey: newIdempotencyKey(),
+    },
     SharingSettingsSchema,
   );
 }
@@ -174,8 +196,11 @@ export async function deleteLocationHistory(params: {
 }): Promise<DeleteHistoryResponse> {
   return apiRequest(
     {
-      method: 'POST',
-      path: '/v1/privacy/history/delete',
+      // DELETE on the collection, not POST to a /delete sub-path. The
+      // confirmation still travels in the body: erasing history is irreversible
+      // and the server refuses it without an explicit acknowledgement.
+      method: 'DELETE',
+      path: '/v1/privacy/history',
       body: { confirmation: 'DELETE', familyId: params.familyId },
       idempotencyKey: newIdempotencyKey(),
     },
@@ -187,7 +212,7 @@ export async function requestDataExport(): Promise<DataExport> {
   return apiRequest(
     {
       method: 'POST',
-      path: '/v1/privacy/exports',
+      path: '/v1/privacy/export',
       idempotencyKey: newIdempotencyKey(),
     },
     DataExportSchema,
@@ -252,13 +277,16 @@ export async function fetchServerEntitlements(signal?: AbortSignal): Promise<Ser
  * did, instead of leaving them staring at a stale tier.
  */
 export async function syncSubscription(revenueCatAppUserId: string): Promise<ServerEntitlements> {
+  // The identifier is deliberately unused: it was being sent to a /sync endpoint
+  // that never existed. Entitlements are derived server-side from the stored
+  // subscription row, which the provider webhook and the receipt handler own, so
+  // "sync" is a re-read rather than something the client can assert. Sending an
+  // app user id would invite the server to trust a client-supplied identity for
+  // a billing decision, which is precisely what the spec forbids.
+  void revenueCatAppUserId;
+
   return apiRequest(
-    {
-      method: 'POST',
-      path: '/v1/subscriptions/sync',
-      body: { revenueCatAppUserId },
-      idempotencyKey: newIdempotencyKey(),
-    },
+    { method: 'GET', path: '/v1/subscriptions/entitlements' },
     ServerEntitlementsSchema,
   );
 }
@@ -287,7 +315,7 @@ export async function createAbuseReport(
   return apiRequest(
     {
       method: 'POST',
-      path: '/v1/safety/reports',
+      path: '/v1/support/reports',
       body,
       idempotencyKey: newIdempotencyKey(),
     },

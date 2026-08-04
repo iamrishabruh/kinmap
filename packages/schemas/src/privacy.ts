@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   AuditActionSchema,
   FamilyIdSchema,
+  PlanTierSchema,
   SharingStatusSchema,
   UserIdSchema,
 } from '@family/contracts';
@@ -198,3 +199,96 @@ export const RequestDataExportResponseSchema = z.strictObject({
   completesBy: IsoDateTimeSchema,
 });
 export type RequestDataExportResponse = z.infer<typeof RequestDataExportResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// GET  /v1/privacy/exports
+// POST /v1/privacy/exports
+// GET  /v1/privacy/exports/{exportId}
+//
+// The right to a copy of one's own data, expressed as a request that is tracked
+// rather than a download that is served.
+//
+// This API function is granted no access to any location table and none to the
+// coordinate key, so it cannot assemble an archive and deliberately does not
+// pretend to. Asking for an export records the request; a worker that does hold
+// those grants builds the archive and mails a short-lived signed link. So these
+// shapes carry the STATE of a request and never its contents: there is no field
+// below an archive, a download URL, an address or a coordinate could travel in,
+// and that is the point rather than an omission.
+// ---------------------------------------------------------------------------
+
+export const DataExportStatusSchema = z.enum([
+  /** Recorded and durable, waiting for the worker. */
+  'QUEUED',
+  'IN_PROGRESS',
+  /** The signed link has been mailed. The archive never returns through this API. */
+  'DELIVERED',
+  'FAILED',
+  'CANCELLED',
+]);
+export type DataExportStatus = z.infer<typeof DataExportStatusSchema>;
+
+export const DataExportSchema = z.strictObject({
+  exportId: z.string().uuid(),
+  status: DataExportStatusSchema,
+  requestedAt: IsoDateTimeSchema,
+  /** The deadline the worker is held to, not a promise that it is ready yet. */
+  completesBy: IsoDateTimeSchema,
+  /** Mailed as a short-lived signed link; never returned inline. */
+  deliveryMethod: z.literal('EMAIL_LINK'),
+});
+export type DataExport = z.infer<typeof DataExportSchema>;
+
+export const DataExportPathSchema = z.strictObject({
+  exportId: z.string().uuid(),
+});
+export type DataExportPath = z.infer<typeof DataExportPathSchema>;
+
+export const ListDataExportsResponseSchema = z.strictObject({
+  /** Newest first. Only the caller's own requests are ever addressable. */
+  exports: z.array(DataExportSchema),
+});
+export type ListDataExportsResponse = z.infer<typeof ListDataExportsResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// GET /v1/privacy/retention
+//
+// How long this user's location history is kept. READ ONLY, deliberately.
+//
+// There is no per-user retention preference and no endpoint to set one, because
+// nothing in the platform would honour it. The TTL is stamped at ingestion from
+// a single per-deployment value, the read path applies the plan's retention, and
+// the nightly sweep uses the same global. An endpoint that accepted a choice
+// would return 200, the settings screen would show it, and the history would be
+// kept exactly as long as before.
+//
+// A privacy control that reports something other than what is enforced is worse
+// than no control at all, so this reports only what is enforced. Making it
+// settable is a change to ingestion, the read path and the sweep — not to this
+// schema.
+//
+// Also deliberately absent: a count of stored points or the age of the oldest.
+// This service has no access to any location table, so it could only guess, and
+// a privacy screen that guesses is worse than one that says nothing.
+// ---------------------------------------------------------------------------
+
+export const RetentionSettingsSchema = z.strictObject({
+  userId: UserIdSchema,
+  /** Re-derived from the stored subscription row on every read. */
+  planTier: PlanTierSchema,
+  /** What is actually applied, which today is exactly the plan's ceiling. */
+  historyRetentionDays: z.number().int().nonnegative(),
+  maxHistoryRetentionDays: z.number().int().nonnegative(),
+  /**
+   * Fixed by the platform and not user-tunable: the audit trail is the record of
+   * who looked at this user, and someone with access to the account must not be
+   * able to shorten the evidence.
+   */
+  auditRetentionDays: z.number().int().nonnegative(),
+});
+export type RetentionSettings = z.infer<typeof RetentionSettingsSchema>;
+
+export const GetRetentionResponseSchema = z.strictObject({
+  retention: RetentionSettingsSchema,
+});
+export type GetRetentionResponse = z.infer<typeof GetRetentionResponseSchema>;

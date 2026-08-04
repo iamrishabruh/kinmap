@@ -20,16 +20,21 @@ import { createAccountsRepository } from './repositories/accounts.js';
 import { createAuditRepository } from './repositories/audit.js';
 import { createRemoteConfigurationRepository } from './repositories/configuration.js';
 import { createDevicesRepository } from './repositories/devices.js';
-import { createDynamoDocumentClient } from './repositories/dynamo-document-client.js';
+import {
+  createCountingQueryClient,
+  createDynamoDocumentClient,
+} from './repositories/dynamo-document-client.js';
 import { createFamiliesRepository, createMembershipsRepository } from './repositories/families.js';
 import { createIdempotencyStore, createTokenBucketStore } from './repositories/idempotency.js';
 import { createJobsRepository } from './repositories/jobs.js';
 import { createLiveSessionsRepository } from './repositories/live-sessions.js';
+import { createLocationCountsRepository } from './repositories/location-counts.js';
 import {
   createNotificationPreferencesRepository,
   createNotificationsRepository,
 } from './repositories/notifications.js';
 import { createPlacesRepository } from './repositories/places.js';
+import { createPrivacyExportsRepository } from './repositories/privacy-exports.js';
 import { createSubscriptionsRepository } from './repositories/subscriptions.js';
 import { createSupportRepository } from './repositories/support.js';
 import { createRouter } from './router.js';
@@ -80,6 +85,15 @@ const services: ApiServices = {
   support: createSupportRepository(documentClient, config.tables.auditEvents),
   jobs: createJobsRepository(documentClient, config.tables.deletionJobs),
   places: createPlacesRepository(documentClient, config.tables.savedPlaces),
+  privacyExports: createPrivacyExportsRepository(
+    documentClient,
+    config.tables.deletionJobs,
+    config.tables.users,
+  ),
+  locationCounts: createLocationCountsRepository(createCountingQueryClient(), {
+    currentLocations: config.tables.currentLocations,
+    locationHistory: config.tables.locationHistory,
+  }),
   liveSessions: createLiveSessionsRepository(documentClient, config.tables.liveSessions),
   notifications: createNotificationsRepository(documentClient, config.tables.notifications),
   notificationPreferences: createNotificationPreferencesRepository(

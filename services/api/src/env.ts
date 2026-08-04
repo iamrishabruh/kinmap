@@ -58,6 +58,16 @@ const ApiEnvironmentSchema = z.object({
   DELETION_JOBS_TABLE: NonEmpty,
 
   /**
+   * The two location tables, and the only thing this function does with them:
+   * `GET /v1/account/deletion/preview` counts the rows an account would lose.
+   * The grant that comes with these names is `dynamodb:Query` conditioned on
+   * `dynamodb:Select` being `COUNT`, and this function still holds no coordinate
+   * key, so neither a row nor a position can be read through them.
+   */
+  CURRENT_LOCATIONS_TABLE: NonEmpty,
+  LOCATION_HISTORY_TABLE: NonEmpty,
+
+  /**
    * HMAC key for the audit trail's source-IP hash. Optional on purpose: with no
    * key we store `null` rather than an unsalted digest, because a bare SHA-256
    * of an IPv4 address is reversible by exhaustive search.
@@ -87,6 +97,9 @@ export type ApiTables = {
   readonly idempotency: string;
   readonly remoteConfiguration: string;
   readonly deletionJobs: string;
+  /** Counted, never read: see `CURRENT_LOCATIONS_TABLE` above. */
+  readonly currentLocations: string;
+  readonly locationHistory: string;
 };
 
 export type ApiConfig = {
@@ -146,6 +159,8 @@ export function loadApiConfig(source: EnvironmentSource): ApiConfig {
       idempotency: value.IDEMPOTENCY_TABLE,
       remoteConfiguration: value.REMOTE_CONFIGURATION_TABLE,
       deletionJobs: value.DELETION_JOBS_TABLE,
+      currentLocations: value.CURRENT_LOCATIONS_TABLE,
+      locationHistory: value.LOCATION_HISTORY_TABLE,
     },
     auditIpHashSecret: value.AUDIT_IP_HASH_SECRET ?? null,
     accountDeletionGraceDays: value.ACCOUNT_DELETION_GRACE_DAYS,

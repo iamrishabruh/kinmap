@@ -12,8 +12,8 @@
     "prebuild:clean": "expo prebuild --clean",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
-    "test:unit": "jest --passWithNoTests",
+    "test": "vitest run --config src/features/auth/vitest.config.mts",
+    "test:unit": "vitest run --config src/features/auth/vitest.config.mts",
     "build": "echo \"mobile binaries are produced by EAS Build\""
   },
   "dependencies": {
@@ -74,6 +74,7 @@
     "expo-build-properties": "~57.0.8",
     "jest": "30.4.2",
     "jest-expo": "~57.0.1",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "4.1.10"
   }
 }

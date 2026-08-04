@@ -106,13 +106,11 @@ export async function signOut(reason: SignOutReason, options: SignOutOptions = {
   await signOutFromGoogle();
   setObservabilityUser(null);
 
-  // 4. Tell the server, but never wait on it. If the device is offline the
+  // 4. Tell Cognito, but never wait on it. If the device is offline the
   //    refresh token stays valid until it expires; the local credential is
-  //    already gone either way.
+  //    already gone either way. The whole session goes in because revoking
+  //    every device is authorised by the access token, not the refresh token.
   if (session !== null) {
-    await withTimeout(
-      revokeSession(session.refreshToken, options.allDevices ?? false),
-      REVOKE_TIMEOUT_MS,
-    );
+    await withTimeout(revokeSession(session, options.allDevices ?? false), REVOKE_TIMEOUT_MS);
   }
 }
