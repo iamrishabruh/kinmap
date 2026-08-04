@@ -20,11 +20,19 @@ import { z } from 'zod';
  *
  * THREE DELIBERATE CHOICES.
  *
- *  1. **Bands are stored; birth dates are not.** A date of birth is a strong
- *     identifier and, combined with location history, a much stronger one. The
- *     platform needs to know which rules apply to somebody, which is a band, so
- *     the band is what is persisted and the date is discarded after the
- *     comparison. See {@link ageBandFor}.
+ *  1. **The birth date is compared and discarded.** Nothing persists it. A date
+ *     of birth is a strong identifier and, combined with location history, a
+ *     much stronger one, so the trigger checks it against the minimum and keeps
+ *     nothing.
+ *
+ *     {@link AgeBand} exists because the moment a rule turns on age — a
+ *     child-facing notice, a different retention period, a restriction that
+ *     lifts at majority — a band is the least the platform can store to apply
+ *     it, and storing a band is what it should store rather than a date. No
+ *     such rule exists yet, so **no band is persisted anywhere today**. Adding
+ *     one is tracked in `docs/operations/api-gaps.md`; it needs the band to
+ *     survive to PostConfirmation, which is a separate Cognito trigger that
+ *     does not receive sign-up validation data.
  *  2. **The threshold is never shown before the answer.** A form that says
  *     "you must be 13" collects the number 13, not an age. The screen asks for
  *     a date with no hint of the cutoff — the "neutral age screen" that COPPA

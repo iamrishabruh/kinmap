@@ -330,7 +330,7 @@ export default function SignUpScreen() {
           <Field
             autoComplete="birthdate-year"
             editable={!refused}
-            helper="We ask so we know which rules apply to your account. We keep your age range, not your date of birth."
+            helper="We ask so we know which rules apply to your account. We check it and do not store it."
             inputMode="numeric"
             keyboardType="number-pad"
             label="Year of birth"

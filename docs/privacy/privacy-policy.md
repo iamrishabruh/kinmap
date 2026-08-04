@@ -96,6 +96,17 @@ one-time code, Sign in with Apple (`APPLE`), and Google Sign-In (`GOOGLE`). One-
 codes and provider identity tokens are treated as credentials: they are verified
 server-side, never logged, and never included in an error message.
 
+**Date of birth is asked for and is not kept.** Creating an account requires entering a
+date of birth. It is sent to the sign-up trigger, compared against the minimum age, and
+discarded — it is not written to the account, not stored in the user pool, not logged, and
+not returned by any endpoint. It does not appear in the table above because nothing
+persists it.
+
+This is **self-attestation**. Nobody verifies it, and this document does not claim
+otherwise. What it establishes is that the product asks and refuses the answers it cannot
+serve, rather than — as was previously the case — having no age signal at all. See §12 for
+what remains unresolved.
+
 ### 3.2 Location data
 
 Collected only under the six conditions in §1.
@@ -301,13 +312,31 @@ These are unresolved. They are listed here rather than papered over.
 
 ### Minors — the highest-risk area
 
-This product locates family members, some of whom will be children. Counsel must answer:
+This product locates family members, some of whom will be children.
 
-1. Is there a minimum age to hold an account, and how is it verified beyond self-attestation?
-2. Does COPPA apply? If a child under 13 can be located, what constitutes verifiable
-   parental consent, and does the current invitation flow satisfy it?
+**What the product now does.** Account creation requires an attested date of birth, and an
+attested age below 13 is refused. The refusal is enforced in the Cognito PreSignUp trigger,
+not in the app, because `SignUp` is a public API and a client-side check is a suggestion.
+The screen asks for a date and does not state the threshold — a form that publishes the
+cutoff collects the cutoff — and a refusal ends the sign-up rather than inviting a second
+attempt with a different year. The date is compared and discarded.
+
+**What that is not.** It is not verification, not verifiable parental consent, and not a
+claim of COPPA compliance. It is the floor beneath which the product will not operate at
+all. Counsel must still answer:
+
+1. Is 13 the right floor for every market this ships in, and is self-attestation an
+   acceptable method — for the App Store age rating as well as in law?
+2. Should under-13 accounts exist at all? Today they cannot be created. Serving them
+   lawfully requires verifiable parental consent under 16 CFR §312.5, which is a specified
+   process that an invitation link does not satisfy and which this product has **not**
+   built. If the answer is that children under 13 must be able to use it — which for a
+   family location product is a real possibility — that mechanism is a project in its own
+   right and blocks launch in the US.
 3. GDPR Art. 8: what is the digital-consent age in each target market (13–16 varies), and
-   who provides consent?
+   who provides consent? The platform can distinguish 13–15 from 16–17 (`AgeBand` in
+   `packages/contracts/src/age.ts`) but **persists no band today**, because no rule
+   currently turns on one. A rule that does will need the band stored.
 4. The domain model deliberately **refuses** to encode guardianship. Is a
    "guardian" concept legally required — and if so, how is it verified without creating a
    new abuse vector where an adult falsely claims guardianship over another adult?
