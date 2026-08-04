@@ -61,13 +61,37 @@ const TARGETS: readonly TargetBundleId[] = [
  * Background Modes are declared in the Info.plist (see apps/mobile/app.config.ts)
  * rather than through bundleIdCapabilities, so they are not listed here.
  */
-const REQUIRED_CAPABILITIES = [
-  'SIGN_IN_WITH_APPLE',
-  'PUSH_NOTIFICATIONS',
-  'ASSOCIATED_DOMAINS',
-] as const;
+const REQUIRED_CAPABILITIES: readonly CapabilityRequest[] = [
+  {
+    // Apple's identifier for Sign in with Apple is APPLE_ID_AUTH. This said
+    // SIGN_IN_WITH_APPLE, which Apple rejects outright:
+    //
+    //   'SIGN_IN_WITH_APPLE' is not a valid value for the attribute
+    //   'capabilityType'. Expected one of: ... 'APPLE_ID_AUTH'
+    //
+    // The rejection was a 409, and this script treated every 409 as
+    // "already enabled", so it reported success on all three bundle ids while
+    // enabling nothing — for months, and the setup docs repeated the claim.
+    //
+    // It also needs a configuration or Apple refuses it a second way:
+    // "Please select at least one configuration for Sign In with Apple."
+    type: 'APPLE_ID_AUTH',
+    settings: [{ key: 'APPLE_ID_AUTH_APP_CONSENT', options: [{ key: 'PRIMARY_APP_CONSENT' }] }],
+  },
+  { type: 'PUSH_NOTIFICATIONS' },
+  { type: 'ASSOCIATED_DOMAINS' },
+];
 
 const BUNDLE_ID_PLATFORM = 'IOS';
+
+/** A capability, plus the configuration Apple demands for the ones that need one. */
+interface CapabilityRequest {
+  readonly type: string;
+  readonly settings?: ReadonlyArray<{
+    readonly key: string;
+    readonly options: ReadonlyArray<{ readonly key: string }>;
+  }>;
+}
 
 // --- Apple resource shapes we consume ---------------------------------------
 
@@ -185,10 +209,17 @@ async function listEnabledCapabilities(
  * from an under-privileged key, a 422 from an unsupported capability — must
  * still fail the run.
  */
+/**
+ * Whether a 409 means "this is already how you want it" rather than "your
+ * request is wrong".
+ *
+ * Apple answers both with 409, and this used to return true for any of them.
+ * That turned every malformed request into a silent success: an invalid
+ * capability type and a missing required configuration were both reported as
+ * enabled. A conflict is only benign when Apple says the entity already exists
+ * or is already in that state.
+ */
 function isAlreadyConfigured(error: AscApiError): boolean {
-  if (error.status === 409) {
-    return true;
-  }
   return error.errors.some(
     (entry) =>
       entry.code === 'STATE_ERROR.ENTITY_STATE_INVALID' ||
@@ -199,13 +230,16 @@ function isAlreadyConfigured(error: AscApiError): boolean {
 async function enableCapability(
   client: AppStoreConnectClient,
   bundleIdResourceId: string,
-  capabilityType: string,
+  capability: CapabilityRequest,
 ): Promise<'enabled' | 'already-enabled'> {
   try {
     await client.post<AscSingle<BundleIdCapabilityResource>>('/v1/bundleIdCapabilities', {
       data: {
         type: 'bundleIdCapabilities',
-        attributes: { capabilityType },
+        attributes: {
+          capabilityType: capability.type,
+          ...(capability.settings === undefined ? {} : { settings: capability.settings }),
+        },
         relationships: {
           bundleId: { data: { type: 'bundleIds', id: bundleIdResourceId } },
         },
@@ -261,7 +295,7 @@ async function reconcile(
 
     if (existing === undefined && dryRun) {
       result.action = 'would-create';
-      result.wouldEnable = [...REQUIRED_CAPABILITIES];
+      result.wouldEnable = REQUIRED_CAPABILITIES.map((capability) => capability.type);
       return result;
     }
 
@@ -277,12 +311,12 @@ async function reconcile(
 
     const enabled = await listEnabledCapabilities(client, bundleId.id);
     for (const capability of REQUIRED_CAPABILITIES) {
-      if (enabled.has(capability)) {
-        result.alreadyEnabled.push(capability);
+      if (enabled.has(capability.type)) {
+        result.alreadyEnabled.push(capability.type);
         continue;
       }
       if (dryRun) {
-        result.wouldEnable.push(capability);
+        result.wouldEnable.push(capability.type);
         continue;
       }
       const outcome = await enableCapability(client, bundleId.id, capability);
@@ -450,7 +484,9 @@ async function main(): Promise<number> {
       ? 'Reconciling Apple bundle identifiers (dry run — nothing will be changed).'
       : 'Reconciling Apple bundle identifiers.',
   );
-  console.log(`Team ${client.teamId}; capabilities: ${REQUIRED_CAPABILITIES.join(', ')}.`);
+  console.log(
+    `Team ${client.teamId}; capabilities: ${REQUIRED_CAPABILITIES.map((c) => c.type).join(', ')}.`,
+  );
 
   const results: ReconcileResult[] = [];
   for (const target of TARGETS) {

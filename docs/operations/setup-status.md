@@ -183,11 +183,20 @@ bundle identifier `app.kinmap.dev`, matching the Apple portal.
 
 Provisioned through the App Store Connect API, verified idempotent.
 
-| Bundle ID            | Resource     | Capabilities                                               |
-| -------------------- | ------------ | ---------------------------------------------------------- |
-| `app.kinmap`         | `AXDG4JXHJW` | Sign in with Apple, Push Notifications, Associated Domains |
-| `app.kinmap.dev`     | `F97PVDB3KH` | same                                                       |
-| `app.kinmap.staging` | `M6Z9F2YLW2` | same                                                       |
+| Bundle ID            | Resource     | Capabilities                                                |
+| -------------------- | ------------ | ----------------------------------------------------------- |
+| `app.kinmap`         | `AXDG4JXHJW` | `APPLE_ID_AUTH`, `PUSH_NOTIFICATIONS`, `ASSOCIATED_DOMAINS` |
+| `app.kinmap.dev`     | `F97PVDB3KH` | same                                                        |
+| `app.kinmap.staging` | `M6Z9F2YLW2` | same                                                        |
+
+> This table used to claim Sign in with Apple was enabled. It was not, on any of
+> the three, and had never been. The provisioning script asked for
+> `SIGN_IN_WITH_APPLE`, which is not a value Apple accepts — the real identifier
+> is `APPLE_ID_AUTH`, and it additionally requires a configuration. Apple
+> rejected both mistakes with HTTP 409, and the script treated _every_ 409 as
+> "already enabled", so it printed success and the docs copied it. Verified now
+> by reading the capabilities back from the API rather than from the script's
+> own report.
 
 ### Identifiers
 
