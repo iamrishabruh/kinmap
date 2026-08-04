@@ -39,7 +39,17 @@ jobs:
         run: |
           set -euo pipefail
           # Flags console/logger/Sentry calls that pass a latitude/longitude identifier.
+          #
+          # packages/eslint-config is excluded because it is the lint rule that
+          # enforces this, and its documentation quotes the pattern it forbids:
+          #
+          #   * Covers `logger.info({ latitude })`, `console.error(event.longitude)`,
+          #
+          # That comment was the only thing this check had ever matched. Excluding
+          # the rule definition costs no coverage — the package contains no runtime
+          # code and therefore logs nothing.
           if grep -rInE '(console\.(log|info|warn|error)|logger\.[a-z]+|captureMessage|captureException)\([^)]*\b(latitude|longitude|lat|lng|coords)\b' \
+               --exclude-dir=eslint-config \
                services packages apps/mobile/src 2>/dev/null; then
             echo "::error::A coordinate value is being passed to a logging or telemetry call."
             exit 1
