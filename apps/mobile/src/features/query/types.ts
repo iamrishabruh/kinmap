@@ -14,6 +14,7 @@ import type {
   TrackingState,
   UserId,
 } from '@family/contracts';
+import type { AbuseCategory as SchemaAbuseCategory } from '@family/schemas';
 
 /**
  * Client-side view models.
@@ -317,10 +318,35 @@ export type LiveSession = {
 // Safety
 // ---------------------------------------------------------------------------
 
-export type AbuseCategory =
-  'UNWANTED_TRACKING' | 'HARASSMENT' | 'IMPERSONATION' | 'UNDERAGE_MISUSE' | 'OTHER';
+/**
+ * The categories the API accepts, taken from the API's own schema.
+ *
+ * This was a hand-written union that had drifted: it omitted
+ * `COERCED_SHARING`, so the one abuse this product most needs a report path
+ * for could not be reported from the app at all. Re-stating a server enum in
+ * the client is what allowed that, so it is no longer re-stated — the type is
+ * the schema's, and a category added server-side appears here or the build
+ * fails.
+ */
+export type AbuseCategory = SchemaAbuseCategory;
 
-export type ReportAccountResult = { reportId: string; submittedAt: string };
+export type ReportAccountResult = {
+  reportId: string;
+  submittedAt: string;
+  /** Whether the report also stopped the reported user from seeing the reporter. */
+  blocked: boolean;
+  /** Whether the report ended a family membership. Always false from this client. */
+  leftFamily: boolean;
+  /**
+   * Locale-aware safety resources the server returns for the categories where
+   * somebody may be in danger — unwanted tracking and coerced sharing.
+   *
+   * Previously parsed and thrown away. Somebody reporting that they are being
+   * made to share their location is exactly the person this link is for, and
+   * the client was discarding it before anything could show it.
+   */
+  safetyResourcesUrl: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // Freshness re-export so map consumers need one import

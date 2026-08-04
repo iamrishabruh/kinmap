@@ -17,6 +17,18 @@ const EXPECTED = {
   slug: 'kinmap',
   owner: 'rishabruh',
   projectId: '7cfe193d-e29a-404d-a2f2-20f858aa9c32',
+  // Added after this check passed while the app was still resolving
+  // `com.example.familylocation.dev` without the environment.
+  //
+  // It checked the slug, the owner and the project id — the three things that
+  // had gone wrong before — and not the bundle identifier, which had the same
+  // `process.env.X ?? placeholder` shape and the same failure available to it.
+  // The committed native projects said `app.kinmap.dev` and a config evaluated
+  // in CI said otherwise, which is the drift the prebuild check then reported
+  // and this check should have caught first.
+  bundleIdentifier: 'app.kinmap.dev',
+  androidPackage: 'app.kinmap.dev',
+  name: 'Kinmap (Dev)',
 } as const;
 
 /** Everything app.config.ts reads that would mask a missing fallback. */
@@ -41,10 +53,16 @@ const module_ = (await import('../../apps/mobile/app.config.ts')) as {
 const config = module_.default({ config: {} });
 const extra = config['extra'] as { eas?: { projectId?: string } } | undefined;
 
+const ios = config['ios'] as { bundleIdentifier?: string } | undefined;
+const android = config['android'] as { package?: string } | undefined;
+
 const actual = {
   slug: config['slug'],
   owner: config['owner'],
   projectId: extra?.eas?.projectId,
+  bundleIdentifier: ios?.bundleIdentifier,
+  androidPackage: android?.package,
+  name: config['name'],
 };
 
 let failed = false;

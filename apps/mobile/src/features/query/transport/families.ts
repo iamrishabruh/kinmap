@@ -350,9 +350,10 @@ export function createFamiliesApi(options: FamiliesApiOptions = {}): FamiliesApi
      * `leaveFamily: false` is explicit: reporting must not silently end a
      * membership. `leaveFamily()` above is the deliberate way to do that.
      *
-     * The response's `blocked`, `leftFamily` and `safetyResourcesUrl` are
-     * dropped because `ReportAccountResult` has nowhere to put them; the
-     * safety-resources URL in particular is worth surfacing later.
+     * The whole response is returned. `safetyResourcesUrl` used to be parsed
+     * and discarded, which meant the server took the trouble to decide that
+     * somebody reporting unwanted tracking or coerced sharing should be shown
+     * where to get help, and the client threw the answer away.
      */
     async reportAccount(input: {
       familyId: FamilyId;
@@ -374,7 +375,13 @@ export function createFamiliesApi(options: FamiliesApiOptions = {}): FamiliesApi
         schema: ReportAbuseResponseSchema,
         idempotencyKey: newIdempotencyKey(),
       });
-      return { reportId: response.reportId, submittedAt: response.submittedAt };
+      return {
+        reportId: response.reportId,
+        submittedAt: response.submittedAt,
+        blocked: response.blocked,
+        leftFamily: response.leftFamily,
+        safetyResourcesUrl: response.safetyResourcesUrl,
+      };
     },
   };
 }

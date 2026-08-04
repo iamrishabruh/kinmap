@@ -445,36 +445,20 @@ export const SupportTicketSchema = z.object({
 });
 export type SupportTicket = z.infer<typeof SupportTicketSchema>;
 
-export const AbuseReportCategorySchema = z.enum([
-  'UNWANTED_TRACKING',
-  'HARASSMENT',
-  'IMPERSONATION',
-  'ADDED_WITHOUT_CONSENT',
-  'COERCED_TO_SHARE',
-  'CHILD_SAFETY',
-  'OTHER',
-]);
-export type AbuseReportCategory = z.infer<typeof AbuseReportCategorySchema>;
-
-export const CreateAbuseReportRequestSchema = z.object({
-  category: AbuseReportCategorySchema,
-  /** Null when reporting a family rather than one person. */
-  reportedUserId: UserIdSchema.nullable(),
-  familyId: FamilyIdSchema.nullable(),
-  description: z.string().min(10).max(4000),
-  /** Acting on the report immediately: stop sharing with the reported person. */
-  stopSharingWithReportedUser: z.boolean(),
-  /** And remove them from the user's view entirely. */
-  blockReportedUser: z.boolean(),
-});
-export type CreateAbuseReportRequest = z.infer<typeof CreateAbuseReportRequestSchema>;
-
-export const AbuseReportResponseSchema = z.object({
-  reportId: z.string().uuid(),
-  createdAt: IsoDateTime,
-  /** What we already did, so the user is not left wondering. */
-  sharingStopped: z.boolean(),
-  userBlocked: z.boolean(),
-  reviewTargetHours: z.number().int().positive(),
-});
-export type AbuseReportResponse = z.infer<typeof AbuseReportResponseSchema>;
+/*
+ * ABUSE REPORTING DOES NOT LIVE HERE.
+ *
+ * This module used to declare a second, incompatible abuse contract: the
+ * categories `ADDED_WITHOUT_CONSENT`, `COERCED_TO_SHARE` and `CHILD_SAFETY`,
+ * none of which `POST /v1/support/reports` accepts, and a response shape
+ * (`sharingStopped`, `userBlocked`, `reviewTargetHours`) the endpoint has never
+ * returned. Every report sent through it would have been rejected by the strict
+ * enum on the way in, and if one had somehow been accepted the response would
+ * have failed to parse on the way out.
+ *
+ * Nothing called it, so nothing broke — it was a working-looking path that had
+ * never run. Removed rather than corrected, because there should be one report
+ * path and there already is: `familyApi.reportAccount`, which uses
+ * `AbuseCategorySchema` from `@family/schemas` — the schema the deployed API
+ * validates against.
+ */

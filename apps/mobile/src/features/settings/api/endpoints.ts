@@ -4,7 +4,6 @@ import { LIMITS } from '@family/contracts';
 
 import { apiRequest, newIdempotencyKey } from './client';
 import {
-  AbuseReportResponseSchema,
   AccountDeletionPreviewSchema,
   DataExportSchema,
   DataRetentionSummarySchema,
@@ -17,9 +16,7 @@ import {
   ServerEntitlementsSchema,
   SharingSettingsSchema,
   SupportTicketSchema,
-  type AbuseReportResponse,
   type AccountDeletionPreview,
-  type CreateAbuseReportRequest,
   type CreateSupportTicketRequest,
   type DataExport,
   type DataRetentionSummary,
@@ -306,20 +303,6 @@ export async function createSupportTicket(
       idempotencyKey: newIdempotencyKey(),
     },
     SupportTicketSchema,
-  );
-}
-
-export async function createAbuseReport(
-  body: CreateAbuseReportRequest,
-): Promise<AbuseReportResponse> {
-  return apiRequest(
-    {
-      method: 'POST',
-      path: '/v1/support/reports',
-      body,
-      idempotencyKey: newIdempotencyKey(),
-    },
-    AbuseReportResponseSchema,
   );
 }
 

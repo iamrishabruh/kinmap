@@ -159,6 +159,30 @@ export const AbuseCategorySchema = z.enum([
 ]);
 export type AbuseCategory = z.infer<typeof AbuseCategorySchema>;
 
+/**
+ * The categories after which the reporter is shown safety resources.
+ *
+ * Both are reports where the person filing may be in danger from someone who
+ * can currently see them, so the response carries a link to help rather than
+ * only an acknowledgement.
+ *
+ * Declared here, once, and typed as `AbuseCategory` so a category that is
+ * renamed or removed fails to compile. It previously existed as two separate
+ * string literals — a `Set<string>` in `services/api` and a `readonly string[]`
+ * in `services/family-service` — neither of which was checked against this
+ * enum. A typo in either would have silently stopped the link appearing, and
+ * the only symptom would have been its absence.
+ */
+export const SAFETY_RESOURCE_CATEGORIES: readonly AbuseCategory[] = [
+  'UNWANTED_TRACKING',
+  'COERCED_SHARING',
+];
+
+/** Whether a report of this category should surface safety resources. */
+export function showsSafetyResources(category: AbuseCategory): boolean {
+  return SAFETY_RESOURCE_CATEGORIES.includes(category);
+}
+
 export const ReportAbuseRequestSchema = z.strictObject({
   reportedUserId: UserIdSchema,
   familyId: FamilyIdSchema.nullable().default(null),

@@ -27,6 +27,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@family/crypto": "workspace:*",
     "@family/eslint-config": "workspace:*",
     "@family/test-utils": "workspace:*",
     "@family/tsconfig": "workspace:*",

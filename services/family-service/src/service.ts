@@ -38,6 +38,7 @@ import type {
   UpdateFamilyRequest,
   UpdateFamilyResponse,
 } from '@family/schemas';
+import { showsSafetyResources } from '@family/schemas';
 
 import {
   assertCanChangeRole,
@@ -92,9 +93,6 @@ export type FamilyServiceDependencies = {
 };
 
 const FAMILY_SCHEMA_VERSION = 1;
-
-/** Categories that surface safety resources after a report. */
-const SAFETY_RESOURCE_CATEGORIES: readonly string[] = ['UNWANTED_TRACKING', 'COERCED_SHARING'];
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -798,8 +796,6 @@ export async function reportAbuse(
     submittedAt: now,
     blocked,
     leftFamily,
-    safetyResourcesUrl: SAFETY_RESOURCE_CATEGORIES.includes(input.body.category)
-      ? deps.safetyResourcesUrl
-      : null,
+    safetyResourcesUrl: showsSafetyResources(input.body.category) ? deps.safetyResourcesUrl : null,
   };
 }

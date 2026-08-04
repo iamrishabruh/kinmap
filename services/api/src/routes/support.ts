@@ -6,6 +6,7 @@ import {
   CreateSupportTicketRequestSchema,
   ReportAbuseRequestSchema,
   SupportAccessGrantPathSchema,
+  showsSafetyResources,
   type BlockUserResponse,
   type CreateSupportAccessGrantResponse,
   type CreateSupportTicketResponse,
@@ -40,8 +41,6 @@ import { requireAuth, writeAudit } from './shared.js';
  * Tickets, grants and reports are stored as append-only, user-partitioned
  * records; see `repositories/support.ts` for why they share the audit table.
  */
-
-const SAFETY_RESOURCE_CATEGORIES = new Set(['UNWANTED_TRACKING', 'COERCED_SHARING']);
 
 async function applyVisibilityWrites(
   context: AnyRouteContext,
@@ -310,7 +309,7 @@ export const supportRoutes: RegisteredRoute[] = [
         blocked,
         leftFamily,
         // Never says whether anything was done to the reported account.
-        safetyResourcesUrl: SAFETY_RESOURCE_CATEGORIES.has(request.category)
+        safetyResourcesUrl: showsSafetyResources(request.category)
           ? `https://${context.services.config.webDomain}/safety`
           : null,
       };

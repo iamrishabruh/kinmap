@@ -29,27 +29,49 @@ function optional(name: string): string | undefined {
   return process.env[name] || undefined;
 }
 
-const BASE_BUNDLE_ID = process.env.APP_BUNDLE_ID ?? 'com.example.familylocation';
+/**
+ * The app's identity. Fixed here, with no environment fallback.
+ *
+ * These used to read `process.env.APP_BUNDLE_ID ?? 'com.example.familylocation'`
+ * and `process.env.APP_NAME ?? 'Family Location'`, which meant that anywhere
+ * `.env.local` is not loaded — CI, and EAS Build — this file described a
+ * different app from the one committed under `ios/` and `android/`. The native
+ * projects say `app.kinmap.dev`; a config evaluated without the environment
+ * said `com.example.familylocation.dev`.
+ *
+ * That is not a variable with a default. A bundle identifier is registered with
+ * Apple, baked into provisioning profiles, and is what an installed app IS.
+ * Sourcing it from an untracked file is how the wrong one reaches a build, and
+ * it already had: it is the same failure that created a stray EAS project.
+ *
+ * Public information, so nothing is lost by committing it.
+ */
+const BASE_BUNDLE_ID = 'app.kinmap';
+const APP_NAME = 'Kinmap';
 
 /**
  * Production identifiers are never reused in non-production environments
  * (spec §6), so development and staging get their own suffixed identifiers and
  * can be installed side by side on one device.
+ *
+ * The `familylocation-*` schemes are kept alongside the reverse-DNS ones in the
+ * committed native projects, so they are not removed here: a scheme that
+ * disappears breaks any link already sent to somebody.
  */
 const VARIANT_CONFIG: Record<Variant, { suffix: string; name: string; scheme: string }> = {
   development: {
     suffix: '.dev',
-    name: `${process.env.APP_NAME ?? 'Family Location'} (Dev)`,
+    name: `${APP_NAME} (Dev)`,
     scheme: 'familylocation-dev',
   },
   staging: {
     suffix: '.staging',
-    name: `${process.env.APP_NAME ?? 'Family Location'} (Staging)`,
+    name: `${APP_NAME} (Staging)`,
     scheme: 'familylocation-staging',
   },
   production: {
     suffix: '',
-    name: process.env.APP_NAME ?? 'Family Location',
+    name: APP_NAME,
     scheme: 'familylocation',
   },
 };
