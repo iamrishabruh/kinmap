@@ -44,6 +44,15 @@ apps/mobile/ios/Pods/
 apps/mobile/ios/.xcode.env.local
 apps/mobile/ios/*.xcworkspace/xcuserdata/
 apps/mobile/ios/*.xcodeproj/xcuserdata/
+# CocoaPods install output. `expo prebuild --clean` wipes and regenerates ios/,
+# so committing anything `pod install` produced means the next prebuild deletes
+# it and the diff never settles. `pod install` runs before every real build —
+# EAS does it, and `pnpm --filter @family/mobile pods` does it locally — so
+# these exist when they need to, including the privacy manifest Apple requires
+# in the shipped app.
+apps/mobile/ios/Podfile.lock
+apps/mobile/ios/*.xcworkspace/
+apps/mobile/ios/*/PrivacyInfo.xcprivacy
 apps/mobile/android/.gradle/
 apps/mobile/android/build/
 apps/mobile/android/app/build/
