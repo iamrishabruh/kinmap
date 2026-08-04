@@ -135,7 +135,8 @@ describe('verifyAccessToken', () => {
 
   const rejections: ReadonlyArray<{ name: string; claims: unknown }> = [
     { name: 'an id token', claims: { ...VALID_CLAIMS, token_use: 'id' } },
-    { name: 'a non-uuid subject', claims: { ...VALID_CLAIMS, sub: 'admin' } },
+    { name: 'an empty subject', claims: { ...VALID_CLAIMS, sub: '' } },
+    { name: 'an unbounded subject', claims: { ...VALID_CLAIMS, sub: 'x'.repeat(256) } },
     { name: 'a missing subject', claims: { ...VALID_CLAIMS, sub: undefined } },
     { name: 'an unknown token_use', claims: { ...VALID_CLAIMS, token_use: 'refresh' } },
     { name: 'a missing issuer', claims: { ...VALID_CLAIMS, iss: undefined } },
@@ -199,4 +200,32 @@ describe('isExpiredTokenError', () => {
     expect(isExpiredTokenError('boom')).toBe(false);
     expect(isExpiredTokenError(null)).toBe(false);
   });
+});
+
+describe('the subject is treated as opaque', () => {
+  /**
+   * The identity provider owns the shape of `sub`. Cognito issues UUIDv7 today
+   * and issued v4 before that; a verifier that insisted on one version failed
+   * every sign-in the moment the provider moved, and did it behind the same
+   * opaque 401 a forged token receives — so nothing anywhere said why.
+   *
+   * What must hold is that the value is present, bounded, and carried through
+   * verbatim as the principal.
+   */
+  const subjects = [
+    ['a Cognito UUIDv7 subject', 'f43894a8-70d1-70fa-858b-5d9c82879e32'],
+    ['a classic UUIDv4 subject', '9b2f5c1e-4a3d-4f8b-9c2e-1a2b3c4d5e6f'],
+    ['a provider that does not use UUIDs at all', 'auth0|5f8a3b2c1d0e9f8a7b6c5d4e'],
+  ] as const;
+
+  for (const [name, sub] of subjects) {
+    it(`accepts ${name}`, async () => {
+      const context = await verifyAccessToken('token', {
+        verifier: verifierReturning({ ...VALID_CLAIMS, sub }),
+        requestId: REQUEST_ID,
+      });
+
+      expect(context.userId).toBe(sub);
+    });
+  }
 });

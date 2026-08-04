@@ -78,7 +78,7 @@ export function createPipeline(input: {
       }
 
       const auth = route.authRequired
-        ? await authenticate({ request, verifier: input.verifier, requestId })
+        ? await authenticate({ request, verifier: input.verifier, requestId, logger })
         : null;
 
       await enforceRateLimit({

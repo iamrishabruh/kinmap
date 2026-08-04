@@ -1,8 +1,16 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { z } from 'zod';
 
-import { AppError, DeviceIdSchema, UserIdSchema, type DeviceId } from '@family/contracts';
+import { AppError, DeviceIdSchema, type DeviceId, type UserId } from '@family/contracts';
 
 import { AccessTokenClaimsSchema, type AccessTokenClaims, type AuthContext } from './types.js';
+
+/**
+ * An identity provider's subject: present, bounded, and nothing more.
+ *
+ * Deliberately not a UUID check — see the note where it is used.
+ */
+const OpaqueSubjectSchema = z.string().min(1).max(255);
 
 /**
  * Cognito access-token verification (spec §18, step 1).
@@ -98,25 +106,50 @@ export async function verifyAccessToken(
   try {
     rawClaims = await options.verifier.verify(token);
   } catch (error) {
-    throw isExpiredTokenError(error) ? sessionExpiredError() : unauthenticatedError();
+    // The caller still gets the same opaque answer. `cause` carries the
+    // library's error so an operator can tell a forged token from a JWKS that
+    // could not be fetched — without that, a real outage and an attack look
+    // identical from every vantage point, which is how this one went unread.
+    const failure = isExpiredTokenError(error) ? sessionExpiredError() : unauthenticatedError();
+    throw Object.assign(failure, { cause: error });
   }
 
   const parsed = AccessTokenClaimsSchema.safeParse(rawClaims);
   if (!parsed.success) {
-    throw unauthenticatedError();
+    // The failing FIELD NAMES only — never a value, and never the token. Which
+    // claim was unacceptable is the difference between a misconfigured pool and
+    // a forgery, and the caller's answer is identical either way.
+    throw Object.assign(unauthenticatedError(), {
+      cause: new Error(
+        `claims:${parsed.error.issues.map((issue) => issue.path.join('.')).join(',')}`,
+      ),
+    });
   }
   const claims: AccessTokenClaims = parsed.data;
 
   // An id token presented as an access token must not be accepted: it carries
   // no scopes and is minted for a different audience.
   if (claims.token_use !== 'access') {
-    throw unauthenticatedError();
+    throw Object.assign(unauthenticatedError(), { cause: new Error('token_use') });
   }
 
-  const userId = UserIdSchema.safeParse(claims.sub);
-  if (!userId.success) {
-    throw unauthenticatedError();
+  // The subject is validated as an opaque identifier, not as a UUID of a
+  // particular version.
+  //
+  // `sub` is minted by the identity provider, and its shape is that provider's
+  // business. Cognito issues UUIDv7 subjects today and issued v4 before that;
+  // pinning the check to a version made authentication fail for every user the
+  // moment the provider changed, with the same opaque 401 a forged token gets.
+  // What actually matters here is that the value is present, bounded, and used
+  // verbatim as the principal — never that it matches a shape we chose.
+  //
+  // Ids this platform mints for itself are still validated strictly by
+  // UserIdSchema wherever they are created.
+  const subject = OpaqueSubjectSchema.safeParse(claims.sub);
+  if (!subject.success) {
+    throw Object.assign(unauthenticatedError(), { cause: new Error('sub-unusable') });
   }
+  const userId = { success: true as const, data: subject.data as UserId };
 
   return {
     userId: userId.data,
