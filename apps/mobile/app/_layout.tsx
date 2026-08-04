@@ -7,6 +7,7 @@ import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { installAuthBridge } from '@/features/auth/auth-bridge';
+import { RouteGuard } from '@/features/auth/route-guard';
 import { AuthSessionProvider } from '@/features/auth/session-provider';
 import { initialiseObservability } from '@/lib/observability';
 
@@ -55,7 +56,9 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthSessionProvider>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <Stack screenOptions={{ headerShown: false }} />
+          <RouteGuard>
+            <Stack screenOptions={{ headerShown: false }} />
+          </RouteGuard>
         </AuthSessionProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
