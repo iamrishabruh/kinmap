@@ -147,7 +147,7 @@ describe.skipIf(!LIVE)('live journey', () => {
     ]);
     steps.push([
       'POST /v1/families',
-      await call('POST', '/v1/families', { name: 'Journey Family' }),
+      await call('POST', '/v1/families', { name: 'Journey Family', timeZone: 'Europe/London' }),
     ]);
     steps.push(['GET  /v1/families', await call('GET', '/v1/families')]);
     steps.push(['GET  /v1/devices', await call('GET', '/v1/devices')]);

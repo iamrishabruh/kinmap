@@ -246,6 +246,14 @@ bucket in `services/api`. Missing: the managed rule groups and the IP rate rule.
   answering correctly at the edge is not the same as the product working.
 - **Staging and production carry no application infrastructure.** Both accounts
   are CDK-bootstrapped; `CDKToolkit` is their only stack.
+- **A federated sign-in produces no account row.** Cognito does not invoke the
+  PostConfirmation trigger for users created through an external provider, so an
+  Apple sign-in never reaches the code that creates the `Users` profile. The
+  trigger's own comment says those profiles are created by "the linking flow
+  that owns provider account linking" — that flow does not exist. A user who
+  signed in with Apple would authenticate successfully and then get 404 from
+  `GET /v1/account` forever. Native email sign-up is unaffected: it goes through
+  PostConfirmation and works.
 - **`custom:device_id` is not minted.** The user pool declares no custom
   attributes, so the device binding falls back to the `x-device-id` header. The
   header is re-verified against the device registry, so this is not a hole — but

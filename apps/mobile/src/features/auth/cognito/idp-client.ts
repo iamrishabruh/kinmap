@@ -30,7 +30,12 @@ const REQUEST_TIMEOUT_MS = 20_000;
 const AMZ_TARGET_PREFIX = 'AWSCognitoIdentityProviderService';
 
 export type CognitoAction =
-  'InitiateAuth' | 'RespondToAuthChallenge' | 'RevokeToken' | 'GlobalSignOut';
+  | 'InitiateAuth'
+  | 'RespondToAuthChallenge'
+  | 'RevokeToken'
+  | 'GlobalSignOut'
+  | 'SignUp'
+  | 'ConfirmSignUp';
 
 /** Cognito reports service errors in the body, frequently with a 400. */
 const ServiceErrorSchema = z.object({
