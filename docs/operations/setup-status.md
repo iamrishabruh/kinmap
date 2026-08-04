@@ -230,10 +230,44 @@ bucket in `services/api`. Missing: the managed rule groups and the IP rate rule.
 
 ---
 
+## The mobile app
+
+Sign-in, sign-up, email verification, MFA, password recovery, terms re-acceptance,
+onboarding and the family map are implemented on top of the existing feature
+layer, and `expo export` bundles all of it.
+
+Three things were found only by building the screens, and each had been true for
+a long time:
+
+- **Metro could never have bundled this app.** Workspace packages write relative
+  imports with a `.js` extension, which Node's ESM resolver requires and Metro
+  resolves literally. There was no `metro.config.js`. It went unnoticed because
+  the app had one route file that imported no workspace package — the EAS builds
+  that passed earlier were building an app with no screens in it.
+- **`installAuthBridge()` had no caller**, so every authenticated request went
+  out without a token, despite its own docstring saying installing it is "the
+  first thing the root layout does".
+- **The routing guard was never mounted.** `routing.ts` held the entire
+  navigation decision and nothing evaluated it, so a cold start hit the
+  unmatched-route screen and a successful sign-in left the user on the sign-in
+  form.
+
+That is four instances this week of carefully written logic wired to nothing —
+counting the deletion dispatcher and the `FamilyApi` transport. It is the failure
+mode this codebase is most prone to, and most of the guard tests added this week
+aim at it.
+
+`docs/operations/api-gaps.md` records eleven methods the deployed API cannot
+fully serve, each documented rather than stubbed.
+
 ## Not built, and not claimed
 
-- **Most mobile screens.** The feature layer beneath them is implemented and
-  tested; the Expo Router screens on top mostly are not.
+- **The screens exist and the app bundles, but none has run on a device.**
+  Twenty route files, an implemented `FamilyApi` transport, a mounted routing
+  guard, and `expo export` producing a 5.9MB iOS bundle. What has NOT happened is
+  anybody opening it: no screen has been seen, no flow walked, no layout checked
+  against a real display. Compiling and bundling say nothing about whether it
+  works.
 - **Background tracking has never run on a real device.** Both native engines
   compile. No claim is made about reliability, battery cost, geofence latency or
   update freshness until the real-device matrix in
