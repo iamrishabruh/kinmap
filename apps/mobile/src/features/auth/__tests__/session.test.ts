@@ -48,10 +48,24 @@ describe('toAuthSession', () => {
     ).toThrow(AppError);
   });
 
-  it('refuses a subject that is not a user id', () => {
-    expect(() =>
-      toAuthSession(result({ AccessToken: accessToken({ sub: 'not-a-uuid' }) })),
-    ).toThrow(AppError);
+  it('accepts whatever subject format the provider mints', () => {
+    // Cognito issues UUIDv7 subjects today and issued v4 before that. A client
+    // that insisted on one shape would reject every real session the moment the
+    // provider moved — which is exactly what happened server-side, in three
+    // places at once.
+    for (const sub of [
+      'f43894a8-70d1-70fa-858b-5d9c82879e32',
+      '9b2f5c1e-4a3d-4f8b-9c2e-1a2b3c4d5e6f',
+      'auth0|5f8a3b2c1d0e9f8a7b6c5d4e',
+    ]) {
+      expect(toAuthSession(result({ AccessToken: accessToken({ sub }) })).userId).toBe(sub);
+    }
+  });
+
+  it('refuses a token with no subject at all', () => {
+    expect(() => toAuthSession(result({ AccessToken: accessToken({ sub: '' }) }))).toThrow(
+      AppError,
+    );
   });
 
   it('refuses a token that is not a JWT without echoing it back', () => {

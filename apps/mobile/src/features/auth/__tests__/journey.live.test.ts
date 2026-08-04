@@ -1,13 +1,13 @@
 import {
-  AdminCreateUserCommand,
+  AdminConfirmSignUpCommand,
   AdminDeleteUserCommand,
-  AdminSetUserPasswordCommand,
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { afterAll, describe, expect, it } from 'vitest';
 
+import { signUpWithPassword } from '../cognito/sign-up';
 import { createSrpClient } from '../cognito/srp';
 
 /**
@@ -101,29 +101,22 @@ describe.skipIf(!LIVE)('live journey', () => {
       .catch(() => undefined);
   });
 
-  it('creates an account, which the consent gate must permit', async () => {
-    await idp.send(
-      new AdminCreateUserCommand({
-        UserPoolId: USER_POOL_ID,
-        Username: email,
-        UserAttributes: [
-          { Name: 'email', Value: email },
-          { Name: 'email_verified', Value: 'true' },
-        ],
-        MessageAction: 'SUPPRESS',
-        // The PreSignUp trigger refuses an account without these, which is the
-        // consent gate working. Any client that signs a user up must send them.
-        ClientMetadata: { termsVersion: '2026-01-01', privacyPolicyVersion: '2026-01-01' },
-      }),
-    );
-    await idp.send(
-      new AdminSetUserPasswordCommand({
-        UserPoolId: USER_POOL_ID,
-        Username: email,
-        Password: password,
-        Permanent: true,
-      }),
-    );
+  it('creates an account the way the app does, through the client sign-up', async () => {
+    // Deliberately NOT AdminCreateUser. That path does not fire
+    // PostConfirmation, which is what writes the Users row, so every
+    // profile-backed endpoint would answer 404 for a reason that has nothing to
+    // do with the product. Signing up the way a person does exercises the
+    // consent gate, the trigger, and the profile write together.
+    const outcome = await signUpWithPassword({
+      email,
+      password,
+      accepted: { termsVersion: '2026-01-01', privacyPolicyVersion: '2026-01-01' },
+    });
+    expect(outcome.userSub.length).toBeGreaterThan(0);
+
+    // Confirming by hand stands in for the emailed code; the trigger fires
+    // either way, which is the part being exercised.
+    await idp.send(new AdminConfirmSignUpCommand({ UserPoolId: USER_POOL_ID, Username: email }));
   }, 60_000);
 
   it('signs in over SRP with the implementation the app ships', async () => {

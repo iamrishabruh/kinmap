@@ -45,12 +45,25 @@ const readRequest = (): {
 
 const SCENARIOS: readonly Scenario[] = [
   {
-    name: 'forged principal',
+    // An empty subject, not a malformed one: a subject is minted by the identity
+    // provider and cannot be judged by shape — Cognito's format has already
+    // changed once under this codebase. Absent is the only thing still
+    // knowable without a lookup, and it leaves no trustworthy actor to audit.
+    name: 'principal with no subject',
     reason: null,
     run: (world) =>
       buildAuthorizationChecker(world.deps).assertCanReadCurrentLocation({
         ...readRequest(),
-        auth: authContext({ userId: 'not-a-uuid' }),
+        auth: authContext({ userId: '' }),
+      }),
+  },
+  {
+    name: 'principal whose subject has no account',
+    reason: 'REQUESTER_ACCOUNT_MISSING',
+    run: (world) =>
+      buildAuthorizationChecker(world.deps).assertCanReadCurrentLocation({
+        ...readRequest(),
+        auth: authContext({ userId: 'nobody-with-this-subject' }),
       }),
   },
   {

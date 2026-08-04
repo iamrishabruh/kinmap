@@ -241,18 +241,38 @@ describe('every check can deny on its own', () => {
     });
   }
 
-  it('denies an unauthenticated or forged principal', async () => {
+  it('denies a principal that is not a real account', async () => {
+    // A subject cannot be judged by its shape: it is minted by the identity
+    // provider, and Cognito's format has already changed once under this
+    // codebase. So an unknown principal is caught where it actually matters —
+    // there is no account for it — and the denial is the same opaque FORBIDDEN
+    // every other refusal produces.
     const world = createWorld();
     const checker = checkerFor(world);
 
     const error = await captureDenial(
       checker.assertCanReadCurrentLocation({
         ...readRequest(),
-        auth: authContext({ userId: 'not-a-uuid' }),
+        auth: authContext({ userId: 'nobody-with-this-subject' }),
       }),
     );
+
     expect(error.code).toBe('FORBIDDEN');
-    // Nothing was looked up: an unverifiable principal never reaches a repository.
+  });
+
+  it('still refuses a principal with no subject at all', async () => {
+    const world = createWorld();
+    const checker = checkerFor(world);
+
+    const error = await captureDenial(
+      checker.assertCanReadCurrentLocation({
+        ...readRequest(),
+        auth: authContext({ userId: '' }),
+      }),
+    );
+
+    expect(error.code).toBe('FORBIDDEN');
+    // Nothing to look up, so nothing is looked up.
     expect(world.calls).toHaveLength(0);
   });
 

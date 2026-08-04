@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import { UserIdSchema, type UserId } from '@family/contracts';
+import { IdentitySubjectSchema, type UserId } from '@family/contracts';
 
 import type { UserAttributes } from './events.js';
 
@@ -155,7 +155,7 @@ export class InvalidPrincipalError extends Error {
 }
 
 export function buildUserProfile(input: BuildProfileInput): UserProfileRecord {
-  const subject = UserIdSchema.safeParse(input.attributes['sub']);
+  const subject = IdentitySubjectSchema.safeParse(input.attributes['sub']);
   if (!subject.success) {
     // Without a stable subject there is no key to write. Failing here is right:
     // a profile written under a guessed id is worse than no profile.

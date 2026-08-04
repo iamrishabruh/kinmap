@@ -10,7 +10,36 @@ import { z } from 'zod';
 // Identifiers
 // ---------------------------------------------------------------------------
 
-export const UserIdSchema = z.string().uuid();
+/**
+ * A user id, which in this platform IS the identity provider's subject claim.
+ *
+ * It is not a UUID we mint, and it must not be validated as one. Cognito issues
+ * UUIDv7 subjects today and issued v4 before that, and pinning this to a version
+ * broke the platform in three separate places at once — token verification
+ * rejected every request, the PostConfirmation trigger refused to write any
+ * profile, and reading a stored account back failed — each one silently, and
+ * each looking like a different problem.
+ *
+ * Ids this platform mints for itself (families, places, devices, sessions) are
+ * ours to shape and keep the strict UUID check below.
+ */
+export const UserIdSchema = z.string().min(1).max(255);
+
+/**
+ * An identity provider's subject claim.
+ *
+ * Deliberately NOT `UserIdSchema`. `sub` is minted by the provider and its shape
+ * is that provider's business: Cognito issues UUIDv7 today and issued v4 before
+ * that. Validating it as a UUID of a particular version broke this platform
+ * twice at once — `verifyAccessToken` rejected every token, and the
+ * PostConfirmation trigger refused to write any profile — and both failures were
+ * silent, one behind an opaque 401 and the other behind a trigger error nobody
+ * was reading.
+ *
+ * What must hold is that the value is present, bounded, and used verbatim as the
+ * principal. Ids this platform mints for itself keep the strict check.
+ */
+export const IdentitySubjectSchema = z.string().min(1).max(255);
 export const FamilyIdSchema = z.string().uuid();
 export const DeviceIdSchema = z.string().uuid();
 export const PlaceIdSchema = z.string().uuid();

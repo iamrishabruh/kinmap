@@ -1,16 +1,14 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import { z } from 'zod';
 
-import { AppError, DeviceIdSchema, type DeviceId, type UserId } from '@family/contracts';
+import {
+  AppError,
+  DeviceIdSchema,
+  IdentitySubjectSchema,
+  type DeviceId,
+  type UserId,
+} from '@family/contracts';
 
 import { AccessTokenClaimsSchema, type AccessTokenClaims, type AuthContext } from './types.js';
-
-/**
- * An identity provider's subject: present, bounded, and nothing more.
- *
- * Deliberately not a UUID check — see the note where it is used.
- */
-const OpaqueSubjectSchema = z.string().min(1).max(255);
 
 /**
  * Cognito access-token verification (spec §18, step 1).
@@ -145,7 +143,7 @@ export async function verifyAccessToken(
   //
   // Ids this platform mints for itself are still validated strictly by
   // UserIdSchema wherever they are created.
-  const subject = OpaqueSubjectSchema.safeParse(claims.sub);
+  const subject = IdentitySubjectSchema.safeParse(claims.sub);
   if (!subject.success) {
     throw Object.assign(unauthenticatedError(), { cause: new Error('sub-unusable') });
   }
