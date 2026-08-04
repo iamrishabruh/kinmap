@@ -13,7 +13,7 @@ Host: macOS (Darwin 25.5.0), arm64, 704 GiB free.
 | gh          | yes    | 2.92.0             | authenticated, see §3                                       |
 | node        | yes    | 26.0.0             | **not** an LTS line; see §4                                 |
 | corepack    | no     | —                  | unbundled from Node 25+; pnpm installed standalone instead  |
-| pnpm        | yes    | 11.12.0            |                                                             |
+| pnpm        | yes    | 11.20.0            |                                                             |
 | ruby        | yes    | 2.6.10             | macOS system Ruby; too old for modern CocoaPods/fastlane    |
 | bundler     | yes    | 1.17.2             | ships with system Ruby                                      |
 | fastlane    | yes    | (outdated)         | reports `update_fastlane` required                          |
@@ -99,7 +99,7 @@ A Dependabot `ignore` rule prevents the trap being reintroduced.
 Resolved version matrix actually used:
 
 ```
-node 24.18.1 · pnpm 11.12.0 · typescript 6.0.3 · turbo 2.10.8
+node 24.18.1 · pnpm 11.20.0 · typescript 6.0.3 · turbo 2.10.8
 expo 57.0.9 · expo-router 57.0.9 · react-native 0.86.2 · react 19.2.3
 eas-cli 21.4.0 · aws-cdk 2.1134.0 · aws-cdk-lib 2.263.0 · constructs 10.8.0
 eslint 10.8.0 · typescript-eslint 8.65.0 · prettier 3.9.6

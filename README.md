@@ -56,7 +56,7 @@ version was chosen.
 |              |                                                                 |
 | ------------ | --------------------------------------------------------------- |
 | Node         | 24.18.1 (LTS) — pinned in `.nvmrc`, `engines`, `eas.json`, CI   |
-| pnpm         | 11.12.0                                                         |
+| pnpm         | 11.20.0                                                         |
 | TypeScript   | 6.0.3 — **not** 7.x, which `typescript-eslint` does not support |
 | Expo SDK     | 57.0.9                                                          |
 | React Native | 0.86.2 / React 19.2.3                                           |
