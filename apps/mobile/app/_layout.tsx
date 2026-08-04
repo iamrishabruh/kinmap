@@ -6,12 +6,20 @@ import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { installAuthBridge } from '@/features/auth/auth-bridge';
 import { AuthSessionProvider } from '@/features/auth/session-provider';
 import { initialiseObservability } from '@/lib/observability';
 
 // Initialised before the first render so an early crash is still reported —
 // with coordinate scrubbing already installed.
 initialiseObservability();
+
+// Before any provider mounts, as auth-bridge.ts says it must be. Without it
+// `@/lib/api` takes its anonymous path and every authenticated request goes out
+// without a token — the `GET /v1/account` that AuthSessionProvider makes right
+// after a successful sign-in would 401, and the user would sit on "we could not
+// load your account" with no way forward. It had no caller at all.
+installAuthBridge();
 
 void SplashScreen.preventAutoHideAsync();
 

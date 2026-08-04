@@ -35,7 +35,9 @@ export type CognitoAction =
   | 'RevokeToken'
   | 'GlobalSignOut'
   | 'SignUp'
-  | 'ConfirmSignUp';
+  | 'ConfirmSignUp'
+  | 'ForgotPassword'
+  | 'ConfirmForgotPassword';
 
 /** Cognito reports service errors in the body, frequently with a 400. */
 const ServiceErrorSchema = z.object({
