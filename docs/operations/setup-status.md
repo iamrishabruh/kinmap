@@ -254,13 +254,55 @@ bucket in `services/api`. Missing: the managed rule groups and the IP rate rule.
 
 ---
 
+## Building the app
+
+Use the wrapper, not `eas build` directly:
+
+```bash
+pnpm build:ios development            # ad-hoc, for a registered device
+pnpm build:ios development-simulator  # no signing at all
+```
+
+It exists because a bare `eas build` goes wrong in three ways that are invisible
+until it does something surprising:
+
+- **The EAS CLI does not load `.env.local`.** The Expo CLI does. Without it the
+  config fell back to defaults, and when those were placeholders EAS created a
+  **new project** rather than failing. That happened twice. The defaults are
+  pinned now and a check asserts it, but the file still carries the API URL and
+  Cognito ids the build embeds.
+- **Apple credentials otherwise want an Apple ID and password.** The wrapper
+  points EAS at the App Store Connect API key already on file: no password, no
+  two-factor prompt, no session expiring mid-build. Only the key's path is
+  exported; the key is never echoed, logged or passed as an argument.
+- **`~/.app-store/auth/` caches the last identity used.** It had the _Expo_
+  username written into it, so EAS kept proposing a username that could never
+  authenticate against Apple.
+
+> **Config plugins must be JavaScript.** The EAS CLI resolves them with a plain
+> `require`, which cannot load `.ts` — `node -e "require('./plugins/…')"` fails
+> with MODULE_NOT_FOUND. The Expo CLI registers a TypeScript loader first, so
+> `expo prebuild` applies them correctly while every `eas build` dies. `eas
+config` does not evaluate plugins at all and cannot detect this.
+
+> **`runtimeVersion` must be a literal**, not `{ policy: 'appVersion' }`.
+> Policies are managed-workflow only, and this project commits `ios/` and
+> `android/`. It must move with `version`: the runtime version decides whether
+> an OTA update may run against an installed binary.
+
+`pnpm validate:mobile-identity` checks all of the above — project identity
+without env help, plugin resolvability under a plain `node`, and runtime-version
+drift. It runs in CI.
+
+A simulator build has been verified end to end: native project, the autolinked
+Swift engine, both config plugins and the JS bundle all compile, artifact
+produced.
+
 ## Order of operations from here
 
-1. First EAS development build onto a real iPhone —
-   `cd apps/mobile && eas build --profile development --platform ios`. This needs
-   iOS signing credentials, which can be set up non-interactively with the App
-   Store Connect key already on file, and one browser tap from you to register
-   the device UDID for ad-hoc distribution.
+1. First development build onto a real iPhone — `pnpm build:ios development`,
+   run interactively once so EAS can create the distribution certificate. The
+   device is already registered and a development certificate exists.
 2. Create an account against the live development API — the first end-to-end
    journey, and the first thing that exercises Cognito, the API and DynamoDB
    together.
