@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { TOKEN_GENERATION_SOURCES } from '../src/events.js';
-import { SUPPRESSED_CLAIMS } from '../src/triggers/pre-token-generation.js';
+import {
+  handlePreTokenGeneration,
+  SUPPRESSED_CLAIMS,
+} from '../src/triggers/pre-token-generation.js';
 
-import { createHarness, tokenGenerationEvent, type Harness } from './support/harness.js';
+import {
+  createHarness,
+  tokenGenerationEvent,
+  USERS_TABLE,
+  type Harness,
+} from './support/harness.js';
 
 /**
  * The rule this trigger exists to keep is negative: no authorization decision is
@@ -92,5 +100,77 @@ describe('preTokenGeneration', () => {
     // Token generation sits in the sign-in latency path; it must not depend on a
     // table read, and it must not be able to leak one into a claim.
     expect(harness.store.size('Users')).toBe(0);
+  });
+});
+
+describe('a federated account gets a profile', () => {
+  /**
+   * Cognito does not invoke PostConfirmation for users created through an
+   * external provider, and PreSignUp cannot help — at that point no subject has
+   * been assigned, so there is no key to write under. Without this, somebody who
+   * signed in with Apple would authenticate perfectly and then get 404 from
+   * every profile-backed endpoint, forever.
+   */
+  const APPLE = JSON.stringify([{ providerName: 'SignInWithApple' }]);
+
+  async function profileFor(harness: Harness, userId: string): Promise<unknown> {
+    const result = (await harness.store.send({
+      __type: 'Get',
+      input: { TableName: USERS_TABLE, Key: { userId } },
+    })) as { Item?: Record<string, unknown> };
+    return result.Item ?? null;
+  }
+
+  it('writes one for a sign-in that came through a provider', async () => {
+    const harness = createHarness();
+
+    await harness.handle(
+      tokenGenerationEvent({
+        userAttributes: {
+          sub: 'f43894a8-70d1-70fa-858b-5d9c82879e32',
+          email: 'person@privaterelay.appleid.com',
+          email_verified: 'true',
+          identities: APPLE,
+        },
+      }),
+    );
+
+    expect(await profileFor(harness, 'f43894a8-70d1-70fa-858b-5d9c82879e32')).not.toBeNull();
+  });
+
+  it('leaves a native sign-in to PostConfirmation', async () => {
+    const harness = createHarness();
+
+    await harness.handle(
+      tokenGenerationEvent({
+        userAttributes: {
+          sub: 'f43894a8-70d1-70fa-858b-5d9c82879e33',
+          email: 'person@example.test',
+          email_verified: 'true',
+        },
+      }),
+    );
+
+    expect(await profileFor(harness, 'f43894a8-70d1-70fa-858b-5d9c82879e33')).toBeNull();
+  });
+
+  it('issues the token even when the profile write fails', async () => {
+    // Authentication must not depend on this write succeeding. The write is
+    // conditional, so the next token issuance simply tries again.
+    const harness = createHarness();
+
+    const result = await handlePreTokenGeneration(
+      tokenGenerationEvent({
+        userAttributes: { sub: 'f43894a8-70d1-70fa-858b-5d9c82879e34', identities: APPLE },
+      }),
+      {
+        config: harness.config,
+        users: { createProfile: () => Promise.reject(new Error('table is on fire')) },
+        logger: harness.logger,
+        now: harness.now,
+      },
+    );
+
+    expect(result.response.claimsOverrideDetails).toBeDefined();
   });
 });

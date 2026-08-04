@@ -59,7 +59,12 @@ export function createTriggerHandler(dependencies: AuthEventsDependencies): Trig
     }
 
     if (isTokenGeneration(event)) {
-      return handlePreTokenGeneration(event, dependencies.config);
+      return await handlePreTokenGeneration(event, {
+        config: dependencies.config,
+        users: dependencies.users,
+        logger,
+        now: dependencies.now,
+      });
     }
 
     if (isCustomMessage(event)) {

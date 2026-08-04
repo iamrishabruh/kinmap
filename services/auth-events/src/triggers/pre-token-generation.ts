@@ -1,5 +1,9 @@
+import type { Logger } from '@family/observability';
+
 import type { AuthEventsConfig } from '../env.js';
 import type { PreTokenGenerationEvent } from '../events.js';
+import { buildUserProfile } from '../profile.js';
+import type { UserProfileRepository } from '../users-repository.js';
 
 /**
  * Pre token generation.
@@ -45,10 +49,71 @@ export const SUPPRESSED_CLAIMS: readonly string[] = [
 /** Bumped when the profile projection the client parses changes shape. */
 export const PROFILE_SCHEMA_VERSION = '1';
 
-export function handlePreTokenGeneration(
+export type PreTokenGenerationDeps = {
+  readonly config: AuthEventsConfig;
+  readonly users: UserProfileRepository;
+  readonly logger: Logger;
+  readonly now: () => Date;
+};
+
+/**
+ * Makes sure a federated account has a profile.
+ *
+ * Cognito does not invoke PostConfirmation for users created through an external
+ * provider, and PostConfirmation is where the Users row is written. Nor can
+ * PreSignUp do it: at that point Cognito has not assigned a subject yet, so
+ * there is no key to write under. Token generation is the first moment a
+ * federated user has both a subject and verified attributes.
+ *
+ * Deliberately best-effort. A profile that cannot be written must not stop
+ * somebody signing in — the write is conditional, so the next token issuance
+ * simply tries again, and a transient failure heals itself. What must never
+ * happen is that an outage in this write becomes an outage in authentication.
+ */
+async function ensureFederatedProfile(
   event: PreTokenGenerationEvent,
-  config: AuthEventsConfig,
-): PreTokenGenerationEvent {
+  deps: PreTokenGenerationDeps,
+): Promise<void> {
+  const provider = event.request.userAttributes['identities'];
+  if (provider === undefined || provider === '') {
+    // A native account; PostConfirmation already owns it.
+    return;
+  }
+
+  try {
+    const profile = buildUserProfile({
+      attributes: event.request.userAttributes,
+      userName: event.userName,
+      emailHashSecret: deps.config.emailHashSecret ?? event.userPoolId,
+      termsVersion: deps.config.termsVersion,
+      privacyPolicyVersion: deps.config.privacyPolicyVersion,
+      now: deps.now(),
+    });
+
+    const outcome = await deps.users.createProfile(profile);
+    if (outcome !== 'ALREADY_EXISTS') {
+      // Ids and flags only: that an account exists, never whose it is.
+      deps.logger.info('federated_profile_provisioned', {
+        outcome,
+        identityProvider: profile.identityProvider,
+        hasEmail: profile.email !== null,
+        isPrivateRelayEmail: profile.isPrivateRelayEmail,
+      });
+    }
+  } catch (error) {
+    deps.logger.error('federated_profile_write_failed', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+  }
+}
+
+export async function handlePreTokenGeneration(
+  event: PreTokenGenerationEvent,
+  deps: PreTokenGenerationDeps,
+): Promise<PreTokenGenerationEvent> {
+  await ensureFederatedProfile(event, deps);
+
+  const { config } = deps;
   return {
     ...event,
     response: {
