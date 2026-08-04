@@ -29,6 +29,7 @@ export const ErrorCodeSchema = z.enum([
   'HISTORY_RANGE_INVALID',
   'ACCOUNT_PENDING_DELETION',
   'TERMS_ACCEPTANCE_REQUIRED',
+  'AGE_REQUIREMENT_NOT_MET',
   'UPSTREAM_UNAVAILABLE',
   'INTERNAL_ERROR',
 ]);
@@ -74,6 +75,9 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
   HISTORY_RANGE_INVALID: 422,
   ACCOUNT_PENDING_DELETION: 423,
   TERMS_ACCEPTANCE_REQUIRED: 428,
+  // 403 rather than 428: a precondition the caller could satisfy by retrying
+  // would invite retrying with a different date, and the refusal is final.
+  AGE_REQUIREMENT_NOT_MET: 403,
   UPSTREAM_UNAVAILABLE: 503,
   INTERNAL_ERROR: 500,
 };

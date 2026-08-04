@@ -59,6 +59,9 @@ export const SAFE_ERROR_MESSAGES: Record<ErrorCode, string> = {
   HISTORY_RANGE_INVALID: 'Choose a shorter date range.',
   ACCOUNT_PENDING_DELETION: 'This account is being deleted.',
   TERMS_ACCEPTANCE_REQUIRED: 'Please accept the updated terms to continue.',
+  // Does not name the threshold, and does not suggest trying again. Both would
+  // turn the age screen into a puzzle with a published answer.
+  AGE_REQUIREMENT_NOT_MET: 'Kinmap cannot create an account for you.',
   UPSTREAM_UNAVAILABLE: 'We could not reach the server. Please try again.',
   INTERNAL_ERROR: 'Something went wrong on our end. Please try again.',
 };

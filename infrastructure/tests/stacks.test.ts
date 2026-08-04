@@ -31,6 +31,14 @@ const TSX_BIN = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx');
 
 const SYNTH_TIMEOUT_MS = 300_000;
 
+/**
+ * CloudFront's AWS-managed `CachingDisabled` policy. The id is fixed across
+ * every account, which is what makes asserting on it meaningful: caching an
+ * authorised response at the edge would serve one family member's location to
+ * another, so the API distribution must name this policy and no other.
+ */
+const CACHING_DISABLED_POLICY_ID = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad';
+
 type Resource = Record<string, unknown>;
 
 type SynthStack = {
@@ -719,21 +727,100 @@ describe('the public site', () => {
     // is /.well-known/apple-app-site-association, which is what makes an
     // invitation link open the app instead of Safari — and Apple fetches it
     // from the live domain with no way to report that it was never uploaded.
-    let distributions = 0;
+    //
+    // Only distributions whose origin is a bucket are in scope. The API
+    // distribution's origin is API Gateway, which serves itself; requiring a
+    // BucketDeployment there would be requiring a bucket that should not exist.
+    let bucketBacked = 0;
 
     for (const stack of allStacks) {
-      const dists = [...resourcesOf(stack, 'AWS::CloudFront::Distribution')];
+      const dists = resourcesOf(stack, 'AWS::CloudFront::Distribution').filter(([, resource]) => {
+        const config = asRecord(resource.Properties)?.['DistributionConfig'];
+        const origins = asRecord(config)?.['Origins'];
+        // A bucket origin carries S3OriginConfig; anything else — API Gateway
+        // here — is a custom origin that serves itself.
+        return (
+          Array.isArray(origins) &&
+          origins.some((origin) => asRecord(origin)?.['S3OriginConfig'] !== undefined)
+        );
+      });
       if (dists.length === 0) continue;
-      distributions += dists.length;
+      bucketBacked += dists.length;
 
-      const publishes = [...resourcesOf(stack, 'Custom::CDKBucketDeployment')];
+      const publishes = resourcesOf(stack, 'Custom::CDKBucketDeployment');
       expect(
         publishes.length,
-        `${stack}: creates a CloudFront distribution but never publishes anything into its origin`,
+        `${stack.stackName}: creates a CloudFront distribution over a bucket but never publishes anything into it`,
       ).toBeGreaterThan(0);
     }
 
-    expect(distributions, 'the app must serve a public site').toBeGreaterThan(0);
+    expect(bucketBacked, 'the app must serve a public site').toBeGreaterThan(0);
+  });
+
+  it('puts the WebACL in front of the API instead of merely defining it', () => {
+    // The rules were written, reviewed and deployed for a long time while
+    // protecting nothing: WAFv2 cannot attach to an API Gateway HTTP API, and
+    // the ACL sat unassociated. Nothing failed, no alarm fired, and the only
+    // evidence was a comment. This asserts the association exists, that it is
+    // the ACL with the rules in it, and that the distribution carrying it is
+    // the one clients actually resolve.
+    let verified = 0;
+
+    for (const stack of allStacks) {
+      const acls = resourcesOf(stack, 'AWS::WAFv2::WebACL');
+      for (const [, acl] of acls) {
+        expect(
+          prop(acl, 'Scope'),
+          `${stack.stackName}: a REGIONAL ACL cannot attach to an HTTP API — it must be CLOUDFRONT`,
+        ).toBe('CLOUDFRONT');
+      }
+
+      for (const [logicalId, dist] of resourcesOf(stack, 'AWS::CloudFront::Distribution')) {
+        const config = asRecord(prop(dist, 'DistributionConfig'));
+        const origins = config?.['Origins'];
+        // The API distribution is the one with a custom origin; the site's
+        // origin is a bucket and is covered by its own guards.
+        const frontsTheApi =
+          Array.isArray(origins) &&
+          origins.some((origin) => asRecord(origin)?.['CustomOriginConfig'] !== undefined);
+        if (!frontsTheApi) continue;
+        verified += 1;
+
+        expect(
+          config?.['WebACLId'],
+          `${describeResource(stack, logicalId)}: fronts the API with no WebACL attached`,
+        ).toBeDefined();
+        expect(
+          asRecord(config?.['DefaultCacheBehavior'])?.['CachePolicyId'],
+          `${describeResource(stack, logicalId)}: must name a cache policy, and it must be the disabled one`,
+        ).toBe(CACHING_DISABLED_POLICY_ID);
+      }
+    }
+
+    const environments = new Set(allStacks.map((stack) => stack.environment));
+    expect(
+      verified,
+      'every environment must reach its API through a distribution that carries the ACL',
+    ).toBe(environments.size);
+  });
+
+  it('closes the execute-api endpoint that would route around the WebACL', () => {
+    // `<apiId>.execute-api.<region>.amazonaws.com` answers the same routes and
+    // never touches CloudFront, so leaving it open would make the ACL above
+    // optional for anyone who read an API id out of a stack output.
+    let apis = 0;
+
+    for (const stack of allStacks) {
+      for (const [logicalId, api] of resourcesOf(stack, 'AWS::ApiGatewayV2::Api')) {
+        apis += 1;
+        expect(
+          prop(api, 'DisableExecuteApiEndpoint'),
+          `${describeResource(stack, logicalId)}: the default endpoint bypasses CloudFront and its WebACL`,
+        ).toBe(true);
+      }
+    }
+
+    expect(apis, 'the platform must declare an HTTP API').toBeGreaterThan(0);
   });
 
   it('serves the association file as JSON and without a long cache', () => {

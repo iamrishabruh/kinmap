@@ -34,6 +34,7 @@ export function developmentConfig(): EnvironmentConfig {
     region: envString('AWS_REGION', envString('CDK_DEFAULT_REGION', DEFAULT_REGION)),
     domain,
     apiDomain: envString('KINMAP_API_DOMAIN_DEVELOPMENT', `api.${domain}`),
+    apiOriginDomain: envString('KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT', `origin-label.${domain}`),
     alarmEmail: envString('KINMAP_ALARM_EMAIL', `alerts@${domain}`),
     removalPolicy: RemovalPolicy.DESTROY,
     isProduction: false,

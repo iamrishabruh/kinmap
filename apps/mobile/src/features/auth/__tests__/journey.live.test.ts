@@ -111,6 +111,9 @@ describe.skipIf(!LIVE)('live journey', () => {
       email,
       password,
       accepted: { termsVersion: '2026-01-01', privacyPolicyVersion: '2026-01-01' },
+      // The trigger refuses a sign-up with no attested date of birth, so the
+      // live journey has to attest one exactly as the screen does.
+      birthDate: '1990-06-15',
     });
     expect(outcome.userSub.length).toBeGreaterThan(0);
 

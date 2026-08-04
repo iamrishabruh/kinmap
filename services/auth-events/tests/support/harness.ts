@@ -140,9 +140,20 @@ export function preSignUpEvent(input: {
   };
 }
 
+/**
+ * Everything PreSignUp requires of a client, so a test that is about something
+ * else does not have to know the list. The birth date is an adult's: the age
+ * gate has its own tests and should not be incidentally exercised here.
+ */
 export function currentAcceptance(): Record<string, string> {
-  return { termsVersion: TERMS_VERSION, privacyPolicyVersion: PRIVACY_VERSION };
+  return {
+    termsVersion: TERMS_VERSION,
+    privacyPolicyVersion: PRIVACY_VERSION,
+    birthDate: ADULT_BIRTH_DATE,
+  };
 }
+
+export const ADULT_BIRTH_DATE = '1990-06-15';
 
 export function postConfirmationEvent(input: {
   triggerSource?: PostConfirmationSource;

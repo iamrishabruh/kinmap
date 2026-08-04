@@ -30,7 +30,7 @@
  * Nothing here performs a context lookup, so `cdk synth` works on a fork pull
  * request with no credentials and the placeholder account id.
  */
-import { Aws, CfnOutput, Duration, Stack } from 'aws-cdk-lib';
+import { CfnOutput, Duration, Stack } from 'aws-cdk-lib';
 import {
   type CfnStage,
   CorsHttpMethod,
@@ -43,13 +43,26 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import {
+  AllowedMethods,
+  CachePolicy,
+  Distribution,
+  HttpVersion,
+  OriginProtocolPolicy,
+  OriginRequestPolicy,
+  OriginSslPolicy,
+  PriceClass,
+  SecurityPolicyProtocol,
+  ViewerProtocolPolicy,
+} from 'aws-cdk-lib/aws-cloudfront';
+import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { type IUserPool, type IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
-import { ARecord, RecordTarget } from 'aws-cdk-lib/aws-route53';
-import { ApiGatewayv2DomainProperties } from 'aws-cdk-lib/aws-route53-targets';
+import { AaaaRecord, ARecord, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { ApiGatewayv2DomainProperties, CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
 import { type Construct, type IConstruct } from 'constructs';
 
@@ -517,6 +530,8 @@ export class ApiStack extends Stack {
   /** `services/api`: everything that is neither a coordinate nor a webhook. */
   public readonly apiFunction: IFunction;
   public readonly webAcl: CfnWebACL;
+  /** Serves {@link EnvironmentConfig.apiDomain}; carries {@link webAcl}. */
+  public readonly distribution: Distribution;
   public readonly accessLogGroup: LogGroup;
 
   public constructor(scope: Construct, id: string, props: ApiStackProps) {
@@ -526,11 +541,19 @@ export class ApiStack extends Stack {
       terminationProtection: props.terminationProtection ?? props.config.isProduction,
       description:
         props.description ?? 'KinMap public HTTP API: routing, authorization and edge protection.',
+      // Only materialises resources when the WebACL below actually lands in a
+      // different region from this stack.
+      crossRegionReferences: true,
     });
 
     const { config, foundation, tables } = props;
 
     applyStandardTags(this, config);
+
+    // Where a us-east-1-only resource has to go. The foundation creates an edge
+    // stack exactly when the primary region is not us-east-1; when it is, that
+    // stack does not exist and `this` is already in the right region.
+    const edgeScope: Construct = foundation.edgeStack ?? this;
 
     // -----------------------------------------------------------------------
     // The general API service
@@ -626,24 +649,32 @@ export class ApiStack extends Stack {
       identitySource: ['$request.header.Authorization'],
     });
 
+    // API Gateway answers on `origin-label.<domain>`, not on `api.<domain>`.
+    //
+    // `api.<domain>` is served by the CloudFront distribution created further
+    // down, which is what carries the WebACL. CloudFront has to be given an
+    // origin hostname that is not the hostname it serves — an alias record
+    // pointing at a distribution whose origin is that same name would be its
+    // own target — so the gateway keeps a private-by-convention name and the
+    // public one moves to the edge.
     this.domainName = new DomainName(this, 'ApiDomainName', {
-      domainName: config.apiDomain,
+      domainName: config.apiOriginDomain,
       certificate: foundation.certificate,
     });
 
     // A custom domain with no DNS record fails silently in the worst way: API
     // Gateway reports AVAILABLE, the certificate is ISSUED, and every client
     // still gets NXDOMAIN. Nothing in the deploy complains.
-    new ARecord(this, 'ApiAliasRecord', {
+    new ARecord(this, 'ApiOriginAliasRecord', {
       zone: foundation.hostedZone,
-      recordName: config.apiDomain,
+      recordName: config.apiOriginDomain,
       target: RecordTarget.fromAlias(
         new ApiGatewayv2DomainProperties(
           this.domainName.regionalDomainName,
           this.domainName.regionalHostedZoneId,
         ),
       ),
-      comment: `Kinmap ${config.envName} API`,
+      comment: `Kinmap ${config.envName} API origin — CloudFront talks to this, clients do not`,
     });
 
     this.httpApi = new HttpApi(this, 'HttpApi', {
@@ -653,9 +684,15 @@ export class ApiStack extends Stack {
       // default and per-route throttling can be attached to it.
       createDefaultStage: false,
       defaultAuthorizer: this.authorizer,
-      // Production is reachable only through api.<domain>; lower environments
-      // keep the execute-api endpoint so they can be exercised before DNS.
-      disableExecuteApiEndpoint: config.isProduction,
+      // Closed in every environment, not just production.
+      //
+      // The default `<apiId>.execute-api.<region>.amazonaws.com` endpoint is
+      // derivable by anyone who can see an API id, and it bypasses both the
+      // custom domain and — now that the WebACL lives on CloudFront — every WAF
+      // rule with it. Leaving it open in development would mean the environment
+      // used to rehearse changes is the one environment where the protection
+      // being rehearsed is absent.
+      disableExecuteApiEndpoint: true,
       corsPreflight: {
         allowOrigins: [`https://${config.webDomain}`],
         allowMethods: [
@@ -672,6 +709,10 @@ export class ApiStack extends Stack {
           'x-request-id',
           'x-app-version',
           'x-platform',
+          // The fallback `resolveDeviceId` reads when a token carries no signed
+          // `custom:device_id` claim. Omitting it here made every location read
+          // from a browser fail preflight.
+          'x-device-id',
         ],
         allowCredentials: false,
         maxAge: Duration.days(1),
@@ -847,12 +888,23 @@ export class ApiStack extends Stack {
     // -----------------------------------------------------------------------
     // WAF
     // -----------------------------------------------------------------------
-    this.webAcl = new CfnWebACL(this, 'ApiWebAcl', {
+    //
+    // CLOUDFRONT scope, and therefore attached to the distribution below rather
+    // than to the API directly. WAFv2 associates only with an Application Load
+    // Balancer, an API Gateway REST API, an AppSync API, a Cognito user pool, an
+    // App Runner service or a CloudFront distribution; an API Gateway HTTP API
+    // is not on that list, and attempting it fails with a misleading complaint
+    // about a malformed ARN when the ARN is in fact correct.
+    //
+    // A CLOUDFRONT-scoped ACL is a us-east-1 resource whatever region the rest
+    // of the platform runs in, so it is created in the edge stack when one
+    // exists — the same rule the foundation applies to CloudFront certificates.
+    this.webAcl = new CfnWebACL(edgeScope, 'ApiWebAcl', {
       name: `${config.resourcePrefix}-api`,
       // WAF validates descriptions against ^[\w+=:#@/\-,\.][\w+=:#@/\-,\.\s]+[\w+=:#@/\-,\.]$
       // — parentheses are rejected outright, so this reads as plain words.
       description: `Kinmap API protection - ${config.envName}`,
-      scope: 'REGIONAL',
+      scope: 'CLOUDFRONT',
       defaultAction: { allow: {} },
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
@@ -921,35 +973,75 @@ export class ApiStack extends Stack {
       ],
     });
 
-    const stageArn = `arn:${Aws.PARTITION}:apigateway:${this.region}::/apis/${this.httpApi.apiId}/stages/${this.stage.stageName}`;
-    // WAF is NOT associated with this API, and cannot be.
+    // -----------------------------------------------------------------------
+    // Edge: the distribution clients actually reach
+    // -----------------------------------------------------------------------
     //
-    // WAFv2 attaches only to an Application Load Balancer, an API Gateway REST
-    // API, an AppSync API, a Cognito user pool, an App Runner service, or a
-    // CloudFront distribution. An API Gateway **HTTP** API (v2) is not on that
-    // list, and the association fails at deploy time with a misleading error
-    // about the ARN being malformed:
+    // This exists to carry the WebACL, not to cache. Every route is either
+    // authorised per-principal or a provider webhook, so there is nothing here
+    // that two different callers may share a response for, and caching is
+    // disabled outright rather than tuned down: a cached authorised response is
+    // a location leak between family members, which is the one failure this
+    // product cannot have.
     //
-    //   The ARN isn't valid ... parameter:
-    //   arn:aws:apigateway:us-east-1::/apis/<id>/stages/$default
-    //
-    // The ARN is in fact correct; the resource type is simply unsupported.
-    //
-    // The WebACL is still defined so the rules are reviewed, versioned and
-    // ready, but attaching it needs one of:
-    //   * a CloudFront distribution in front of this API, with the ACL moved to
-    //     CLOUDFRONT scope — the usual answer, and it also buys edge caching
-    //     for the static routes;
-    //   * migrating to a REST API, which costs roughly 3.5x per request and
-    //     loses the JWT authorizer used here.
-    //
-    // Until that decision is made, request protection comes from two layers
-    // that ARE active: API Gateway per-route throttling configured above, and
-    // the per-principal token bucket in services/api, which is the control the
-    // rate limits in @family/contracts actually describe.
-    //
-    // Tracked in docs/operations/setup-status.md.
-    void stageArn;
+    // What it does buy beyond the ACL is TLS termination at the edge and the
+    // ability to shed a volumetric attack before it reaches Lambda.
+    this.distribution = new Distribution(this, 'ApiDistribution', {
+      comment: `Kinmap ${config.envName} API`,
+      domainNames: [config.apiDomain],
+      // CloudFront accepts certificates only from us-east-1; the foundation
+      // creates this one there whatever region the platform runs in.
+      certificate: foundation.cloudFrontCertificate,
+      webAclId: this.webAcl.attrArn,
+      httpVersion: HttpVersion.HTTP2_AND_3,
+      minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
+      priceClass: config.isProduction ? PriceClass.PRICE_CLASS_ALL : PriceClass.PRICE_CLASS_100,
+      enableIpv6: true,
+      // Standard access logs record the full request URI, and a URI here
+      // carries user, family, place and session ids. Off, for the same reason
+      // the access log format above logs `routeKey` rather than `path` and WAF
+      // request sampling is disabled.
+      enableLogging: false,
+      defaultBehavior: {
+        // `origin-label.<domain>` is a public name, so reaching it directly and
+        // skipping these rules is possible for anyone who finds it. The shared
+        // secret that closes that path is added by the origin-verification
+        // change; what stands in front of the origin until then is the JWT
+        // authorizer, the per-route throttles configured above and the
+        // per-principal token bucket in services/api — all of which apply
+        // whichever hostname a request arrives on.
+        origin: new HttpOrigin(config.apiOriginDomain, {
+          protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
+          originSslProtocols: [OriginSslPolicy.TLS_V1_2],
+          readTimeout: Duration.seconds(30),
+          keepaliveTimeout: Duration.seconds(30),
+        }),
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: AllowedMethods.ALLOW_ALL,
+        cachePolicy: CachePolicy.CACHING_DISABLED,
+        // Everything the viewer sent except Host, which must stay the origin's
+        // own name: API Gateway selects the custom domain mapping by Host, and
+        // forwarding `api.<domain>` to a gateway that only knows
+        // `origin-label.<domain>` would 403 every request.
+        originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        compress: true,
+      },
+    });
+
+    new ARecord(this, 'ApiAliasRecord', {
+      zone: foundation.hostedZone,
+      recordName: config.apiDomain,
+      target: RecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
+      comment: `Kinmap ${config.envName} API`,
+    });
+    // IPv6 is enabled on the distribution, so a client on an IPv6-only mobile
+    // network resolves nothing at all without this record.
+    new AaaaRecord(this, 'ApiAliasRecordIpv6', {
+      zone: foundation.hostedZone,
+      recordName: config.apiDomain,
+      target: RecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
+      comment: `Kinmap ${config.envName} API`,
+    });
 
     // -----------------------------------------------------------------------
     // Outputs
@@ -964,22 +1056,23 @@ export class ApiStack extends Stack {
       description: 'HTTP API id',
       exportName: `${config.resourcePrefix}-api-id`,
     });
-    if (!config.isProduction) {
-      // Production disables the default execute-api endpoint so all traffic is
-      // forced through the custom domain and its WAF. Reading `apiEndpoint`
-      // there throws, so the output only exists where the endpoint does.
-      new CfnOutput(this, 'ApiExecuteEndpoint', {
-        value: this.httpApi.apiEndpoint,
-        description: 'execute-api endpoint — non-production only',
-      });
-    }
+    // The default execute-api endpoint is disabled in every environment now, so
+    // there is no such URL to output. Reading `apiEndpoint` would throw.
+    new CfnOutput(this, 'ApiOriginDomainName', {
+      value: config.apiOriginDomain,
+      description: 'Origin hostname CloudFront forwards to; not for clients',
+    });
     new CfnOutput(this, 'ApiRegionalDomainName', {
       value: this.domainName.regionalDomainName,
-      description: 'Alias target for the api.<domain> record',
+      description: 'Alias target for the origin-label.<domain> record',
     });
     new CfnOutput(this, 'ApiRegionalHostedZoneId', {
       value: this.domainName.regionalHostedZoneId,
-      description: 'Alias hosted zone id for the api.<domain> record',
+      description: 'Alias hosted zone id for the origin-label.<domain> record',
+    });
+    new CfnOutput(this, 'ApiDistributionDomainName', {
+      value: this.distribution.distributionDomainName,
+      description: 'Alias target for the api.<domain> record',
     });
     new CfnOutput(this, 'ApiWebAclArn', {
       value: this.webAcl.attrArn,

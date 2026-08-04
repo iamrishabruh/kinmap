@@ -3,7 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 
-import { EmailSchema } from '@family/schemas';
+import { AppError } from '@family/contracts';
 
 import {
   Body,
@@ -20,8 +20,13 @@ import {
 } from '@/components/ui';
 import { hasEnv, requireEnv } from '@/config/env';
 import { maskEmail } from '@/features/auth/api';
-import { signUpWithPassword, type PolicyAcceptance } from '@/features/auth/cognito/sign-up';
+import { signUpWithPassword } from '@/features/auth/cognito/sign-up';
 import { ROUTES } from '@/features/auth/routing';
+import {
+  describeBlocker,
+  planSignUp,
+  PASSWORD_REQUIREMENTS_HELPER,
+} from '@/features/auth/sign-up-plan';
 import { CURRENT_POLICY_VERSIONS, type PolicyVersions } from '@/features/consent/versions';
 import { describeError } from '@/lib/api';
 
@@ -58,127 +63,6 @@ import { useAuthFlow } from './_layout';
  */
 
 // ---------------------------------------------------------------------------
-// Password policy
-// ---------------------------------------------------------------------------
-
-type PasswordRule = {
-  readonly describe: string;
-  readonly satisfied: (value: string) => boolean;
-};
-
-/**
- * Cognito's documented password symbol set. Written out rather than
- * approximated with "not a letter or a digit", because the pool rejects an
- * emoji as a symbol and a user told otherwise would be stuck in a loop with no
- * way to see why.
- */
-const COGNITO_SYMBOL = /[\^$*.[\]{}()?"!@#%&/\\,><':;|_~`+=-]/u;
-
-/**
- * Mirrors `passwordPolicy` in `infrastructure/stacks/identity-stack.ts`.
- *
- * Checked here, before the call, because the shared Cognito error mapper folds
- * `InvalidPasswordException` into "That email address and password do not match
- * an account". That wording is right on sign-in and nonsense on sign-up, and
- * the fix is not to teach the mapper a second context — it is to make sure the
- * pool never has to reject the password in the first place.
- */
-const PASSWORD_RULES: readonly PasswordRule[] = [
-  { describe: 'at least 12 characters', satisfied: (value) => value.length >= 12 },
-  { describe: 'a lower-case letter', satisfied: (value) => /\p{Ll}/u.test(value) },
-  { describe: 'an upper-case letter', satisfied: (value) => /\p{Lu}/u.test(value) },
-  { describe: 'a number', satisfied: (value) => /\d/u.test(value) },
-  { describe: 'a symbol', satisfied: (value) => COGNITO_SYMBOL.test(value) },
-];
-
-export const PASSWORD_REQUIREMENTS_HELPER =
-  'At least 12 characters, including an upper-case letter, a lower-case letter, a number and a symbol.';
-
-export function unmetPasswordRules(password: string): readonly string[] {
-  return PASSWORD_RULES.filter((rule) => !rule.satisfied(password)).map((rule) => rule.describe);
-}
-
-// ---------------------------------------------------------------------------
-// The decision
-// ---------------------------------------------------------------------------
-
-export type SignUpBlocker =
-  'POLICIES_UNAVAILABLE' | 'EMAIL_INVALID' | 'PASSWORD_WEAK' | 'PASSWORD_MISMATCH';
-
-export type SignUpPlan =
-  | { readonly ready: false; readonly blocker: SignUpBlocker }
-  | {
-      readonly ready: true;
-      readonly email: string;
-      readonly password: string;
-      readonly accepted: PolicyAcceptance;
-    };
-
-/**
- * Turns what is on screen into either a refusal or the exact sign-up payload.
- *
- * Pure, and kept separate from the component for that reason: this is the
- * function that decides what a person is consenting to, and it must be
- * inspectable without a renderer. `shown` is the versions this render actually
- * put in front of the user — `null` when the documents could not be shown at
- * all — and it is checked FIRST, so a build that cannot display the terms never
- * even validates a form it has no right to submit.
- */
-export function planSignUp(input: {
-  readonly email: string;
-  readonly password: string;
-  readonly passwordAgain: string;
-  readonly shown: PolicyVersions | null;
-}): SignUpPlan {
-  if (input.shown === null) {
-    return { ready: false, blocker: 'POLICIES_UNAVAILABLE' };
-  }
-
-  const email = input.email.trim();
-  if (!EmailSchema.safeParse(email).success) {
-    return { ready: false, blocker: 'EMAIL_INVALID' };
-  }
-  if (unmetPasswordRules(input.password).length > 0) {
-    return { ready: false, blocker: 'PASSWORD_WEAK' };
-  }
-  if (input.password !== input.passwordAgain) {
-    return { ready: false, blocker: 'PASSWORD_MISMATCH' };
-  }
-
-  return {
-    ready: true,
-    email,
-    password: input.password,
-    // Built from what was displayed, never re-read from the module. This is the
-    // line that makes "the acceptance is the one the user saw" a property of
-    // the code rather than a convention.
-    accepted: {
-      termsVersion: input.shown.termsVersion,
-      privacyPolicyVersion: input.shown.privacyPolicyVersion,
-    },
-  };
-}
-
-function joinPhrases(phrases: readonly string[]): string {
-  if (phrases.length <= 1) return phrases[0] ?? '';
-  const last = phrases[phrases.length - 1] ?? '';
-  return `${phrases.slice(0, -1).join(', ')} and ${last}`;
-}
-
-export function describeBlocker(blocker: SignUpBlocker, password: string): string {
-  switch (blocker) {
-    case 'POLICIES_UNAVAILABLE':
-      return 'This version of Kinmap cannot show you the terms or the privacy policy, so it will not create an account. Please update the app.';
-    case 'EMAIL_INVALID':
-      return 'Enter an email address you can receive mail at — we send a confirmation code to it.';
-    case 'PASSWORD_WEAK':
-      return `Your password still needs ${joinPhrases(unmetPasswordRules(password))}.`;
-    case 'PASSWORD_MISMATCH':
-      return 'The two passwords do not match.';
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Policy documents
 // ---------------------------------------------------------------------------
 
@@ -207,12 +91,27 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordAgain, setPasswordAgain] = useState('');
+  const [birthDay, setBirthDay] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthYear, setBirthYear] = useState('');
   const [revealPassword, setRevealPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Set once the attested age falls below the minimum, and never cleared.
+   *
+   * A screen that says "too young" and then lets you edit the year is an age
+   * screen in name only — it collects the number that works rather than the
+   * date that is true. This is the "no retry" half of the neutral age screen,
+   * and it is why the form is disabled rather than the message merely shown.
+   */
+  const [refused, setRefused] = useState(false);
 
   const passwordField = useRef<TextInput>(null);
   const passwordAgainField = useRef<TextInput>(null);
+  const birthDayField = useRef<TextInput>(null);
+  const birthMonthField = useRef<TextInput>(null);
+  const birthYearField = useRef<TextInput>(null);
 
   const openDocument = useCallback(async (url: string) => {
     try {
@@ -223,11 +122,20 @@ export default function SignUpScreen() {
   }, []);
 
   const submit = useCallback(async () => {
-    if (busy) return;
+    if (busy || refused) return;
     setError(null);
 
-    const plan = planSignUp({ email, password, passwordAgain, shown: SHOWN_POLICIES });
+    const plan = planSignUp({
+      email,
+      password,
+      passwordAgain,
+      birth: { day: birthDay, month: birthMonth, year: birthYear },
+      shown: SHOWN_POLICIES,
+    });
     if (!plan.ready) {
+      if (plan.blocker === 'AGE_BELOW_MINIMUM') {
+        setRefused(true);
+      }
       setError(describeBlocker(plan.blocker, password));
       return;
     }
@@ -238,6 +146,7 @@ export default function SignUpScreen() {
         email: plan.email,
         password: plan.password,
         accepted: plan.accepted,
+        birthDate: plan.birthDate,
       });
 
       if (outcome.confirmed) {
@@ -255,11 +164,28 @@ export default function SignUpScreen() {
       });
       router.replace(ROUTES.verifyEmail);
     } catch (cause) {
+      // The server applies the same gate, and its refusal is final too — a
+      // client that skipped the screen must not be left able to retry.
+      if (cause instanceof AppError && cause.code === 'AGE_REQUIREMENT_NOT_MET') {
+        setRefused(true);
+      }
       setError(describeError(cause));
     } finally {
       setBusy(false);
     }
-  }, [beginEmailVerification, busy, confirmAccount, email, password, passwordAgain, router]);
+  }, [
+    beginEmailVerification,
+    birthDay,
+    birthMonth,
+    birthYear,
+    busy,
+    confirmAccount,
+    email,
+    password,
+    passwordAgain,
+    refused,
+    router,
+  ]);
 
   return (
     <Screen
@@ -272,7 +198,7 @@ export default function SignUpScreen() {
                 : `Creates your account and records that you accept the Terms of Service version ${SHOWN_POLICIES.termsVersion} and the Privacy Policy version ${SHOWN_POLICIES.privacyPolicyVersion}. Your location is not shared with anyone until you turn sharing on.`
             }
             busy={busy}
-            disabled={SHOWN_POLICIES === null}
+            disabled={SHOWN_POLICIES === null || refused}
             label="Agree and create account"
             onPress={() => {
               void submit();
@@ -349,16 +275,77 @@ export default function SignUpScreen() {
           autoCorrect={false}
           label="Repeat password"
           onChangeText={setPasswordAgain}
-          onSubmitEditing={() => {
-            void submit();
-          }}
+          onSubmitEditing={() => birthDayField.current?.focus()}
           ref={passwordAgainField}
-          returnKeyType="go"
+          returnKeyType="next"
           secureTextEntry={!revealPassword}
           testID="sign-up-password-again"
           textContentType="newPassword"
           value={passwordAgain}
         />
+
+        {/*
+          The age screen.
+
+          It asks for a date and says nothing about a minimum, which is the
+          whole design: a form that states the threshold collects the threshold.
+          The helper text explains why the date is wanted, because asking a
+          person for their date of birth without a reason is its own problem.
+
+          Three boxes, not one, and labelled words rather than a locale format —
+          03/04/11 is three different dates in three different countries, and a
+          month misread here moves somebody across the boundary.
+        */}
+        <Stack gap="one">
+          <Field
+            autoComplete="birthdate-day"
+            editable={!refused}
+            inputMode="numeric"
+            keyboardType="number-pad"
+            label="Day of birth"
+            maxLength={2}
+            onChangeText={setBirthDay}
+            onSubmitEditing={() => birthMonthField.current?.focus()}
+            placeholder="DD"
+            ref={birthDayField}
+            returnKeyType="next"
+            testID="sign-up-birth-day"
+            value={birthDay}
+          />
+          <Field
+            autoComplete="birthdate-month"
+            editable={!refused}
+            inputMode="numeric"
+            keyboardType="number-pad"
+            label="Month of birth"
+            maxLength={2}
+            onChangeText={setBirthMonth}
+            onSubmitEditing={() => birthYearField.current?.focus()}
+            placeholder="MM"
+            ref={birthMonthField}
+            returnKeyType="next"
+            testID="sign-up-birth-month"
+            value={birthMonth}
+          />
+          <Field
+            autoComplete="birthdate-year"
+            editable={!refused}
+            helper="We ask so we know which rules apply to your account. We keep your age range, not your date of birth."
+            inputMode="numeric"
+            keyboardType="number-pad"
+            label="Year of birth"
+            maxLength={4}
+            onChangeText={setBirthYear}
+            onSubmitEditing={() => {
+              void submit();
+            }}
+            placeholder="YYYY"
+            ref={birthYearField}
+            returnKeyType="go"
+            testID="sign-up-birth-year"
+            value={birthYear}
+          />
+        </Stack>
 
         <LinkButton
           accessibilityHint={

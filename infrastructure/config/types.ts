@@ -1,4 +1,4 @@
-import type { RemovalPolicy, StackProps } from 'aws-cdk-lib';
+import type { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import type { IRole } from 'aws-cdk-lib/aws-iam';
@@ -141,6 +141,20 @@ export interface EnvironmentConfig {
   readonly region: string;
   readonly domain: string;
   readonly apiDomain: string;
+  /**
+   * The hostname API Gateway's own custom domain answers on, and the only
+   * origin the CloudFront distribution in front of {@link apiDomain} talks to.
+   *
+   * It exists because WAFv2 cannot attach to an API Gateway HTTP API, so the
+   * ACL lives on a CloudFront distribution and CloudFront needs an origin
+   * hostname distinct from the one it serves — pointing both at `api.<domain>`
+   * would make the DNS record its own target.
+   *
+   * A single label under {@link domain} on purpose: the certificate carries
+   * `*.<domain>`, which covers one label and not two, so `origin-label.<domain>`
+   * validates and `origin.api.<domain>` would not.
+   */
+  readonly apiOriginDomain: string;
   readonly alarmEmail: string;
   readonly removalPolicy: RemovalPolicy;
   readonly isProduction: boolean;
@@ -216,6 +230,12 @@ export interface FoundationResources {
   readonly parameterPrefix: string;
   /** Role assumed by GitHub Actions to deploy this environment. */
   readonly deployRole: IRole;
+  /**
+   * Present only when the primary region is not us-east-1. Resources CloudFront
+   * requires to live there — certificates, and any CLOUDFRONT-scoped WebACL —
+   * are created in this stack instead of the consuming one.
+   */
+  readonly edgeStack?: Stack;
 }
 
 /**

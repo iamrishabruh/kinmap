@@ -25,6 +25,8 @@ afterEach(() => {
 });
 
 const ACCEPTED = { termsVersion: '2026-01-01', privacyPolicyVersion: '2026-01-01' } as const;
+/** An adult's date. The age gate has its own tests; these are about consent. */
+const ADULT_BIRTH_DATE = '1990-06-15';
 
 describe('signUpWithPassword', () => {
   it('sends the accepted policy versions the PreSignUp trigger requires', async () => {
@@ -37,6 +39,7 @@ describe('signUpWithPassword', () => {
       email: 'ada@example.com',
       password: 'a-long-enough-password',
       accepted: ACCEPTED,
+      birthDate: ADULT_BIRTH_DATE,
     });
 
     const request = harness.requests[0];
@@ -68,6 +71,7 @@ describe('signUpWithPassword', () => {
       email: 'ada@example.com',
       password: 'a-long-enough-password',
       accepted: ACCEPTED,
+      birthDate: ADULT_BIRTH_DATE,
     });
 
     expect(outcome.codeSentTo).toBe('a***@e***.com');
@@ -84,6 +88,7 @@ describe('signUpWithPassword', () => {
       email: 'ada@example.com',
       password: 'super-secret-value',
       accepted: ACCEPTED,
+      birthDate: ADULT_BIRTH_DATE,
     }).catch((error: unknown) => error);
 
     expect(JSON.stringify(thrown) + String(thrown)).not.toContain('super-secret-value');

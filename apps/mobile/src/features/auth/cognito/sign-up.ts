@@ -61,6 +61,16 @@ export async function signUpWithPassword(input: {
   readonly email: string;
   readonly password: string;
   readonly accepted: PolicyAcceptance;
+  /**
+   * `YYYY-MM-DD`, as attested on the age screen.
+   *
+   * Sent so the PreSignUp trigger can apply the minimum age, and NOT sent as a
+   * user attribute: it is compared server-side and discarded, so it never
+   * becomes part of the account. The gate is enforced there rather than here
+   * because `SignUp` is a public Cognito API and a client-side check is a
+   * suggestion.
+   */
+  readonly birthDate: string;
 }): Promise<SignUpOutcome> {
   const response = await callCognito(
     'SignUp',
@@ -73,10 +83,12 @@ export async function signUpWithPassword(input: {
       ValidationData: [
         { Name: 'termsVersion', Value: input.accepted.termsVersion },
         { Name: 'privacyPolicyVersion', Value: input.accepted.privacyPolicyVersion },
+        { Name: 'birthDate', Value: input.birthDate },
       ],
       ClientMetadata: {
         termsVersion: input.accepted.termsVersion,
         privacyPolicyVersion: input.accepted.privacyPolicyVersion,
+        birthDate: input.birthDate,
       },
     },
     SignUpResponseSchema,
