@@ -9,6 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { installAuthBridge } from '@/features/auth/auth-bridge';
 import { RouteGuard } from '@/features/auth/route-guard';
 import { AuthSessionProvider } from '@/features/auth/session-provider';
+import { ApiProvider } from '@/features/query/api';
+import { familyApi } from '@/features/query/transport';
 import { initialiseObservability } from '@/lib/observability';
 
 // Initialised before the first render so an early crash is still reported —
@@ -54,12 +56,19 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthSessionProvider>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <RouteGuard>
-            <Stack screenOptions={{ headerShown: false }} />
-          </RouteGuard>
-        </AuthSessionProvider>
+        {/*
+          Above AuthSessionProvider, because that provider's first act is to
+          fetch the account — it calls the API before any screen mounts, so the
+          transport has to already be in the tree.
+        */}
+        <ApiProvider api={familyApi}>
+          <AuthSessionProvider>
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <RouteGuard>
+              <Stack screenOptions={{ headerShown: false }} />
+            </RouteGuard>
+          </AuthSessionProvider>
+        </ApiProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );
