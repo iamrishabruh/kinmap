@@ -21,7 +21,7 @@
     "@family/contracts": "workspace:*",
     "@family/observability": "workspace:*",
     "@family/schemas": "workspace:*",
-    "aws-jwt-verify": "5.1.0",
+    "aws-jwt-verify": "5.2.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
