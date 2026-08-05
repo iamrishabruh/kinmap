@@ -43,6 +43,8 @@ export function developmentConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.DESTROY,
     isProduction: false,
 
+    reserveLambdaConcurrency:
+      envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_DEVELOPMENT', 'false') === 'true',
     cdkQualifier: envString(
       'KINMAP_CDK_QUALIFIER_DEVELOPMENT',
       envString('KINMAP_CDK_QUALIFIER', 'hnb659fds'),

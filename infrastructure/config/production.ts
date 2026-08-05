@@ -42,6 +42,8 @@ export function productionConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: true,
 
+    reserveLambdaConcurrency:
+      envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_PRODUCTION', 'false') === 'true',
     cdkQualifier: envString(
       'KINMAP_CDK_QUALIFIER_PRODUCTION',
       envString('KINMAP_CDK_QUALIFIER', 'kinmap'),

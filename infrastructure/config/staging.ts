@@ -42,6 +42,8 @@ export function stagingConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: false,
 
+    reserveLambdaConcurrency:
+      envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_STAGING', 'false') === 'true',
     cdkQualifier: envString(
       'KINMAP_CDK_QUALIFIER_STAGING',
       envString('KINMAP_CDK_QUALIFIER', 'hnb659fds'),

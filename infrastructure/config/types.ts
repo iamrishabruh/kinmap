@@ -199,6 +199,27 @@ export interface EnvironmentConfig {
 
   // -- naming ---------------------------------------------------------------
   /**
+   * Whether functions may reserve concurrency.
+   *
+   * Reserving concurrency requires the account to keep at least 10 unreserved
+   * executions, and all three of these accounts sit at the AWS new-account
+   * default of **10 total**. So any reservation at all is rejected:
+   *
+   *   Specified ReservedConcurrentExecutions for function decreases account's
+   *   UnreservedConcurrentExecution below its minimum value of [10]
+   *
+   * That took out the production mail and migration stacks, and it is not a
+   * problem the code can solve — at a ceiling of 10 the platform cannot serve
+   * real traffic whatever the template says. A quota increase to 1,000 is open
+   * with AWS support for every account.
+   *
+   * Until it lands this is false, and it is a configuration value rather than a
+   * silent omission so that turning the guardrails back on is one deliberate
+   * change with a reason attached, not something to remember.
+   */
+  readonly reserveLambdaConcurrency: boolean;
+
+  /**
    * The CDK bootstrap qualifier this account was bootstrapped with.
    *
    * It is not the same everywhere, and pretending otherwise cost a production

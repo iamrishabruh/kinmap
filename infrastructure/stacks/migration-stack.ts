@@ -197,7 +197,8 @@ export class MigrationStack extends Stack {
       // outright. The DataMigrations table's conditional writes are the actual
       // guard against a double-apply — this reservation is defence in depth,
       // not the mechanism — so dropping it outside production is safe.
-      reservedConcurrentExecutions: config.isProduction ? 1 : undefined,
+      reservedConcurrentExecutions:
+        config.isProduction && config.reserveLambdaConcurrency ? 1 : undefined,
       tracing: Tracing.ACTIVE,
       logGroup,
       environment: {

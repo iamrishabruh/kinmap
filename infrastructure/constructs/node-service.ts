@@ -152,9 +152,10 @@ export class NodeService extends Construct {
 
       memorySize: props.memorySize ?? config.lambdaMemoryMb,
       timeout: props.timeout ?? Duration.seconds(config.lambdaTimeoutSeconds),
-      reservedConcurrentExecutions: config.isProduction
-        ? props.reservedConcurrentExecutions
-        : undefined,
+      reservedConcurrentExecutions:
+        config.isProduction && config.reserveLambdaConcurrency
+          ? props.reservedConcurrentExecutions
+          : undefined,
 
       tracing: Tracing.ACTIVE,
       logGroup: this.logGroup,

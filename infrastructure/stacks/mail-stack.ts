@@ -52,12 +52,15 @@ import {
   type IHostedZone,
 } from 'aws-cdk-lib/aws-route53';
 import {
+  CfnConfigurationSetEventDestination,
+  ConfigurationSet,
   DkimIdentity,
   EasyDkimSigningKeyLength,
   EmailIdentity,
   Identity,
   MailFromBehaviorOnMxFailure,
   ReceiptRuleSet,
+  SuppressionReasons,
   TlsPolicy,
   type ReceiptRule,
 } from 'aws-cdk-lib/aws-ses';
@@ -66,6 +69,7 @@ import {
   LambdaInvocationType,
   S3 as S3ReceiptAction,
 } from 'aws-cdk-lib/aws-ses-actions';
+import { Topic } from 'aws-cdk-lib/aws-sns';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { type Construct } from 'constructs';
 
@@ -276,6 +280,52 @@ export class MailStack extends Stack {
     const mailFromDomain =
       mailFromSubdomain.length > 0 ? `${mailFromSubdomain}.${config.domain}` : undefined;
 
+    // -----------------------------------------------------------------------
+    // Bounces and complaints
+    // -----------------------------------------------------------------------
+    //
+    // Account-level suppression already stops SES sending to an address that
+    // hard-bounced or complained. What it does not do is tell anybody it
+    // happened, so a domain's reputation can decay silently until sending is
+    // paused — and by then the invitations that mattered have already failed.
+    //
+    // This configuration set publishes those events to their own SNS topic.
+    // BOUNCE and COMPLAINT are the reputation-affecting ones; REJECT and
+    // RENDERING_FAILURE mean the platform tried to send something malformed,
+    // which is a bug rather than a recipient problem; DELIVERY_DELAY is the
+    // early warning that usually precedes the other two.
+    //
+    // Attached as the identity's DEFAULT configuration set, so a caller cannot
+    // send without it by forgetting to name it.
+    const deliveryEvents = new Topic(this, 'MailDeliveryEvents', {
+      topicName: `${config.resourcePrefix}-mail-events`,
+      displayName: `Kinmap ${config.envName} mail delivery events`,
+      masterKey: foundation.operationsKey,
+    });
+
+    const configurationSet = new ConfigurationSet(this, 'MailConfigurationSet', {
+      configurationSetName: config.resourcePrefix,
+      reputationMetrics: true,
+      suppressionReasons: SuppressionReasons.BOUNCES_AND_COMPLAINTS,
+    });
+
+    const eventDestination = new CfnConfigurationSetEventDestination(this, 'MailEventDestination', {
+      configurationSetName: configurationSet.configurationSetName,
+      eventDestination: {
+        name: 'sns',
+        enabled: true,
+        matchingEventTypes: [
+          'BOUNCE',
+          'COMPLAINT',
+          'REJECT',
+          'RENDERING_FAILURE',
+          'DELIVERY_DELAY',
+        ],
+        snsDestination: { topicArn: deliveryEvents.topicArn },
+      },
+    });
+    eventDestination.node.addDependency(configurationSet);
+
     this.emailIdentity = new EmailIdentity(this, 'DomainIdentity', {
       identity: Identity.domain(config.domain),
       dkimSigning: true,
@@ -283,7 +333,9 @@ export class MailStack extends Stack {
       feedbackForwarding: true,
       mailFromDomain,
       mailFromBehaviorOnMxFailure: MailFromBehaviorOnMxFailure.USE_DEFAULT_VALUE,
+      configurationSet,
     });
+    this.emailIdentity.node.addDependency(eventDestination);
 
     // Easy DKIM publishes three CNAMEs. The token attributes are already
     // fully-qualified record names, so `CfnRecordSet` is used directly rather
