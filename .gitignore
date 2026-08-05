@@ -26,8 +26,19 @@ apps/mobile/credentials.json
 # ---------------------------------------------------------------------------
 node_modules/
 dist/
-lib/
 build/
+# No `lib/` rule.
+#
+# It was here for build output, and nothing in this repository emits to `lib/`
+# — every TypeScript project compiles to `dist/`. What it did instead was
+# exclude three directories of source: apps/mobile/src/lib (the API client,
+# telemetry and query client that every screen imports), scripts/aws/lib and
+# scripts/bootstrap/lib (the shell libraries every operational script sources).
+#
+# A clean clone therefore could not typecheck the mobile app at all — it failed
+# with "Cannot find module '@/lib/api'" on twelve files — and could not run the
+# bootstrap scripts either. It went unnoticed because the files exist locally,
+# so everything worked for the one person who had them.
 coverage/
 *.tsbuildinfo
 .turbo/
