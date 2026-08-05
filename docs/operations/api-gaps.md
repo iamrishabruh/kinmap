@@ -91,8 +91,46 @@ returned once at creation and never again. The fix is usually to change the view
 type rather than the server.
 
 **Signature mismatches.** `acceptInvitation` takes only a token while the
-request contract requires an accepted terms version, and `AbuseCategory` in the
-client omits `COERCED_SHARING`, which the server accepts — so that category is
-currently unreportable from the app. That last one matters more than its size
-suggests: coerced sharing is precisely the abuse this product needs a report
-path for.
+request contract requires an accepted terms version.
+
+`AbuseCategory` used to omit `COERCED_SHARING` — the abuse this product most
+needs a report path for. **Fixed.** The client no longer restates the server's
+enum; the type is now `AbuseCategory` from `@family/schemas`, so a category that
+exists on the server and not in the app is a compile error. `reportAccount` also
+returns `safetyResourcesUrl` instead of parsing it and throwing it away: somebody
+reporting that they are being made to share their location is exactly who that
+link is for. A third, contradictory abuse vocabulary in
+`features/settings/api/contracts.ts` — `ADDED_WITHOUT_CONSENT`,
+`COERCED_TO_SHARE`, `CHILD_SAFETY`, none of which the API accepts — was deleted;
+nothing called it, so every report through it would have been rejected by the
+strict enum on the way in.
+
+---
+
+## Infrastructure: AWS Config is not deployed
+
+Not an API gap, but the same kind of thing and it belongs somewhere.
+
+Configuration recording and nine managed rules (public buckets, DynamoDB PITR
+and KMS encryption, Lambda public access, secret rotation, root access keys,
+CloudTrail) are **not** created. `infrastructure/stacks/security-stack.ts`
+records the four sequencings that were tried against the real production account
+and how each fails; the short version is that Config's recorder and delivery
+channel are mutually dependent, `AWS::Config::ConfigRule` is validated at
+change-set time against the account rather than the template, and the only
+shapes that work require running the first deploy twice.
+
+The delivery bucket is created and ready. Enabling Config means a one-time
+account baseline — Control Tower, or a script making the three API calls in
+order — rather than something inside a deploy that has to be repeatable.
+
+Still running: GuardDuty, Security Hub, IAM Access Analyzer, the CloudTrail
+organisation trail, AWS Backup over every table, and the observability stack's
+alarms.
+
+One residual: the production account holds a configuration recorder named
+`kinmap-production` left behind by an attempt to sequence this. It is **not
+recording** and has no delivery channel, so it costs nothing and collects
+nothing. It cannot be removed with the `KinmapProdDeploy` permission set, which
+explicitly denies `config:DeleteConfigurationRecorder` — deliberately, because
+turning off configuration recording is an early move in an intrusion.

@@ -14,7 +14,28 @@ checked. Where something is unproven, it says so.
 
 ---
 
-## Development environment — deployed and exercised
+## Three environments, all deployed
+
+| Environment | Account        | Domain               | Stacks | Verified |
+| ----------- | -------------- | -------------------- | ------ | -------- |
+| development | `000000000000` | `dev.kinmap.app`     | 15     | yes      |
+| staging     | `000000000000` | `staging.kinmap.app` | 15     | yes      |
+| production  | `000000000000` | `kinmap.app`         | 15     | yes      |
+
+"Verified" means `GET /v1/health` returned 200 through the environment's own
+CloudFront distribution, an authorised route returned 401 from the Cognito
+authorizer rather than a CloudFront short-circuit, and the WebACL is attached to
+the distribution serving that domain. Not "the stacks say CREATE_COMPLETE".
+
+**DNS.** Each environment owns its own hosted zone in its own account:
+`dev.kinmap.app` and `staging.kinmap.app` are delegated from the apex, and the
+apex `kinmap.app` was moved out of the management account into production so
+production can issue its own certificates and write its own records. The
+registrar's name servers were switched after both delegations were copied across
+and confirmed to answer identically; `api.dev` and `api.staging` were re-checked
+after the switch and never stopped resolving.
+
+### Development
 
 AWS account `000000000000`, region `us-east-1`. **Fifteen stacks**, 25 Lambda
 functions, 18 DynamoDB tables. Zero alarms firing. The Synthetics canary, which
@@ -129,20 +150,35 @@ which alarms support _and_ which aggregate.
 
 ## Blocked on you
 
-### 1. Nothing, right now
+### 1. Things only you can do
 
-Both SES verification emails are confirmed, the stray Expo project is deleted,
-and AWS access works. There is no outstanding request.
+- **Open the app.** Nobody has seen a screen. It builds, bundles, installs and
+  typechecks; none of that is evidence that it is any good to use.
+- **Confirm the two SNS subscriptions** for `alerts@dev.kinmap.app`. Until then
+  no alarm in development reaches a person.
+- **Sign in with Apple.** A Services ID and a Sign in with Apple key have to be
+  created in the Apple Developer portal — the App Store Connect API exposes
+  neither. Email sign-in works; the Apple button is honestly disabled.
+- **SES production access.** All three accounts are in the sandbox, so mail
+  reaches only verified addresses. Every invitation to a real person is
+  undeliverable until AWS approves the request.
+- **The real-device background location matrix.** Nothing that can be built
+  substantiates a claim about background tracking. No such claim is made.
 
 ### 2. Decisions, not tasks
 
-- **COPPA.** A family location product will have children on it. This materially
-  changes what may be collected and what must be disclosed. It is the first open
-  question in `apps/web/public/privacy.html` and needs a lawyer before launch.
-- **WAF architecture.** See the gap below — two options, both a trade-off.
+- **COPPA.** Still the largest open question, but the shape has changed: there
+  IS now a minimum age, enforced server-side, and under-13 accounts cannot be
+  created. What counsel must decide is whether they should be able to — which
+  for a family location product is a real possibility, and would mean building
+  verifiable parental consent before a US launch. See
+  `docs/privacy/privacy-policy.md` §12.
 - **Google / Firebase.** Deferred while the project is iOS-first. Google Sign-In
   on iOS also needs a Google Cloud OAuth client; with Apple and email sign-in
   only, Google can be skipped entirely.
+- **AWS Config.** Not deployed, deliberately — see
+  `docs/operations/api-gaps.md`. Enabling it needs a one-time account baseline
+  rather than a change to the deploy.
 
 ---
 
@@ -211,22 +247,39 @@ never committed, never logged, never passed as a command-line argument.
 
 ---
 
-## Known gap: WAF is not protecting the API
+## WAF now protects the API — closed
 
-WAFv2 attaches only to an ALB, an API Gateway **REST** API, AppSync, a Cognito
-user pool, App Runner, or CloudFront. This platform uses an API Gateway **HTTP**
-API, which is not on that list — the association fails with a misleading
-`The ARN isn't valid`. The ARN is correct; the resource type is unsupported.
+For a long time the WebACL was deployed, reviewed, versioned and filtering
+nothing. WAFv2 attaches only to an ALB, an API Gateway **REST** API, AppSync, a
+Cognito user pool, App Runner or CloudFront, and this platform serves an API
+Gateway **HTTP** API. Nothing failed and no alarm fired; the only evidence was a
+comment saying so.
 
-The WebACL and its rules are deployed and ready to attach. Two ways to close it:
+CloudFront now serves `api.<domain>` in all three environments and carries the
+ACL at CLOUDFRONT scope. API Gateway moved to `origin-label.<domain>`, and the
+default `execute-api` endpoint is disabled **everywhere**, not only in
+production — leaving it open in development would have meant the environment
+used to rehearse changes was the one where the protection being rehearsed was
+absent.
 
-1. **CloudFront in front of the API**, ACL moved to CLOUDFRONT scope. The usual
-   answer, and it buys edge caching. Adds a hop and a cache invalidation story.
-2. **Migrate to a REST API.** Roughly 3.5× the per-request cost, and it loses the
-   JWT authorizer this design relies on.
+Caching is disabled outright rather than tuned down: every route is either
+authorised per-principal or a provider webhook, so a cached response is one
+family member's location served to another.
 
-Active meanwhile: API Gateway per-route throttling and the per-principal token
-bucket in `services/api`. Missing: the managed rule groups and the IP rate rule.
+Verified in development and staging: `/v1/health` returns 200 through the
+distribution, `/v1/families` returns 401 from the Cognito authorizer rather than
+a CloudFront short-circuit (so the `Authorization` header is being forwarded),
+a POST body reaches the origin, and the raw `execute-api` hostname no longer
+answers. Two synth-time guards were confirmed to fail when the ACL is put back
+to REGIONAL and when the default endpoint is re-enabled.
+
+**Residual risk, stated plainly.** `origin-label.<domain>` is a public name, so
+anyone who finds it can reach the origin directly and skip the managed rule
+groups and the IP rate limit. What still applies on that path: the Cognito JWT
+authorizer, API Gateway per-route throttling, and the per-principal token bucket
+in `services/api`. Closing it needs a shared secret injected by CloudFront and
+checked by every API-integrated service — six services, not one — and that is
+the next piece of this work rather than something already done.
 
 ---
 
@@ -361,6 +414,11 @@ produced.
    Safari — the only proof that universal links work.
 4. Begin the real-device location matrix — the only thing that can substantiate
    any claim about background tracking.
-5. Create the GitHub repository and push.
-6. Decide the WAF architecture, then deploy staging.
-7. Production, only with explicit approval.
+5. ~~Create the GitHub repository and push.~~ Done — `iamrishabruh/kinmap`,
+   private. Making it public is a decision, not an oversight.
+6. ~~Decide the WAF architecture, then deploy staging.~~ Done — CloudFront, and
+   staging is live and verified.
+7. ~~Production.~~ Deployed, with explicit approval, after moving the apex zone
+   into the production account.
+8. Origin verification, so the CloudFront hop cannot be bypassed.
+9. SES production access, and the Apple Services ID — both yours.
