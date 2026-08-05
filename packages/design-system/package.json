@@ -16,13 +16,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {
-    "react": "19.2.3",
+    "react": "19.2.8",
     "react-native": "0.86.2"
   },
   "devDependencies": {
     "@family/tsconfig": "workspace:*",
     "@types/react": "~19.2.2",
-    "react": "19.2.3",
+    "react": "19.2.8",
     "react-native": "0.86.2",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
