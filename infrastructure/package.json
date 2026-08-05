@@ -8,11 +8,12 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint bin config constructs stacks tests",
-    "test": "vitest run --passWithNoTests",
-    "test:unit": "vitest run --passWithNoTests",
-    "synth": "cdk synth --quiet",
-    "diff": "cdk diff",
-    "deploy": "cdk deploy"
+    "test": "pnpm run prebuild:site && vitest run --passWithNoTests",
+    "test:unit": "pnpm run prebuild:site && vitest run --passWithNoTests",
+    "synth": "pnpm run prebuild:site && cdk synth --quiet",
+    "diff": "pnpm run prebuild:site && cdk diff",
+    "deploy": "pnpm run prebuild:site && cdk deploy",
+    "prebuild:site": "pnpm --filter @family/web build"
   },
   "dependencies": {
     "@family/contracts": "workspace:*",
