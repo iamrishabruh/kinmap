@@ -192,6 +192,14 @@ jobs:
         run: ./scripts/validation/check-prebuild-consistency.sh
         env:
           APP_VARIANT: development
+      # check-prebuild-consistency.sh restores the COMMITTED native projects
+      # when it finishes, which is what makes it non-destructive — and which
+      # also removes the debug keystore prebuild had just generated. Gradle then
+      # fails: "Keystore file .../debug.keystore not found for signing config
+      # 'debug'". The keystore is gitignored, correctly: it is generated signing
+      # material, not configuration.
+      - name: Restore generated native artefacts
+        run: pnpm --filter @family/mobile prebuild
       - name: Assemble debug
         working-directory: apps/mobile/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
@@ -240,4 +248,4 @@ jobs:
         with: { node-version-file: .nvmrc, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Smoke test the API handler in-process
-        run: pnpm --filter @family/api test:smoke --if-present
+        run: pnpm --filter @family/api run test:smoke

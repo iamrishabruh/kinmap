@@ -43,6 +43,7 @@ import { Annotations, CfnOutput, Duration, Stack } from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Alias } from 'aws-cdk-lib/aws-kms';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import {
   CfnRecordSet,
@@ -297,10 +298,21 @@ export class MailStack extends Stack {
     //
     // Attached as the identity's DEFAULT configuration set, so a caller cannot
     // send without it by forgetting to name it.
+    // Encrypted with the AWS-managed SNS key, not the platform's operations
+    // key. SES publishes to this topic as a service principal, and it cannot
+    // use a customer-managed key it has no grant on:
+    //
+    //   MailEventDestination CREATE_FAILED — Access denied to KMS key for SNS topic
+    //
+    // Granting SES on the operations key would mean editing a key policy that
+    // lives in the foundation stack from this one, which is the circular
+    // dependency the foundation exists to avoid. The events carry recipient
+    // addresses and bounce reasons — no coordinates, and nothing the operations
+    // key protects — so the managed key is the right level here.
     const deliveryEvents = new Topic(this, 'MailDeliveryEvents', {
       topicName: `${config.resourcePrefix}-mail-events`,
       displayName: `Kinmap ${config.envName} mail delivery events`,
-      masterKey: foundation.operationsKey,
+      masterKey: Alias.fromAliasName(this, 'SnsManagedKey', 'alias/aws/sns'),
     });
 
     const configurationSet = new ConfigurationSet(this, 'MailConfigurationSet', {

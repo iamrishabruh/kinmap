@@ -78,6 +78,11 @@ jobs:
         if: matrix.language == 'java-kotlin'
         run: pnpm install --frozen-lockfile
 
+      # Generates the debug keystore Gradle signs with; it is gitignored.
+      - name: Restore generated native artefacts
+        if: matrix.language == 'java-kotlin'
+        run: pnpm --filter @family/mobile prebuild
+
       - name: Build for CodeQL
         if: matrix.language == 'java-kotlin'
         working-directory: apps/mobile/android
