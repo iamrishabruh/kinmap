@@ -76,6 +76,8 @@ jobs:
     # once at job level rather than repeated per step.
     env:
       CDK_ENVIRONMENT: production
+      KINMAP_HOSTED_ZONE_ID_PRODUCTION: ${{ secrets.KINMAP_HOSTED_ZONE_ID_PRODUCTION }}
+      KINMAP_API_ORIGIN_DOMAIN_PRODUCTION: ${{ secrets.KINMAP_API_ORIGIN_DOMAIN_PRODUCTION }}
       AWS_PROD_ACCOUNT_ID: ${{ secrets.AWS_PROD_ACCOUNT_ID }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:

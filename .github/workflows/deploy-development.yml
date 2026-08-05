@@ -42,6 +42,8 @@ jobs:
           pnpm --filter @family/infrastructure exec cdk diff --method=template --all
         env:
           CDK_ENVIRONMENT: development
+          KINMAP_HOSTED_ZONE_ID_DEVELOPMENT: ${{ secrets.KINMAP_HOSTED_ZONE_ID_DEVELOPMENT }}
+          KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT: ${{ secrets.KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT }}
           AWS_DEV_ACCOUNT_ID: ${{ secrets.AWS_DEV_ACCOUNT_ID }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
@@ -51,6 +53,8 @@ jobs:
           pnpm --filter @family/infrastructure exec cdk deploy --all --require-approval never
         env:
           CDK_ENVIRONMENT: development
+          KINMAP_HOSTED_ZONE_ID_DEVELOPMENT: ${{ secrets.KINMAP_HOSTED_ZONE_ID_DEVELOPMENT }}
+          KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT: ${{ secrets.KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT }}
           AWS_DEV_ACCOUNT_ID: ${{ secrets.AWS_DEV_ACCOUNT_ID }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
