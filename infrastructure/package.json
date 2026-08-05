@@ -6,14 +6,14 @@
   "description": "AWS CDK v2 application for the Kinmap platform",
   "scripts": {
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit",
+    "deploy": "pnpm run prebuild:site && cdk deploy",
+    "diff": "pnpm run prebuild:site && cdk diff --method=template",
     "lint": "eslint bin config constructs stacks tests",
+    "prebuild:site": "pnpm --filter @family/web build",
+    "synth": "pnpm run prebuild:site && cdk synth --quiet",
     "test": "pnpm run prebuild:site && vitest run --passWithNoTests",
     "test:unit": "pnpm run prebuild:site && vitest run --passWithNoTests",
-    "synth": "pnpm run prebuild:site && cdk synth --quiet",
-    "diff": "pnpm run prebuild:site && cdk diff --method=template",
-    "deploy": "pnpm run prebuild:site && cdk deploy",
-    "prebuild:site": "pnpm --filter @family/web build"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@family/contracts": "workspace:*",

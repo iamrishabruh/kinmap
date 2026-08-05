@@ -45,13 +45,14 @@ jobs:
         id: diff
         run: |
           set -euo pipefail
+          pnpm --filter @family/web build
           {
             echo 'diff<<CDKDIFF'
             if [[ "${{ steps.creds.outcome }}" == "success" ]]; then
-              pnpm cdk:diff -- --all 2>&1 | tail -300
+              pnpm --filter @family/infrastructure exec cdk diff --method=template --all 2>&1 | tail -300
             else
               echo "(no AWS credentials on this run — showing synth result only)"
-              pnpm cdk:synth 2>&1 | tail -100
+              pnpm --filter @family/infrastructure exec cdk synth --quiet 2>&1 | tail -100
             fi
             echo 'CDKDIFF'
           } >> "$GITHUB_OUTPUT"

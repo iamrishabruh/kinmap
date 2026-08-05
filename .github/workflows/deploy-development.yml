@@ -37,14 +37,18 @@ jobs:
           role-session-name: gha-deploy-development
 
       - name: Show diff before deploying
-        run: pnpm cdk:diff -- --all
+        run: |
+          pnpm --filter @family/web build
+          pnpm --filter @family/infrastructure exec cdk diff --method=template --all
         env:
           CDK_ENVIRONMENT: development
           AWS_DEV_ACCOUNT_ID: ${{ vars.AWS_DEV_ACCOUNT_ID }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
       - name: Deploy
-        run: pnpm cdk:deploy -- --all --require-approval never
+        run: |
+          pnpm --filter @family/web build
+          pnpm --filter @family/infrastructure exec cdk deploy --all --require-approval never
         env:
           CDK_ENVIRONMENT: development
           AWS_DEV_ACCOUNT_ID: ${{ vars.AWS_DEV_ACCOUNT_ID }}

@@ -23,14 +23,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `build-mode: none` analyses source without compiling. The Java/Kotlin
-        # autobuild failed outright — "Could not detect a suitable build command
-        # for the source checkout" — because the Gradle project lives at
-        # apps/mobile/android and autobuild looks from the repository root. The
-        # alternative is a bespoke build step per language that duplicates what
-        # ci.yml already compiles; none of these three needs a build to be
-        # analysed.
-        language: ["javascript-typescript", "java-kotlin", "actions"]
+        # Build mode per language, because one setting does not fit all three.
+        #
+        # Autobuild failed outright on Java/Kotlin — "Could not detect a
+        # suitable build command for the source checkout" — because the Gradle
+        # project is at apps/mobile/android and autobuild looks from the
+        # repository root. `none` then failed differently: "CodeQL detected code
+        # written in Java/Kotlin but could not process any of it using the
+        # 'none' build mode", because buildless extraction does not understand
+        # the Expo module layout under apps/mobile/modules.
+        #
+        # So Java/Kotlin gets the same Gradle build the android job already
+        # runs. That is the one language here where dropping analysis would
+        # matter: the Kotlin IS the location engine — foreground service,
+        # encrypted event queue, permission monitor — which is exactly the code
+        # a security scan should see.
+        include:
+          - language: javascript-typescript
+            build-mode: none
+          - language: actions
+            build-mode: none
+          - language: java-kotlin
+            build-mode: manual
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -38,8 +52,20 @@ jobs:
         uses: github/codeql-action/init@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
           queries: security-extended
+
+      - name: Set up Java
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build for CodeQL
+        if: matrix.language == 'java-kotlin'
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Analyze
         uses: github/codeql-action/analyze@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2

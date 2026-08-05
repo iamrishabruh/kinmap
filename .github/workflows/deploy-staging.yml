@@ -37,7 +37,9 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: gha-deploy-staging
 
-      - run: pnpm cdk:deploy -- --all --require-approval never
+      - run: |
+          pnpm --filter @family/web build
+          pnpm --filter @family/infrastructure exec cdk deploy --all --require-approval never
 
       - name: Integration tests
         run: pnpm --filter @family/api test:integration --if-present

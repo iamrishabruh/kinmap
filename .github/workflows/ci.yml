@@ -124,7 +124,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Synth must succeed with placeholder account ids so a fork PR can be
       # validated without any AWS credentials.
-      - run: pnpm cdk:synth
+      - run: |
+          pnpm --filter @family/web build
+          pnpm --filter @family/infrastructure exec cdk synth --quiet
         env:
           CDK_ENVIRONMENT: development
           AWS_DEV_ACCOUNT_ID: "000000000000"
