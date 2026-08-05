@@ -212,6 +212,24 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The runner's default Xcode ships Swift 6.1, and Expo's `apple` Swift
+      # package requires 6.2:
+      #
+      #   xcodebuild: error: Could not resolve package dependencies:
+      #   package 'apple' is using Swift tools version 6.2.0 but the installed
+      #   version is 6.1.0
+      #
+      # The image carries several Xcodes; this selects the newest rather than
+      # pinning a version that will age out of the image.
+      - name: Select the newest Xcode
+        run: |
+          set -euo pipefail
+          newest="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          echo "Using ${newest}"
+          sudo xcode-select -s "${newest}/Contents/Developer"
+          swift --version
+
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version-file: .nvmrc, cache: pnpm }
