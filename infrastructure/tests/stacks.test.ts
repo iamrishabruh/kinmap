@@ -772,8 +772,7 @@ describe('the public site', () => {
     let verified = 0;
 
     for (const stack of allStacks) {
-      const acls = resourcesOf(stack, 'AWS::WAFv2::WebACL');
-      for (const [, acl] of acls) {
+      for (const [, acl] of resourcesOf(stack, 'AWS::WAFv2::WebACL')) {
         expect(
           prop(acl, 'Scope'),
           `${stack.stackName}: a REGIONAL ACL cannot attach to an HTTP API — it must be CLOUDFRONT`,
@@ -791,10 +790,16 @@ describe('the public site', () => {
         if (!frontsTheApi) continue;
         verified += 1;
 
-        expect(
-          config?.['WebACLId'],
-          `${describeResource(stack, logicalId)}: fronts the API with no WebACL attached`,
-        ).toBeDefined();
+        // Required in production; deliberately absent elsewhere, because a
+        // WebACL is billed per month per environment and development and
+        // staging have no users to protect. The distribution still exists
+        // everywhere, so this is a cost decision and not a design one.
+        if (stack.environment === 'production') {
+          expect(
+            config?.['WebACLId'],
+            `${describeResource(stack, logicalId)}: production fronts the API with no WebACL attached`,
+          ).toBeDefined();
+        }
         expect(
           asRecord(config?.['DefaultCacheBehavior'])?.['CachePolicyId'],
           `${describeResource(stack, logicalId)}: must name a cache policy, and it must be the disabled one`,

@@ -1008,7 +1008,18 @@ export class ObservabilityStack extends Stack {
       executionRoleArn: role.roleArn,
       runtimeVersion: 'syn-nodejs-puppeteer-9.1',
       startCanaryAfterCreation: true,
-      schedule: { expression: 'rate(5 minutes)', durationInSeconds: '0' },
+      // Five minutes in production, thirty outside it.
+      //
+      // A canary run is billed individually, and at five minutes it is 8,640
+      // runs a month — about $10 per environment, which was the single largest
+      // line on the bill and was being spent health-checking environments with
+      // no users. Production keeps the tight interval because a five-minute
+      // detection window is the point of having a canary at all; development
+      // wants to know the environment is alive, which half-hourly answers.
+      schedule: {
+        expression: config.isProduction ? 'rate(5 minutes)' : 'rate(30 minutes)',
+        durationInSeconds: '0',
+      },
       runConfig: { timeoutInSeconds: 60, memoryInMb: 960, activeTracing: true },
       successRetentionPeriod: 7,
       failureRetentionPeriod: 31,

@@ -529,7 +529,8 @@ export class ApiStack extends Stack {
   public readonly authorizer: HttpUserPoolAuthorizer;
   /** `services/api`: everything that is neither a coordinate nor a webhook. */
   public readonly apiFunction: IFunction;
-  public readonly webAcl: CfnWebACL;
+  /** Production only — see where it is created for why. */
+  public readonly webAcl: CfnWebACL | undefined;
   /** Serves {@link EnvironmentConfig.apiDomain}; carries {@link webAcl}. */
   public readonly distribution: Distribution;
   public readonly accessLogGroup: LogGroup;
@@ -899,79 +900,91 @@ export class ApiStack extends Stack {
     // A CLOUDFRONT-scoped ACL is a us-east-1 resource whatever region the rest
     // of the platform runs in, so it is created in the edge stack when one
     // exists — the same rule the foundation applies to CloudFront certificates.
-    this.webAcl = new CfnWebACL(edgeScope, 'ApiWebAcl', {
-      name: `${config.resourcePrefix}-api`,
-      // WAF validates descriptions against ^[\w+=:#@/\-,\.][\w+=:#@/\-,\.\s]+[\w+=:#@/\-,\.]$
-      // — parentheses are rejected outright, so this reads as plain words.
-      description: `Kinmap API protection - ${config.envName}`,
-      scope: 'CLOUDFRONT',
-      defaultAction: { allow: {} },
-      visibilityConfig: {
-        cloudWatchMetricsEnabled: true,
-        metricName: `${config.resourcePrefix}-api-waf`,
-        // Sampled requests keep request URIs and headers in the WAF console.
-        // A URI carries user and family ids, so sampling stays off everywhere.
-        sampledRequestsEnabled: false,
-      },
-      rules: [
-        {
-          name: 'AWSManagedRulesCommonRuleSet',
-          priority: 10,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
+    // Created in production only.
+    //
+    // A WebACL costs $5 a month plus $1 per rule, so these three rules are
+    // about $8 per environment per month — $16 of which was being spent
+    // filtering attacks against development and staging, which have no users
+    // and no publicised hostname. The distribution is still created in every
+    // environment, so attaching an ACL to a lower one later is a one-line
+    // change, and the guard test requires production to have one.
+    this.webAcl = !config.isProduction
+      ? undefined
+      : new CfnWebACL(edgeScope, 'ApiWebAcl', {
+          name: `${config.resourcePrefix}-api`,
+          // WAF validates descriptions against ^[\w+=:#@/\-,\.][\w+=:#@/\-,\.\s]+[\w+=:#@/\-,\.]$
+          // — parentheses are rejected outright, so this reads as plain words.
+          description: `Kinmap API protection - ${config.envName}`,
+          scope: 'CLOUDFRONT',
+          defaultAction: { allow: {} },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: `${config.resourcePrefix}-api-waf`,
+            // Sampled requests keep request URIs and headers in the WAF console.
+            // A URI carries user and family ids, so sampling stays off everywhere.
+            sampledRequestsEnabled: false,
+          },
+          rules: [
+            {
               name: 'AWSManagedRulesCommonRuleSet',
-              // SizeRestrictions_BODY blocks bodies over 8 KB, which would
-              // reject a legitimate location batch. The real ceiling is
-              // LIMITS.MAX_BATCH_PAYLOAD_BYTES, enforced by the ingestion
-              // service, so this one rule counts rather than blocks.
-              ruleActionOverrides: [{ name: 'SizeRestrictions_BODY', actionToUse: { count: {} } }],
+              priority: 10,
+              overrideAction: { none: {} },
+              statement: {
+                managedRuleGroupStatement: {
+                  vendorName: 'AWS',
+                  name: 'AWSManagedRulesCommonRuleSet',
+                  // SizeRestrictions_BODY blocks bodies over 8 KB, which would
+                  // reject a legitimate location batch. The real ceiling is
+                  // LIMITS.MAX_BATCH_PAYLOAD_BYTES, enforced by the ingestion
+                  // service, so this one rule counts rather than blocks.
+                  ruleActionOverrides: [
+                    { name: 'SizeRestrictions_BODY', actionToUse: { count: {} } },
+                  ],
+                },
+              },
+              visibilityConfig: {
+                cloudWatchMetricsEnabled: true,
+                metricName: `${config.resourcePrefix}-waf-common`,
+                sampledRequestsEnabled: false,
+              },
             },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `${config.resourcePrefix}-waf-common`,
-            sampledRequestsEnabled: false,
-          },
-        },
-        {
-          name: 'AWSManagedRulesKnownBadInputsRuleSet',
-          priority: 20,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
+            {
               name: 'AWSManagedRulesKnownBadInputsRuleSet',
+              priority: 20,
+              overrideAction: { none: {} },
+              statement: {
+                managedRuleGroupStatement: {
+                  vendorName: 'AWS',
+                  name: 'AWSManagedRulesKnownBadInputsRuleSet',
+                },
+              },
+              visibilityConfig: {
+                cloudWatchMetricsEnabled: true,
+                metricName: `${config.resourcePrefix}-waf-known-bad-inputs`,
+                sampledRequestsEnabled: false,
+              },
             },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `${config.resourcePrefix}-waf-known-bad-inputs`,
-            sampledRequestsEnabled: false,
-          },
-        },
-        {
-          // Volumetric backstop per source IP, sitting above every per-route
-          // throttle. It exists to blunt credential stuffing and invitation
-          // token guessing, not to shape ordinary traffic.
-          name: 'RateLimitPerIp',
-          priority: 30,
-          action: { block: {} },
-          statement: {
-            rateBasedStatement: {
-              aggregateKeyType: 'IP',
-              limit: config.isProduction ? 3000 : 600,
+            {
+              // Volumetric backstop per source IP, sitting above every per-route
+              // throttle. It exists to blunt credential stuffing and invitation
+              // token guessing, not to shape ordinary traffic.
+              name: 'RateLimitPerIp',
+              priority: 30,
+              action: { block: {} },
+              statement: {
+                rateBasedStatement: {
+                  aggregateKeyType: 'IP',
+                  limit: config.isProduction ? 3000 : 600,
+                },
+              },
+              visibilityConfig: {
+                cloudWatchMetricsEnabled: true,
+                metricName: `${config.resourcePrefix}-waf-rate-limit`,
+                sampledRequestsEnabled: false,
+              },
             },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `${config.resourcePrefix}-waf-rate-limit`,
-            sampledRequestsEnabled: false,
-          },
-        },
-      ],
-    });
+          ],
+        });
 
     // -----------------------------------------------------------------------
     // Edge: the distribution clients actually reach
@@ -992,7 +1005,7 @@ export class ApiStack extends Stack {
       // CloudFront accepts certificates only from us-east-1; the foundation
       // creates this one there whatever region the platform runs in.
       certificate: foundation.cloudFrontCertificate,
-      webAclId: this.webAcl.attrArn,
+      webAclId: this.webAcl?.attrArn,
       httpVersion: HttpVersion.HTTP2_AND_3,
       minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
       priceClass: config.isProduction ? PriceClass.PRICE_CLASS_ALL : PriceClass.PRICE_CLASS_100,
@@ -1074,10 +1087,12 @@ export class ApiStack extends Stack {
       value: this.distribution.distributionDomainName,
       description: 'Alias target for the api.<domain> record',
     });
-    new CfnOutput(this, 'ApiWebAclArn', {
-      value: this.webAcl.attrArn,
-      description: 'Regional WAF WebACL protecting the API stage',
-    });
+    if (this.webAcl !== undefined) {
+      new CfnOutput(this, 'ApiWebAclArn', {
+        value: this.webAcl.attrArn,
+        description: 'CLOUDFRONT WAF WebACL attached to the API distribution',
+      });
+    }
     new CfnOutput(this, 'ApiMaxBatchPayloadBytes', {
       value: String(LIMITS.MAX_BATCH_PAYLOAD_BYTES),
       description: 'Ingestion payload ceiling the WAF size rule is relaxed for',
