@@ -76,6 +76,10 @@ DIFF_EXCLUDES=(
   # tree now contains — see .gitignore. Excluded so a developer who has run a
   # local build still gets a clean result.
   -x 'PrivacyInfo.xcprivacy'
+  # Expo generates a debug signing keystore, and .gitignore keeps it out of the
+  # repository — it is a local signing artefact, not configuration. So the
+  # regenerated tree has one and a fresh checkout does not.
+  -x 'debug.keystore'
 )
 
 for platform in ios android; do

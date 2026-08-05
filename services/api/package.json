@@ -11,10 +11,11 @@
   },
   "scripts": {
     "build": "tsc --emitDeclarationOnly --outDir dist || true",
-    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
     "test": "vitest run",
+    "test:smoke": "vitest run tests/pipeline.test.ts",
     "test:unit": "vitest run",
-    "lint": "eslint src"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.980.0",

@@ -29,6 +29,12 @@ const EXPECTED = {
   bundleIdentifier: 'app.kinmap.dev',
   androidPackage: 'app.kinmap.dev',
   name: 'Kinmap (Dev)',
+  // Added after `associatedDomains` was found to resolve to [] without
+  // .env.local. That build installs and runs perfectly and simply does not open
+  // invitation links — the one thing universal links exist for, failing
+  // silently, in CI and in EAS Build.
+  associatedDomains: 'applinks:dev.kinmap.app,webcredentials:dev.kinmap.app',
+  androidLinkHost: 'dev.kinmap.app',
 } as const;
 
 /** Everything app.config.ts reads that would mask a missing fallback. */
@@ -53,8 +59,12 @@ const module_ = (await import('../../apps/mobile/app.config.ts')) as {
 const config = module_.default({ config: {} });
 const extra = config['extra'] as { eas?: { projectId?: string } } | undefined;
 
-const ios = config['ios'] as { bundleIdentifier?: string } | undefined;
-const android = config['android'] as { package?: string } | undefined;
+const ios = config['ios'] as
+  | { bundleIdentifier?: string; associatedDomains?: string[] }
+  | undefined;
+const android = config['android'] as
+  | { package?: string; intentFilters?: Array<{ data?: Array<{ host?: string }> }> }
+  | undefined;
 
 const actual = {
   slug: config['slug'],
@@ -63,6 +73,8 @@ const actual = {
   bundleIdentifier: ios?.bundleIdentifier,
   androidPackage: android?.package,
   name: config['name'],
+  associatedDomains: (ios?.associatedDomains ?? []).join(','),
+  androidLinkHost: android?.intentFilters?.[0]?.data?.[0]?.host,
 };
 
 let failed = false;

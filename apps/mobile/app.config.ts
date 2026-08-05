@@ -58,21 +58,27 @@ const APP_NAME = 'Kinmap';
  * committed native projects, so they are not removed here: a scheme that
  * disappears breaks any link already sent to somebody.
  */
-const VARIANT_CONFIG: Record<Variant, { suffix: string; name: string; scheme: string }> = {
+const VARIANT_CONFIG: Record<
+  Variant,
+  { suffix: string; name: string; scheme: string; domain: string }
+> = {
   development: {
     suffix: '.dev',
     name: `${APP_NAME} (Dev)`,
     scheme: 'familylocation-dev',
+    domain: 'dev.kinmap.app',
   },
   staging: {
     suffix: '.staging',
     name: `${APP_NAME} (Staging)`,
     scheme: 'familylocation-staging',
+    domain: 'staging.kinmap.app',
   },
   production: {
     suffix: '',
     name: APP_NAME,
     scheme: 'familylocation',
+    domain: 'kinmap.app',
   },
 };
 
@@ -108,9 +114,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier,
     supportsTablet: false,
     // Build number is auto-incremented by EAS (spec §33).
-    associatedDomains: process.env.APP_DOMAIN
-      ? [`applinks:${process.env.APP_DOMAIN}`, `webcredentials:${process.env.APP_DOMAIN}`]
-      : [],
+    // Fixed per variant, never from the environment.
+    //
+    // This read `process.env.APP_DOMAIN ?? []`, so anywhere .env.local is not
+    // loaded — CI, and EAS Build — the app was configured with NO associated
+    // domains at all. That does not fail: it builds, installs and runs, and
+    // then an invitation link opens Safari instead of the app, which is the
+    // one thing universal links exist to prevent. Same defect as the bundle
+    // identifier, in the same file, found the same way.
+    associatedDomains: [`applinks:${variant.domain}`, `webcredentials:${variant.domain}`],
     config: {
       usesNonExemptEncryption: false,
     },
@@ -154,16 +166,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'RECEIVE_BOOT_COMPLETED',
       'WAKE_LOCK',
     ],
-    intentFilters: process.env.APP_DOMAIN
-      ? [
-          {
-            action: 'VIEW',
-            autoVerify: true,
-            data: [{ scheme: 'https', host: process.env.APP_DOMAIN }],
-            category: ['BROWSABLE', 'DEFAULT'],
-          },
-        ]
-      : [],
+    // The Android half of the same thing; see `associatedDomains` above.
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [{ scheme: 'https', host: variant.domain }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
   },
 
   web: {
