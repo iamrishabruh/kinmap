@@ -3,11 +3,6 @@ import { CfnAnalyzer } from 'aws-cdk-lib/aws-accessanalyzer';
 import { BackupPlan, BackupPlanRule, BackupResource, BackupVault } from 'aws-cdk-lib/aws-backup';
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import {
-  CfnConfigRule,
-  CfnConfigurationRecorder,
-  CfnDeliveryChannel,
-} from 'aws-cdk-lib/aws-config';
 import { Schedule } from 'aws-cdk-lib/aws-events';
 import { CfnDetector } from 'aws-cdk-lib/aws-guardduty';
 import {
@@ -28,11 +23,6 @@ import {
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { Secret, type ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import { CfnHub } from 'aws-cdk-lib/aws-securityhub';
-import {
-  AwsCustomResource,
-  AwsCustomResourcePolicy,
-  PhysicalResourceId,
-} from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
 
 import {
@@ -409,125 +399,46 @@ export class SecurityStack extends Stack {
     );
 
     // ---------------------------------------------------------------------
-    // AWS Config: production only, and deliberately so.
+    // AWS CONFIG IS NOT CREATED HERE, AND THIS IS THE REASON.
     //
     // Config's recorder and delivery channel are mutually dependent in a way
-    // CloudFormation cannot express:
+    // CloudFormation cannot express, and every way out of it was tried against
+    // the real production account:
     //
-    //   PutDeliveryChannel        fails with NoAvailableConfigurationRecorderException
-    //                             when no recorder exists;
-    //   StartConfigurationRecorder fails with NoAvailableDeliveryChannelException
-    //                             when no channel exists.
+    //   1. Native recorder, then channel. `AWS::Config::ConfigurationRecorder`
+    //      performs the put AND the start as one operation, so the start fails:
+    //      "Delivery channel is not available to start configuration recorder".
+    //      The stack sat in CREATE_IN_PROGRESS for half an hour and rolled back.
+    //   2. Native channel, then recorder. `PutDeliveryChannel` fails with
+    //      NoAvailableConfigurationRecorderException — there is no recorder yet.
+    //   3. Custom resource for the put, native channel, custom resource for the
+    //      start. This works for recording, but `AWS::Config::ConfigRule` is
+    //      validated at CHANGE SET time against the account rather than the
+    //      template: "Configuration Recorder not found. AWS Config resources
+    //      require a Configuration Recorder to be created before deployment."
+    //      On a fresh account nothing has run yet, so the rules cannot deploy.
+    //   4. Custom resource put plus a native recorder created last, so the rules
+    //      have a template resource to depend on. The native one then fails with
+    //      "kinmap-production already exists" — its create is not idempotent
+    //      against a recorder the account already has.
     //
-    // CloudFormation performs the put and the start as one resource operation,
-    // so BOTH orderings fail — verified against a real account, in both
-    // directions. Breaking the cycle needs a custom resource that creates the
-    // recorder, then the channel, then starts the recorder as three separate
-    // calls, or an account baseline tool such as Control Tower.
+    // What is left is a first deploy that must be run twice, and a deploy you
+    // have to run twice is one somebody eventually runs once. So Config is not
+    // declared here at all, rather than declared in a shape that half works.
     //
-    // Continuous configuration recording is a production detective control and
-    // is billed per configuration item, so a development account gains little
-    // from it and was paying for it with an environment that would not deploy.
-    // It is scoped to production until the sequencing is done properly.
-    if (!config.isProduction) {
-      return configBucket;
-    }
-
-    // The three calls, in the only order that works, each as its own resource.
+    // The bucket below IS created and is ready to receive delivery, so enabling
+    // Config is a matter of pointing a recorder at it. Doing that properly means
+    // a one-time account baseline — Control Tower, or a standalone script that
+    // makes the three API calls in order — outside the deploy that has to be
+    // repeatable.
     //
-    // `AWS::Config::ConfigurationRecorder` does the put AND the start in one
-    // operation, so it cannot be created before a delivery channel exists —
-    // and a delivery channel cannot be created before a recorder exists.
-    // Whichever way round the CloudFormation dependency is declared, one of
-    // them fails. Production proved it:
-    //
-    //   ConfigRecorder CREATE_FAILED — Delivery channel is not available to
-    //   start configuration recorder (NoAvailableDeliveryChannelException)
-    //
-    // and the stack rolled back after sitting in CREATE_IN_PROGRESS for half
-    // an hour. Splitting the put from the start breaks the cycle, which is
-    // what the note this replaces said was needed.
-    const recorderName = config.resourcePrefix;
-
-    const putRecorder = new AwsCustomResource(this, 'ConfigRecorderPut', {
-      onCreate: {
-        service: 'ConfigService',
-        action: 'putConfigurationRecorder',
-        physicalResourceId: PhysicalResourceId.of(recorderName),
-        parameters: {
-          ConfigurationRecorder: {
-            name: recorderName,
-            roleARN: recorderRole.roleArn,
-            recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
-          },
-        },
-      },
-      onUpdate: {
-        service: 'ConfigService',
-        action: 'putConfigurationRecorder',
-        physicalResourceId: PhysicalResourceId.of(recorderName),
-        parameters: {
-          ConfigurationRecorder: {
-            name: recorderName,
-            roleARN: recorderRole.roleArn,
-            recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
-          },
-        },
-      },
-      // Not deleted on stack removal. Turning off configuration recording is
-      // the kind of thing an attacker does first, so it is not something a
-      // failed deploy should do on the way out; removing it is a deliberate,
-      // manual act.
-      policy: AwsCustomResourcePolicy.fromStatements([
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['config:PutConfigurationRecorder', 'config:StartConfigurationRecorder'],
-          resources: ['*'],
-        }),
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['iam:PassRole'],
-          resources: [recorderRole.roleArn],
-        }),
-      ]),
-      installLatestAwsSdk: false,
-    });
-    putRecorder.node.addDependency(recorderRole);
-
-    const deliveryChannel = new CfnDeliveryChannel(this, 'ConfigDeliveryChannel', {
-      name: recorderName,
-      s3BucketName: configBucket.bucketName,
-      configSnapshotDeliveryProperties: { deliveryFrequency: 'TwentyFour_Hours' },
-    });
-    deliveryChannel.node.addDependency(putRecorder);
-
-    // The native recorder still exists, and is created LAST.
-    //
-    // `AWS::Config::ConfigRule` refuses to deploy without one — "Configuration
-    // Recorder not found. AWS Config resources require a Configuration Recorder
-    // to be created before deployment" — and CloudFormation looks for the
-    // resource, not for a recorder that happens to exist in the account. So the
-    // custom resource above is what breaks the cycle, and this is what the rules
-    // can depend on: by the time CloudFormation puts and starts it, both a
-    // recorder and a delivery channel are already there, so the start succeeds.
-    //
-    // `putConfigurationRecorder` is idempotent for a given name, so creating it
-    // twice under the same name is an update, not a conflict.
-    const recorder = new CfnConfigurationRecorder(this, 'ConfigRecorder', {
-      name: recorderName,
-      roleArn: recorderRole.roleArn,
-      recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
-    });
-    recorder.node.addDependency(deliveryChannel);
-
-    for (const rule of CONFIG_RULES) {
-      const configRule = new CfnConfigRule(this, `ConfigRule${rule.id}`, {
-        configRuleName: `${config.resourcePrefix}-${rule.identifier.toLowerCase()}`,
-        description: rule.description,
-        source: { owner: 'AWS', sourceIdentifier: rule.identifier },
-      });
-      configRule.node.addDependency(recorder);
-    }
+    // WHAT IS LOST: continuous configuration recording and nine managed rules
+    // (public buckets, DynamoDB PITR and KMS encryption, Lambda public access,
+    // secret rotation, root access keys, CloudTrail). WHAT STILL RUNS: GuardDuty,
+    // Security Hub, IAM Access Analyzer, the CloudTrail organisation trail, AWS
+    // Backup, and every alarm in the observability stack. Tracked in
+    // docs/operations/api-gaps.md.
+    void CONFIG_RULES;
 
     return configBucket;
   }
