@@ -3,11 +3,7 @@ import { CfnAnalyzer } from 'aws-cdk-lib/aws-accessanalyzer';
 import { BackupPlan, BackupPlanRule, BackupResource, BackupVault } from 'aws-cdk-lib/aws-backup';
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import {
-  CfnConfigRule,
-  CfnConfigurationRecorder,
-  CfnDeliveryChannel,
-} from 'aws-cdk-lib/aws-config';
+import { CfnConfigRule, CfnDeliveryChannel } from 'aws-cdk-lib/aws-config';
 import { Schedule } from 'aws-cdk-lib/aws-events';
 import { CfnDetector } from 'aws-cdk-lib/aws-guardduty';
 import {
@@ -28,6 +24,11 @@ import {
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { Secret, type ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import { CfnHub } from 'aws-cdk-lib/aws-securityhub';
+import {
+  AwsCustomResource,
+  AwsCustomResourcePolicy,
+  PhysicalResourceId,
+} from 'aws-cdk-lib/custom-resources';
 import type { Construct } from 'constructs';
 
 import {
@@ -428,18 +429,97 @@ export class SecurityStack extends Stack {
       return configBucket;
     }
 
-    const recorder = new CfnConfigurationRecorder(this, 'ConfigRecorder', {
-      name: config.resourcePrefix,
-      roleArn: recorderRole.roleArn,
-      recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
+    // The three calls, in the only order that works, each as its own resource.
+    //
+    // `AWS::Config::ConfigurationRecorder` does the put AND the start in one
+    // operation, so it cannot be created before a delivery channel exists —
+    // and a delivery channel cannot be created before a recorder exists.
+    // Whichever way round the CloudFormation dependency is declared, one of
+    // them fails. Production proved it:
+    //
+    //   ConfigRecorder CREATE_FAILED — Delivery channel is not available to
+    //   start configuration recorder (NoAvailableDeliveryChannelException)
+    //
+    // and the stack rolled back after sitting in CREATE_IN_PROGRESS for half
+    // an hour. Splitting the put from the start breaks the cycle, which is
+    // what the note this replaces said was needed.
+    const recorderName = config.resourcePrefix;
+
+    const putRecorder = new AwsCustomResource(this, 'ConfigRecorderPut', {
+      onCreate: {
+        service: 'ConfigService',
+        action: 'putConfigurationRecorder',
+        physicalResourceId: PhysicalResourceId.of(recorderName),
+        parameters: {
+          ConfigurationRecorder: {
+            name: recorderName,
+            roleARN: recorderRole.roleArn,
+            recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
+          },
+        },
+      },
+      onUpdate: {
+        service: 'ConfigService',
+        action: 'putConfigurationRecorder',
+        physicalResourceId: PhysicalResourceId.of(recorderName),
+        parameters: {
+          ConfigurationRecorder: {
+            name: recorderName,
+            roleARN: recorderRole.roleArn,
+            recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
+          },
+        },
+      },
+      // Not deleted on stack removal. Turning off configuration recording is
+      // the kind of thing an attacker does first, so it is not something a
+      // failed deploy should do on the way out; removing it is a deliberate,
+      // manual act.
+      policy: AwsCustomResourcePolicy.fromStatements([
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['config:PutConfigurationRecorder', 'config:StartConfigurationRecorder'],
+          resources: ['*'],
+        }),
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['iam:PassRole'],
+          resources: [recorderRole.roleArn],
+        }),
+      ]),
+      installLatestAwsSdk: false,
     });
+    putRecorder.node.addDependency(recorderRole);
 
     const deliveryChannel = new CfnDeliveryChannel(this, 'ConfigDeliveryChannel', {
-      name: config.resourcePrefix,
+      name: recorderName,
       s3BucketName: configBucket.bucketName,
       configSnapshotDeliveryProperties: { deliveryFrequency: 'TwentyFour_Hours' },
     });
-    deliveryChannel.node.addDependency(recorder);
+    deliveryChannel.node.addDependency(putRecorder);
+
+    const startRecorder = new AwsCustomResource(this, 'ConfigRecorderStart', {
+      onCreate: {
+        service: 'ConfigService',
+        action: 'startConfigurationRecorder',
+        physicalResourceId: PhysicalResourceId.of(`${recorderName}-started`),
+        parameters: { ConfigurationRecorderName: recorderName },
+      },
+      onUpdate: {
+        service: 'ConfigService',
+        action: 'startConfigurationRecorder',
+        physicalResourceId: PhysicalResourceId.of(`${recorderName}-started`),
+        parameters: { ConfigurationRecorderName: recorderName },
+      },
+      policy: AwsCustomResourcePolicy.fromStatements([
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['config:StartConfigurationRecorder'],
+          resources: ['*'],
+        }),
+      ]),
+      installLatestAwsSdk: false,
+    });
+    startRecorder.node.addDependency(deliveryChannel);
 
     for (const rule of CONFIG_RULES) {
       const configRule = new CfnConfigRule(this, `ConfigRule${rule.id}`, {
