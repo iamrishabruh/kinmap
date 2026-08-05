@@ -47,6 +47,8 @@ export function productionConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: true,
 
+    appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_PRODUCTION'),
+    googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_PRODUCTION'),
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_PRODUCTION', 'false') === 'true',
     cdkQualifier: envString(

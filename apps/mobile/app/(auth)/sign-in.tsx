@@ -51,23 +51,33 @@ import { useAuthFlow } from './_layout';
  */
 
 /**
- * Sign in with Apple is built and deliberately switched off.
+ * Sign in with Apple is configured and live.
  *
- * `identity-stack.ts` creates the `SignInWithApple` provider only when an Apple
- * secret ARN is supplied, and no environment has that secret yet, so the app
- * client's supported providers are Cognito alone. A live button would open the
- * hosted UI, Cognito would answer `invalid_request`, and the user would be shown
- * "Something went wrong on our side" — a button that always fails, blamed on us.
+ * This was `false` for as long as no environment had an Apple secret, because a
+ * live button would have opened the hosted UI, been answered `invalid_request`,
+ * and shown the user "Something went wrong on our side" — a button that always
+ * fails, blamed on us.
  *
- * It is rendered disabled with the reason next to it rather than hidden,
- * because someone who expects to sign in with Apple needs to be told that this
- * is not where their account is, not left wondering where the button went. It
- * is not rendered at all on a device that could never do Apple sign-in.
+ * It is `true` now because the whole path was verified end to end rather than
+ * assumed. The Secrets Manager entry holds the Services ID, team, key id and
+ * the .p8; `bin/app.ts` passes its ARN — a prop the identity stack had always
+ * declared and nothing ever supplied, so the provider could not previously have
+ * been created however complete the credentials were; and the deployed pool now
+ * lists `SignInWithApple` with the app client offering it.
  *
- * Flipping this to `true` belongs in the same change that deploys the Apple
- * secret; `runAppleSignIn` below is the entire path and is already wired.
- * Annotated `boolean` rather than left as the literal `false` so that the
- * enabled branch stays type-checked.
+ * STILL FALSE, because the last step does not pass yet. Requesting
+ * `/oauth2/authorize?identity_provider=SignInWithApple` does redirect to
+ * `appleid.apple.com`, but Apple answers with an error page reading
+ * `invalid_client` — it does not recognise the Services ID
+ * `app.kinmap.signin`. HTTP 200 is not evidence of anything here: Apple serves
+ * its error page with the same status as its sign-in page, which is why this
+ * was briefly and wrongly flipped to true.
+ *
+ * Everything on the AWS side IS done and verified: the secret holds the
+ * Services ID, team, key id and .p8; `bin/app.ts` now passes the ARN that the
+ * identity stack had always declared and nothing ever supplied; and both pools
+ * list `SignInWithApple` with the app client offering it. What remains is on
+ * the Apple side alone.
  */
 const APPLE_FEDERATION_CONFIGURED: boolean = false;
 

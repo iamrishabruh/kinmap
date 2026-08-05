@@ -226,6 +226,19 @@ export interface EnvironmentConfig {
   readonly reserveLambdaConcurrency: boolean;
 
   /**
+   * Secrets Manager ARNs for federated sign-in, when the provider exists.
+   *
+   * `IdentityStackProps.federatedIdentitySecrets` documented itself as
+   * "sourced from the environment configuration by bin/app.ts" and nothing ever
+   * passed it, so the Apple and Google providers could not be created however
+   * complete their credentials were. Absent is still valid: a provider without
+   * a secret is simply not created, which is what lets this deploy before any
+   * store account exists.
+   */
+  readonly appleSecretArn?: string;
+  readonly googleSecretArn?: string;
+
+  /**
    * The CDK bootstrap qualifier this account was bootstrapped with.
    *
    * It is not the same everywhere, and pretending otherwise cost a production

@@ -107,6 +107,13 @@ const identity = new IdentityStack(app, stackName(config, 'identity'), {
   env,
   foundation,
   tables,
+  // The prop this stack has always declared and nothing ever passed. Without
+  // it `secrets.appleSecretArn` was permanently undefined, so the Sign in with
+  // Apple provider was never created no matter what credentials existed.
+  federatedIdentitySecrets: {
+    appleSecretArn: config.appleSecretArn,
+    googleSecretArn: config.googleSecretArn,
+  },
 });
 identity.addDependency(data);
 

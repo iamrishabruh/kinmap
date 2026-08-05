@@ -47,6 +47,8 @@ export function stagingConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: false,
 
+    appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_STAGING'),
+    googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_STAGING'),
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_STAGING', 'false') === 'true',
     cdkQualifier: envString(

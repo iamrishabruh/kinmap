@@ -846,6 +846,29 @@ describe('the public site', () => {
     expect(checked, 'stacks must declare which bootstrap they need').toBeGreaterThan(0);
   });
 
+  it('creates a federated provider whenever its secret is configured', () => {
+    // `IdentityStackProps.federatedIdentitySecrets` documented itself as
+    // "sourced from the environment configuration by bin/app.ts", and bin/app.ts
+    // never passed it. So `secrets.appleSecretArn` was permanently undefined and
+    // the Sign in with Apple provider could not be created however complete the
+    // credentials were — the same shape of defect as the deletion dispatcher,
+    // the auth bridge, the routing guard and the transport before it.
+    //
+    // Asserted from the synthesised template rather than from the config, so it
+    // fails if the wiring is removed at any point between the two.
+    for (const stack of allStacks) {
+      const providers = resourcesOf(stack, 'AWS::Cognito::UserPoolIdentityProvider');
+      const apple = providers.find(([, p]) => prop(p, 'ProviderName') === 'SignInWithApple');
+      const hasSecret = JSON.stringify(stack.template.toJSON()).includes('identity/apple');
+      if (!hasSecret) continue;
+
+      expect(
+        apple,
+        `${stack.stackName}: an Apple secret is configured but no provider is created`,
+      ).toBeDefined();
+    }
+  });
+
   it('closes the execute-api endpoint that would route around the WebACL', () => {
     // `<apiId>.execute-api.<region>.amazonaws.com` answers the same routes and
     // never touches CloudFront, so leaving it open would make the ACL above

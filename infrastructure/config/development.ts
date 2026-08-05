@@ -48,6 +48,8 @@ export function developmentConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.DESTROY,
     isProduction: false,
 
+    appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_DEVELOPMENT'),
+    googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_DEVELOPMENT'),
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_DEVELOPMENT', 'false') === 'true',
     cdkQualifier: envString(
