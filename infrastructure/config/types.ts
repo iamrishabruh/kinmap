@@ -83,6 +83,44 @@ export function envList(name: string, fallback: readonly string[]): readonly str
 }
 
 /**
+ * Every spelling of a GitHub OIDC subject claim, for one trigger.
+ *
+ * GitHub emits two different `sub` formats and which one you get is a property
+ * of the repository, not of the workflow. The documented form is
+ *
+ *   repo:iamrishabruh/kinmap:environment:development
+ *
+ * but with immutable subject claims in force it becomes
+ *
+ *   repo:iamrishabruh@146401886/kinmap@1323456535:environment:development
+ *
+ * — the owner and repository carry their numeric ids so that renaming either
+ * cannot silently redirect a trust policy at somebody else's repository. This
+ * account emits the second form, and the roles trusted only the first, so every
+ * OIDC login failed with `Not authorized to perform sts:AssumeRoleWithWebIdentity`
+ * while every visible detail — provider, audience, repository, environment —
+ * looked correct. Only decoding the token showed why.
+ *
+ * Both are listed rather than matched with a wildcard. `repo:iamrishabruh*` in
+ * a StringLike condition would also match a `iamrishabruh-evil` account's
+ * repository, which is the whole thing immutable claims exist to prevent.
+ */
+export function githubSubjectClaims(input: {
+  readonly owner: string;
+  readonly ownerId: string;
+  readonly repository: string;
+  readonly repositoryId: string;
+  /** e.g. `ref:refs/heads/development`, `environment:production`, `pull_request`. */
+  readonly triggers: readonly string[];
+}): readonly string[] {
+  const names = [
+    `${input.owner}/${input.repository}`,
+    `${input.owner}@${input.ownerId}/${input.repository}@${input.repositoryId}`,
+  ];
+  return input.triggers.flatMap((trigger) => names.map((name) => `repo:${name}:${trigger}`));
+}
+
+/**
  * Prefixes a physical resource name with `kinmap-<env>-`, unless the caller
  * already did. Both spellings appear at call sites — `queueName: 'geofence'`
  * and `queueName: \`${config.resourcePrefix}-geofence\`` — and silently

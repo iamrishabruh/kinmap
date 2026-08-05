@@ -8,6 +8,7 @@ import {
   DEFAULT_REGION,
   EDGE_REGION,
   envList,
+  githubSubjectClaims,
   envNumber,
   envOptional,
   envString,
@@ -26,6 +27,9 @@ import {
 export function developmentConfig(): EnvironmentConfig {
   const owner = envString('GITHUB_OWNER', 'iamrishabruh');
   const repository = envString('GITHUB_REPOSITORY_NAME', APP_NAME);
+  // Used to build the immutable form of the OIDC subject claim.
+  const ownerId = envString('GITHUB_OWNER_ID', '146401886');
+  const repositoryId = envString('GITHUB_REPOSITORY_ID', '1323456535');
   const domain = envString('KINMAP_DOMAIN_DEVELOPMENT', 'dev.kinmap.app');
 
   return {
@@ -77,14 +81,26 @@ export function developmentConfig(): EnvironmentConfig {
     github: {
       owner,
       repository,
-      deploySubjectClaims: envList('KINMAP_GITHUB_DEPLOY_SUBJECTS_DEVELOPMENT', [
-        `repo:${owner}/${repository}:ref:refs/heads/development`,
-        `repo:${owner}/${repository}:environment:development`,
-      ]),
-      diffSubjectClaims: envList('KINMAP_GITHUB_DIFF_SUBJECTS_DEVELOPMENT', [
-        `repo:${owner}/${repository}:pull_request`,
-        `repo:${owner}/${repository}:ref:refs/heads/development`,
-      ]),
+      deploySubjectClaims: envList(
+        'KINMAP_GITHUB_DEPLOY_SUBJECTS_DEVELOPMENT',
+        githubSubjectClaims({
+          owner,
+          ownerId,
+          repository,
+          repositoryId,
+          triggers: ['ref:refs/heads/development', 'environment:development'],
+        }),
+      ),
+      diffSubjectClaims: envList(
+        'KINMAP_GITHUB_DIFF_SUBJECTS_DEVELOPMENT',
+        githubSubjectClaims({
+          owner,
+          ownerId,
+          repository,
+          repositoryId,
+          triggers: ['pull_request', 'ref:refs/heads/development'],
+        }),
+      ),
       existingOidcProviderArn: envOptional('KINMAP_GITHUB_OIDC_PROVIDER_ARN'),
     },
   };
