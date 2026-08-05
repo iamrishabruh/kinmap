@@ -59,7 +59,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
 
       - name: Smoke test
-        run: pnpm --filter @family/api test:smoke --if-present
+        run: pnpm --filter @family/api run test:smoke
 
       - name: Apply approved development migrations
         run: pnpm migration:apply --env development --approved-only
