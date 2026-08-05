@@ -38,6 +38,10 @@ export function stagingConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: false,
 
+    cdkQualifier: envString(
+      'KINMAP_CDK_QUALIFIER_STAGING',
+      envString('KINMAP_CDK_QUALIFIER', 'hnb659fds'),
+    ),
     resourcePrefix: `${APP_NAME}-staging`,
     parameterPrefix: `/${APP_NAME}/staging`,
     owner: envString('KINMAP_OWNER_TAG', 'platform'),

@@ -1,4 +1,4 @@
-import { App, Tags, type Stack } from 'aws-cdk-lib';
+import { App, DefaultStackSynthesizer, Tags, type Stack } from 'aws-cdk-lib';
 
 import {
   applyStandardTags,
@@ -42,10 +42,21 @@ import { WebStack } from '../stacks/web-stack.js';
  * reference already implies them, so `cdk deploy --all` has one deterministic
  * order and a reviewer can read the deployment sequence off this file.
  */
-const app = new App();
-
 const config = resolveEnvironment();
 const env = cdkEnvironment(config);
+
+/**
+ * The synthesizer is given the qualifier this account was actually bootstrapped
+ * with. Accounts do not all agree — see `cdkQualifier` in `config/types.ts` —
+ * and CDK's default is only correct for two of the three.
+ *
+ * Set on the App rather than per stack so nothing can be missed: a stack that
+ * forgot it would look for bootstrap resources that do not exist and fail at
+ * deploy time with a message claiming the account was never bootstrapped.
+ */
+const app = new App({
+  defaultStackSynthesizer: new DefaultStackSynthesizer({ qualifier: config.cdkQualifier }),
+});
 
 /**
  * Props for the stacks that forward `props` straight to `super` and therefore

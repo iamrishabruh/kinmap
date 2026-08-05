@@ -39,6 +39,10 @@ export function developmentConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.DESTROY,
     isProduction: false,
 
+    cdkQualifier: envString(
+      'KINMAP_CDK_QUALIFIER_DEVELOPMENT',
+      envString('KINMAP_CDK_QUALIFIER', 'hnb659fds'),
+    ),
     resourcePrefix: `${APP_NAME}-development`,
     parameterPrefix: `/${APP_NAME}/development`,
     owner: envString('KINMAP_OWNER_TAG', 'platform'),

@@ -38,6 +38,10 @@ export function productionConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: true,
 
+    cdkQualifier: envString(
+      'KINMAP_CDK_QUALIFIER_PRODUCTION',
+      envString('KINMAP_CDK_QUALIFIER', 'kinmap'),
+    ),
     resourcePrefix: `${APP_NAME}-production`,
     parameterPrefix: `/${APP_NAME}/production`,
     owner: envString('KINMAP_OWNER_TAG', 'platform'),

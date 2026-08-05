@@ -160,6 +160,25 @@ export interface EnvironmentConfig {
   readonly isProduction: boolean;
 
   // -- naming ---------------------------------------------------------------
+  /**
+   * The CDK bootstrap qualifier this account was bootstrapped with.
+   *
+   * It is not the same everywhere, and pretending otherwise cost a production
+   * deploy. Development and staging carry CDK's default `hnb659fds`;
+   * production was bootstrapped by `scripts/aws/bootstrap-accounts.sh` with
+   * `kinmap`, so its roles are `cdk-kinmap-*` and its version parameter is
+   * `/cdk-bootstrap/kinmap/version`. The app synthesised for the default and
+   * failed with "SSM parameter /cdk-bootstrap/hnb659fds/version not found. Has
+   * the environment been bootstrapped?" — which was misleading: the account was
+   * bootstrapped, just not under the name being looked for.
+   *
+   * Re-bootstrapping production to match is not an option, and deliberately so:
+   * the `KinmapProdDeploy` permission set denies the IAM writes that would take,
+   * because production is meant to be changed by the CI deploy role rather than
+   * from somebody's laptop. So the configuration bends to the account instead.
+   */
+  readonly cdkQualifier: string;
+
   /** `kinmap-<env>`; prefix for every physical resource name. */
   readonly resourcePrefix: string;
   /** `/kinmap/<env>`; the SSM parameter namespace owned by the foundation. */

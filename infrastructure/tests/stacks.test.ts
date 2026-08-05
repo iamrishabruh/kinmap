@@ -804,6 +804,38 @@ describe('the public site', () => {
     ).toBe(environments.size);
   });
 
+  it('synthesises against the bootstrap qualifier each account actually has', () => {
+    // Development and staging carry CDK's default; production was bootstrapped
+    // with `kinmap`, so its roles are `cdk-kinmap-*`. Synthesising for the
+    // default produced "SSM parameter /cdk-bootstrap/hnb659fds/version not
+    // found. Has the environment been bootstrapped?" against an account that
+    // was bootstrapped — the message names the wrong cause, and the deploy
+    // stops before a single resource is created.
+    const EXPECTED: Record<string, string> = {
+      development: 'hnb659fds',
+      production: 'kinmap',
+    };
+    let checked = 0;
+
+    for (const stack of allStacks) {
+      const qualifier = EXPECTED[stack.environment];
+      if (qualifier === undefined) continue;
+
+      const parameters = stack.template.toJSON()['Parameters'] as
+        Record<string, { Default?: unknown }> | undefined;
+      const version = parameters?.['BootstrapVersion'];
+      if (version === undefined) continue;
+      checked += 1;
+
+      expect(
+        version.Default,
+        `${stack.stackName}: looks for a bootstrap parameter this account does not have`,
+      ).toBe(`/cdk-bootstrap/${qualifier}/version`);
+    }
+
+    expect(checked, 'stacks must declare which bootstrap they need').toBeGreaterThan(0);
+  });
+
   it('closes the execute-api endpoint that would route around the WebACL', () => {
     // `<apiId>.execute-api.<region>.amazonaws.com` answers the same routes and
     // never touches CloudFront, so leaving it open would make the ACL above
