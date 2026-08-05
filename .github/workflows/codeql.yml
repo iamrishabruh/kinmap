@@ -23,6 +23,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `build-mode: none` analyses source without compiling. The Java/Kotlin
+        # autobuild failed outright — "Could not detect a suitable build command
+        # for the source checkout" — because the Gradle project lives at
+        # apps/mobile/android and autobuild looks from the repository root. The
+        # alternative is a bespoke build step per language that duplicates what
+        # ci.yml already compiles; none of these three needs a build to be
+        # analysed.
         language: ["javascript-typescript", "java-kotlin", "actions"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,10 +38,8 @@ jobs:
         uses: github/codeql-action/init@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
         with:
           languages: ${{ matrix.language }}
+          build-mode: none
           queries: security-extended
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
 
       - name: Analyze
         uses: github/codeql-action/analyze@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
