@@ -11,7 +11,7 @@
     "test": "pnpm run prebuild:site && vitest run --passWithNoTests",
     "test:unit": "pnpm run prebuild:site && vitest run --passWithNoTests",
     "synth": "pnpm run prebuild:site && cdk synth --quiet",
-    "diff": "pnpm run prebuild:site && cdk diff",
+    "diff": "pnpm run prebuild:site && cdk diff --method=template",
     "deploy": "pnpm run prebuild:site && cdk deploy",
     "prebuild:site": "pnpm --filter @family/web build"
   },

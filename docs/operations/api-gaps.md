@@ -134,3 +134,22 @@ recording** and has no delivery channel, so it costs nothing and collects
 nothing. It cannot be removed with the `KinmapProdDeploy` permission set, which
 explicitly denies `config:DeleteConfigurationRecorder` — deliberately, because
 turning off configuration recording is an early move in an intrusion.
+
+---
+
+## Infrastructure: `cdk diff` uses template mode
+
+`cdk diff` defaults to creating a read-only change set, which gives accurate
+replacement information. Against this app it crashes:
+
+```
+Hold on while we create a read-only change set to get a diff with accurate
+replacement information...
+oldValue and newValue are both undefined!
+```
+
+The CLI's own message offers `--method=template` as the "less accurate but
+faster" alternative, and that is what the `diff` script now passes. The cost is
+that a diff no longer says definitively which changes force a replacement; the
+benefit is that it produces a diff at all, which is what the pre-deploy review
+step in every deploy workflow depends on.
