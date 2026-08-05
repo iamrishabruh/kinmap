@@ -42,8 +42,8 @@
 import { Annotations, CfnOutput, Duration, Stack } from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Alias } from 'aws-cdk-lib/aws-kms';
+import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Key } from 'aws-cdk-lib/aws-kms';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import {
   CfnRecordSet,
@@ -298,22 +298,46 @@ export class MailStack extends Stack {
     //
     // Attached as the identity's DEFAULT configuration set, so a caller cannot
     // send without it by forgetting to name it.
-    // Encrypted with the AWS-managed SNS key, not the platform's operations
-    // key. SES publishes to this topic as a service principal, and it cannot
-    // use a customer-managed key it has no grant on:
+    // A key this stack owns, rather than the platform's operations key.
+    //
+    // SES publishes to the topic as a service principal, so it needs kms
+    // permissions on whatever encrypts it:
     //
     //   MailEventDestination CREATE_FAILED — Access denied to KMS key for SNS topic
     //
-    // Granting SES on the operations key would mean editing a key policy that
-    // lives in the foundation stack from this one, which is the circular
-    // dependency the foundation exists to avoid. The events carry recipient
-    // addresses and bounce reasons — no coordinates, and nothing the operations
-    // key protects — so the managed key is the right level here.
+    // The operations key is declared in the foundation stack, and granting SES
+    // on it from here would mean this stack editing a policy the foundation
+    // owns — the circular dependency the foundation exists to avoid. The
+    // AWS-managed `alias/aws/sns` key fails the same way, because an
+    // AWS-managed key's policy cannot be extended to another service.
+    //
+    // So the topic gets its own key with a policy that names SES. The events
+    // carry recipient addresses and bounce reasons — never a coordinate — so
+    // this key protects a genuinely different class of data from the one the
+    // foundation's operations key does.
+    const deliveryEventsKey = new Key(this, 'MailDeliveryEventsKey', {
+      alias: `alias/${config.resourcePrefix}-mail-events`,
+      description: 'Encrypts SES bounce and complaint notifications at rest',
+      enableKeyRotation: true,
+      removalPolicy: config.removalPolicy,
+    });
+    deliveryEventsKey.addToResourcePolicy(
+      new PolicyStatement({
+        sid: 'AllowSesToPublishDeliveryEvents',
+        effect: Effect.ALLOW,
+        principals: [new ServicePrincipal('ses.amazonaws.com')],
+        actions: ['kms:GenerateDataKey*', 'kms:Decrypt'],
+        resources: ['*'],
+        conditions: { StringEquals: { 'aws:SourceAccount': Stack.of(this).account } },
+      }),
+    );
+
     const deliveryEvents = new Topic(this, 'MailDeliveryEvents', {
       topicName: `${config.resourcePrefix}-mail-events`,
       displayName: `Kinmap ${config.envName} mail delivery events`,
-      masterKey: Alias.fromAliasName(this, 'SnsManagedKey', 'alias/aws/sns'),
+      masterKey: deliveryEventsKey,
     });
+    deliveryEvents.grantPublish(new ServicePrincipal('ses.amazonaws.com'));
 
     const configurationSet = new ConfigurationSet(this, 'MailConfigurationSet', {
       configurationSetName: config.resourcePrefix,
