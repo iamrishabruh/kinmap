@@ -297,6 +297,11 @@ describe('Lambda functions', () => {
       'AWSCDKCfnUtils',
       'CrossRegion',
       'Custom::',
+      // The singleton behind `AwsCustomResource`. CDK fixes this logical id, and
+      // the construct exposes neither tracing nor a log group to configure, so
+      // it belongs with the other CDK-owned helpers above rather than being a
+      // function this platform is failing to instrument.
+      'AWS679f53fac002430cb0da5b7982bd2287',
     ].join('|'),
     'i',
   );
