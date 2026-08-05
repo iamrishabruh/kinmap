@@ -21,7 +21,7 @@ import {
 } from './support/cognito-server';
 import { installFetch, type FetchHarness } from './support/fetch-harness';
 
-const POOL_NAME = '3nqFKcB6x';
+const POOL_NAME = 'XXXXXXXXX';
 const SUB = '8f14e45f-ceea-467a-9e57-1a1f2c4d5b6e';
 
 const ACCOUNT: PoolAccount = {

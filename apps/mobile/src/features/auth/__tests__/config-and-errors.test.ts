@@ -19,7 +19,7 @@ describe('resolveCognitoConfig', () => {
     const config = resolveCognitoConfig(DEPLOYED);
 
     expect(config.region).toBe('us-east-1');
-    expect(config.userPoolName).toBe('3nqFKcB6x');
+    expect(config.userPoolName).toBe('XXXXXXXXX');
     expect(config.idpEndpoint).toBe('https://cognito-idp.us-east-1.amazonaws.com/');
   });
 
@@ -64,7 +64,7 @@ describe('resolveCognitoConfig', () => {
   });
 
   it('rejects a pool id that is not one', () => {
-    expect(() => resolveCognitoConfig({ ...DEPLOYED, userPoolId: '3nqFKcB6x' })).toThrow(
+    expect(() => resolveCognitoConfig({ ...DEPLOYED, userPoolId: 'XXXXXXXXX' })).toThrow(
       CognitoConfigurationError,
     );
   });

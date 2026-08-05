@@ -30,7 +30,7 @@ import { env } from '@/config/env';
  */
 const APP_URL_SCHEME = 'kinmap';
 
-/** `us-east-1_XXXXXXXXX` → region `us-east-1`, pool name `3nqFKcB6x`. */
+/** `us-east-1_XXXXXXXXX` → region `us-east-1`, pool name `XXXXXXXXX`. */
 const USER_POOL_ID = /^((?:[a-z]{2}(?:-[a-z]+)+-\d))_([A-Za-z0-9]+)$/;
 
 export type CognitoConfig = {

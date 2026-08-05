@@ -18,7 +18,7 @@ import {
  * only happen if both sides hashed the same byte strings in the same order.
  */
 
-const POOL_NAME = '3nqFKcB6x';
+const POOL_NAME = 'XXXXXXXXX';
 
 const ACCOUNT: PoolAccount = {
   userIdForSrp: '8f14e45f-ceea-467a-9e57-1a1f2c4d5b6e',

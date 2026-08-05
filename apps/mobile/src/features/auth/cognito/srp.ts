@@ -187,7 +187,7 @@ function multiplierParameter(): Promise<bigint> {
 }
 
 export type SrpClientOptions = {
-  /** The pool name, e.g. `3nqFKcB6x`. Mixed into `x` and into the signature. */
+  /** The pool name, e.g. `XXXXXXXXX`. Mixed into `x` and into the signature. */
   readonly userPoolName: string;
   /** Overridable only so a test can pin `a` and get a reproducible transcript. */
   readonly randomBytes?: (count: number) => Uint8Array;

@@ -20,7 +20,7 @@ import { installFetch, type CapturedRequest, type FetchHarness } from './support
  * verifies the password claim the way Cognito does.
  */
 
-const POOL_NAME = '3nqFKcB6x';
+const POOL_NAME = 'XXXXXXXXX';
 const SUB = '8f14e45f-ceea-467a-9e57-1a1f2c4d5b6e';
 
 const ACCOUNT: PoolAccount = {
