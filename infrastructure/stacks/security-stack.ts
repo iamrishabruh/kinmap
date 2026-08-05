@@ -3,7 +3,11 @@ import { CfnAnalyzer } from 'aws-cdk-lib/aws-accessanalyzer';
 import { BackupPlan, BackupPlanRule, BackupResource, BackupVault } from 'aws-cdk-lib/aws-backup';
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import { CfnConfigRule, CfnDeliveryChannel } from 'aws-cdk-lib/aws-config';
+import {
+  CfnConfigRule,
+  CfnConfigurationRecorder,
+  CfnDeliveryChannel,
+} from 'aws-cdk-lib/aws-config';
 import { Schedule } from 'aws-cdk-lib/aws-events';
 import { CfnDetector } from 'aws-cdk-lib/aws-guardduty';
 import {
@@ -497,29 +501,24 @@ export class SecurityStack extends Stack {
     });
     deliveryChannel.node.addDependency(putRecorder);
 
-    const startRecorder = new AwsCustomResource(this, 'ConfigRecorderStart', {
-      onCreate: {
-        service: 'ConfigService',
-        action: 'startConfigurationRecorder',
-        physicalResourceId: PhysicalResourceId.of(`${recorderName}-started`),
-        parameters: { ConfigurationRecorderName: recorderName },
-      },
-      onUpdate: {
-        service: 'ConfigService',
-        action: 'startConfigurationRecorder',
-        physicalResourceId: PhysicalResourceId.of(`${recorderName}-started`),
-        parameters: { ConfigurationRecorderName: recorderName },
-      },
-      policy: AwsCustomResourcePolicy.fromStatements([
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['config:StartConfigurationRecorder'],
-          resources: ['*'],
-        }),
-      ]),
-      installLatestAwsSdk: false,
+    // The native recorder still exists, and is created LAST.
+    //
+    // `AWS::Config::ConfigRule` refuses to deploy without one — "Configuration
+    // Recorder not found. AWS Config resources require a Configuration Recorder
+    // to be created before deployment" — and CloudFormation looks for the
+    // resource, not for a recorder that happens to exist in the account. So the
+    // custom resource above is what breaks the cycle, and this is what the rules
+    // can depend on: by the time CloudFormation puts and starts it, both a
+    // recorder and a delivery channel are already there, so the start succeeds.
+    //
+    // `putConfigurationRecorder` is idempotent for a given name, so creating it
+    // twice under the same name is an update, not a conflict.
+    const recorder = new CfnConfigurationRecorder(this, 'ConfigRecorder', {
+      name: recorderName,
+      roleArn: recorderRole.roleArn,
+      recordingGroup: { allSupported: true, includeGlobalResourceTypes: true },
     });
-    startRecorder.node.addDependency(deliveryChannel);
+    recorder.node.addDependency(deliveryChannel);
 
     for (const rule of CONFIG_RULES) {
       const configRule = new CfnConfigRule(this, `ConfigRule${rule.id}`, {
@@ -527,7 +526,7 @@ export class SecurityStack extends Stack {
         description: rule.description,
         source: { owner: 'AWS', sourceIdentifier: rule.identifier },
       });
-      configRule.node.addDependency(deliveryChannel);
+      configRule.node.addDependency(recorder);
     }
 
     return configBucket;
