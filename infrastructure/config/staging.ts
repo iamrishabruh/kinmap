@@ -28,7 +28,7 @@ export function stagingConfig(): EnvironmentConfig {
   const repository = envString('GITHUB_REPOSITORY_NAME', APP_NAME);
   // Used to build the immutable form of the OIDC subject claim.
   const ownerId = envString('GITHUB_OWNER_ID', '146401886');
-  const repositoryId = envString('GITHUB_REPOSITORY_ID', '1323456535');
+  const repositoryId = envString('GITHUB_REPOSITORY_ID', '1323626286');
   const domain = envString('KINMAP_DOMAIN_STAGING', 'staging.kinmap.app');
 
   return {
