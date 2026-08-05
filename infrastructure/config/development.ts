@@ -38,7 +38,12 @@ export function developmentConfig(): EnvironmentConfig {
     region: envString('AWS_REGION', envString('CDK_DEFAULT_REGION', DEFAULT_REGION)),
     domain,
     apiDomain: envString('KINMAP_API_DOMAIN_DEVELOPMENT', `api.${domain}`),
-    apiOriginDomain: envString('KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT', `origin-label.${domain}`),
+    // Deliberately NOT the deployed value. The real label is set per
+    // environment in the untracked .env.local, because publishing it would
+    // publish the hostname that reaches API Gateway without passing the
+    // WebACL. A deploy without the variable creates an obviously-wrong name
+    // rather than silently reusing a guessable one.
+    apiOriginDomain: envString('KINMAP_API_ORIGIN_DOMAIN_DEVELOPMENT', `origin-unset.${domain}`),
     alarmEmail: envString('KINMAP_ALARM_EMAIL', `alerts@${domain}`),
     removalPolicy: RemovalPolicy.DESTROY,
     isProduction: false,

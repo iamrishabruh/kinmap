@@ -650,7 +650,7 @@ export class ApiStack extends Stack {
       identitySource: ['$request.header.Authorization'],
     });
 
-    // API Gateway answers on `origin-label.<domain>`, not on `api.<domain>`.
+    // API Gateway answers on `<origin-label>.<domain>`, not on `api.<domain>`.
     //
     // `api.<domain>` is served by the CloudFront distribution created further
     // down, which is what carries the WebACL. CloudFront has to be given an
@@ -1016,7 +1016,7 @@ export class ApiStack extends Stack {
       // request sampling is disabled.
       enableLogging: false,
       defaultBehavior: {
-        // `origin-label.<domain>` is a public name, so reaching it directly and
+        // `<origin-label>.<domain>` is a public name, so reaching it directly and
         // skipping these rules is possible for anyone who finds it. The shared
         // secret that closes that path is added by the origin-verification
         // change; what stands in front of the origin until then is the JWT
@@ -1035,7 +1035,7 @@ export class ApiStack extends Stack {
         // Everything the viewer sent except Host, which must stay the origin's
         // own name: API Gateway selects the custom domain mapping by Host, and
         // forwarding `api.<domain>` to a gateway that only knows
-        // `origin-label.<domain>` would 403 every request.
+        // `<origin-label>.<domain>` would 403 every request.
         originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         compress: true,
       },
@@ -1077,11 +1077,11 @@ export class ApiStack extends Stack {
     });
     new CfnOutput(this, 'ApiRegionalDomainName', {
       value: this.domainName.regionalDomainName,
-      description: 'Alias target for the origin-label.<domain> record',
+      description: 'Alias target for the <origin-label>.<domain> record',
     });
     new CfnOutput(this, 'ApiRegionalHostedZoneId', {
       value: this.domainName.regionalHostedZoneId,
-      description: 'Alias hosted zone id for the origin-label.<domain> record',
+      description: 'Alias hosted zone id for the <origin-label>.<domain> record',
     });
     new CfnOutput(this, 'ApiDistributionDomainName', {
       value: this.distribution.distributionDomainName,

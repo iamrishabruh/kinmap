@@ -256,7 +256,7 @@ Gateway **HTTP** API. Nothing failed and no alarm fired; the only evidence was a
 comment saying so.
 
 CloudFront now serves `api.<domain>` in all three environments and carries the
-ACL at CLOUDFRONT scope. API Gateway moved to `origin-label.<domain>`, and the
+ACL at CLOUDFRONT scope. API Gateway moved to the origin hostname, and the
 default `execute-api` endpoint is disabled **everywhere**, not only in
 production — leaving it open in development would have meant the environment
 used to rehearse changes was the one where the protection being rehearsed was
@@ -273,13 +273,17 @@ a POST body reaches the origin, and the raw `execute-api` hostname no longer
 answers. Two synth-time guards were confirmed to fail when the ACL is put back
 to REGIONAL and when the default endpoint is re-enabled.
 
-**Residual risk, stated plainly.** `origin-label.<domain>` is a public name, so
-anyone who finds it can reach the origin directly and skip the managed rule
-groups and the IP rate limit. What still applies on that path: the Cognito JWT
-authorizer, API Gateway per-route throttling, and the per-principal token bucket
-in `services/api`. Closing it needs a shared secret injected by CloudFront and
-checked by every API-integrated service — six services, not one — and that is
-the next piece of this work rather than something already done.
+**Residual risk, stated plainly.** CloudFront forwards to a hostname that
+resolves publicly, so a request that reaches it directly skips the managed rule
+groups and the IP rate limit. The label is configuration rather than something
+committed, which raises the cost of finding it without pretending that is a
+control. What still applies on that path regardless: the Cognito JWT authorizer,
+API Gateway per-route throttling, and the per-principal token bucket in
+`services/api` — so the exposure is request volume and cost, not access.
+
+Closing it properly needs a shared secret injected by CloudFront and checked by
+every API-integrated service — six services, not one — and that is the next
+piece of this work rather than something already done.
 
 ---
 

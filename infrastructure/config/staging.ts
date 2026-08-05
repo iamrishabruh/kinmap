@@ -37,7 +37,12 @@ export function stagingConfig(): EnvironmentConfig {
     region: envString('AWS_REGION', envString('CDK_DEFAULT_REGION', DEFAULT_REGION)),
     domain,
     apiDomain: envString('KINMAP_API_DOMAIN_STAGING', `api.${domain}`),
-    apiOriginDomain: envString('KINMAP_API_ORIGIN_DOMAIN_STAGING', `origin-label.${domain}`),
+    // Deliberately NOT the deployed value. The real label is set per
+    // environment in the untracked .env.local, because publishing it would
+    // publish the hostname that reaches API Gateway without passing the
+    // WebACL. A deploy without the variable creates an obviously-wrong name
+    // rather than silently reusing a guessable one.
+    apiOriginDomain: envString('KINMAP_API_ORIGIN_DOMAIN_STAGING', `origin-unset.${domain}`),
     alarmEmail: envString('KINMAP_ALARM_EMAIL', `alerts@${domain}`),
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: false,

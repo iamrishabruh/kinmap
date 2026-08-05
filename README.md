@@ -41,9 +41,9 @@ apps/mobile          Expo SDK 57 app; committed ios/ and android/ native project
 apps/mobile/modules  Local Expo module: the native Swift/Kotlin location engine
 packages/            Shared TypeScript: contracts, schemas, validation, auth,
                      crypto, location-core, api-client, observability, ...
-services/            Backend Lambda services  (NOT YET IMPLEMENTED — see below)
-infrastructure/      AWS CDK v2 application   (NOT YET IMPLEMENTED — see below)
-migrations/          Data migrations          (NOT YET IMPLEMENTED — see below)
+services/            13 backend Lambda services
+infrastructure/      AWS CDK v2 application, 15 stacks
+apps/web             Static consent and policy site served from CloudFront
 docs/                Architecture, operations, privacy, release documentation
 scripts/             Bootstrap, validation, CI and migration tooling
 ```
@@ -99,24 +99,29 @@ an unavoidable human action (Apple enrollment, the Play Console's first app and
 first upload, background-location declarations) record the gate, explain exactly
 what to do, and let independent phases continue.
 
-## What is NOT yet built
+## What is NOT yet true
 
-Stated plainly so nobody mistakes scaffolding for a working system:
+Stated plainly, because this file previously said the opposite of the truth in
+both directions — it claimed `services/` and `infrastructure/` were empty long
+after they were deployed and serving. What follows is what is genuinely absent.
 
-- **No backend exists.** `services/` is empty. There is no deployed API, so the
-  mobile app cannot sign in, sync, or share a location with anyone yet.
-- **No infrastructure exists.** `infrastructure/` is empty — no CDK app, no
-  stacks, no DynamoDB tables. Nothing has been deployed to any AWS account.
-- **No `apps/web`, no `migrations/`.**
-- **Mobile UI is partial.** The feature layer (auth, billing, live sessions,
-  location engine integration, privacy caches, map models) is implemented and
-  typechecked, but most Expo Router screens are not yet written.
-- **Nothing has been provisioned anywhere.** No GitHub repository, no AWS
-  resources, no Apple or Google configuration, no RevenueCat, no Sentry.
+- **Nobody has used it.** Two environments are deployed and answer on
+  `api.kinmap.app` and `api.dev.kinmap.app`, and the app builds, bundles and
+  installs. No person has opened a screen, so nothing here is evidence that it
+  is good to use.
+- **Sign in with Apple is not wired.** The button is disabled rather than
+  broken. Email sign-in works.
+- **Email cannot reach a stranger.** Both AWS accounts are in the SES sandbox,
+  so invitations only deliver to verified addresses until AWS lifts it.
 - **Background tracking has never run on a real device.** Both native engines
   compile (Android `assembleDebug` and iOS `xcodebuild` both succeed), but no
   claim is made about their reliability, battery cost, or geofence latency until
   the real-device matrix has actually been executed.
+- **The legal documents have not been reviewed by a lawyer.** They say so at the
+  top of each one. The treatment of minors is the largest open question; see
+  `docs/privacy/privacy-policy.md` §12.
+- **Known API gaps are documented, not hidden.** `docs/operations/api-gaps.md`
+  lists every client method the deployed API cannot fully serve.
 
 `docs/operations/execution-report.md` records exactly what was verified, what
 failed, and every manual gate that remains.

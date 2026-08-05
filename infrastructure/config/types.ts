@@ -189,8 +189,14 @@ export interface EnvironmentConfig {
    * would make the DNS record its own target.
    *
    * A single label under {@link domain} on purpose: the certificate carries
-   * `*.<domain>`, which covers one label and not two, so `origin-label.<domain>`
-   * validates and `origin.api.<domain>` would not.
+   * `*.<domain>`, which covers one label and not two, so `<label>.<domain>`
+   * validates and `<label>.api.<domain>` would not.
+   *
+   * The label itself is configuration and is not committed. It is the hostname
+   * that reaches API Gateway without passing the WebACL, so publishing it would
+   * publish the way around the WebACL. The durable fix is origin verification —
+   * a shared secret CloudFront injects and the services check — and until that
+   * lands this keeps the name out of the repository.
    */
   readonly apiOriginDomain: string;
   readonly alarmEmail: string;
