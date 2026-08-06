@@ -76,8 +76,17 @@ const THROTTLE_BACKOFF_SECONDS = 30;
  *
  * @param type   the value of `__type` from the response body.
  * @param status the HTTP status, used only when `__type` is missing.
+ * @param triggerMessage
+ *   The response `message`, passed ONLY so that the two sentences this
+ *   platform's own PreSignUp trigger throws can be recognised. It is matched
+ *   against fixed literals and never surfaced, never logged, and never
+ *   interpolated into anything returned from here — the file's rule holds. It
+ *   exists because without it every trigger refusal arrived as INTERNAL_ERROR,
+ *   so an out-of-date build and a genuine server fault were indistinguishable,
+ *   and the age gate's own refusal could never be recognised by the screen
+ *   that is supposed to stop offering a retry.
  */
-export function cognitoError(type: string, status: number): AppError {
+export function cognitoError(type: string, status: number, triggerMessage = ''): AppError {
   const name = cognitoErrorType(type);
 
   if (CREDENTIAL_FAILURES.has(name)) {
@@ -121,8 +130,37 @@ export function cognitoError(type: string, status: number): AppError {
     name === 'InvalidLambdaResponseException' ||
     name === 'UnexpectedLambdaException'
   ) {
-    // A trigger threw. Its message is attacker-influencable and may contain
-    // anything at all, so none of it is shown.
+    // A trigger threw, and Cognito wraps its message as
+    // `PreSignUp failed with error <message>.`
+    //
+    // The message is still not shown — it is attacker-influencable and may
+    // contain anything. But two of the sentences the PreSignUp trigger throws
+    // are OUR OWN literals, and recognising them is the difference between
+    // telling somebody what to do and blaming the server for it.
+    //
+    // Everything that is not one of those two remains INTERNAL_ERROR, and the
+    // matched text is never echoed — only used to pick which of our own fixed
+    // messages to show.
+    const detail = triggerMessage;
+
+    if (detail.includes('must be accepted before creating an account')) {
+      // The versions in this binary are not the ones the pool now requires.
+      // That is a build that has fallen behind, not a fault the user caused —
+      // this exact case shipped once, showing "Something went wrong on our
+      // end" when the app said 2026-05-01 and the trigger said 2026-01-01.
+      return new AppError(
+        'TERMS_ACCEPTANCE_REQUIRED',
+        'This version of Kinmap is out of date. Please update the app and try again.',
+      );
+    }
+
+    if (detail.includes('not available to everyone who tries to sign up')) {
+      // The age gate. Surfaced with its own code so the sign-up screen can
+      // stop offering a retry — without this the branch that does so could
+      // never fire, because every trigger error arrived as INTERNAL_ERROR.
+      return new AppError('AGE_REQUIREMENT_NOT_MET', 'Kinmap cannot create an account for you.');
+    }
+
     return new AppError('INTERNAL_ERROR', COGNITO_ERROR_MESSAGES.INTERNAL);
   }
 

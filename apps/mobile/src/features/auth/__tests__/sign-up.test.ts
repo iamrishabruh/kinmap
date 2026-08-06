@@ -120,3 +120,74 @@ describe('confirmSignUp', () => {
     expect(messages[0]).toBe(messages[1]);
   });
 });
+
+describe('trigger refusals are distinguishable', () => {
+  it('an out-of-date build is told to update, not blamed on the server', async () => {
+    // This shipped. The app said 2026-05-01 and the trigger said 2026-01-01,
+    // every sign-up failed, and the user was shown "Something went wrong on
+    // our end" — the server blamed for two files in this repository
+    // disagreeing.
+    harness = installFetch(() => ({
+      status: 400,
+      body: {
+        __type: 'UserLambdaValidationException',
+        message:
+          'PreSignUp failed with error The current terms of service and privacy policy must be accepted before creating an account.',
+      },
+    }));
+
+    const thrown = await signUpWithPassword({
+      email: 'ada@example.com',
+      password: 'a-long-enough-password',
+      accepted: ACCEPTED,
+      birthDate: ADULT_BIRTH_DATE,
+    }).catch((error: unknown) => error);
+
+    expect((thrown as { code?: string }).code).toBe('TERMS_ACCEPTANCE_REQUIRED');
+    expect(String((thrown as Error).message)).toMatch(/update the app/i);
+  });
+
+  it('the age refusal keeps its own code, so the screen can stop offering a retry', async () => {
+    // Every trigger error used to arrive as INTERNAL_ERROR, so the branch that
+    // disables the form could never fire from the server side.
+    harness = installFetch(() => ({
+      status: 400,
+      body: {
+        __type: 'UserLambdaValidationException',
+        message:
+          'PreSignUp failed with error This account cannot be created. Kinmap is not available to everyone who tries to sign up.',
+      },
+    }));
+
+    const thrown = await signUpWithPassword({
+      email: 'ada@example.com',
+      password: 'a-long-enough-password',
+      accepted: ACCEPTED,
+      birthDate: '2020-01-01',
+    }).catch((error: unknown) => error);
+
+    expect((thrown as { code?: string }).code).toBe('AGE_REQUIREMENT_NOT_MET');
+  });
+
+  it('any other trigger failure stays opaque', async () => {
+    harness = installFetch(() => ({
+      status: 400,
+      body: {
+        __type: 'UserLambdaValidationException',
+        message: 'PreSignUp failed with error ada@example.com is not permitted, key=SECRET.',
+      },
+    }));
+
+    const thrown = await signUpWithPassword({
+      email: 'ada@example.com',
+      password: 'a-long-enough-password',
+      accepted: ACCEPTED,
+      birthDate: ADULT_BIRTH_DATE,
+    }).catch((error: unknown) => error);
+
+    expect((thrown as { code?: string }).code).toBe('INTERNAL_ERROR');
+    const rendered = JSON.stringify(thrown) + String(thrown);
+    expect(rendered).not.toContain('ada@example.com');
+    expect(rendered).not.toContain('SECRET');
+  });
+});

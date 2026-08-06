@@ -1,3 +1,5 @@
+import { POLICY_VERSIONS } from '@family/contracts';
+
 /**
  * The terms and privacy policy versions this build was written against.
  *
@@ -11,18 +13,26 @@
  * table. `TermsVersionSchema` in @family/schemas bounds it to 1..32 chars.
  */
 
-export const CURRENT_TERMS_VERSION = '2026-05-01';
-export const CURRENT_PRIVACY_POLICY_VERSION = '2026-05-01';
+/*
+ * Taken from @family/contracts rather than written here.
+ *
+ * These used to be their own literals, and they said `2026-05-01` while the
+ * Cognito PreSignUp trigger's own literal said `2026-01-01`. The trigger
+ * refuses a sign-up whose accepted versions are not current, so every attempt
+ * to create an account failed — and the client rendered it as "Something went
+ * wrong on our end", blaming the server for two files in this repository
+ * disagreeing. A contracts test now asserts they cannot drift.
+ *
+ * Still compile-time constants, which is what mattered about them: a user
+ * consents to the documents that shipped in the binary they are running, so
+ * the version cannot be swappable over the air (spec §24).
+ */
+export const CURRENT_TERMS_VERSION = POLICY_VERSIONS.termsVersion;
+export const CURRENT_PRIVACY_POLICY_VERSION = POLICY_VERSIONS.privacyPolicyVersion;
 
-export type PolicyVersions = {
-  termsVersion: string;
-  privacyPolicyVersion: string;
-};
+export type { PolicyVersions } from '@family/contracts';
 
-export const CURRENT_POLICY_VERSIONS: PolicyVersions = {
-  termsVersion: CURRENT_TERMS_VERSION,
-  privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
-};
+export const CURRENT_POLICY_VERSIONS = POLICY_VERSIONS;
 
 /**
  * Plain-language summary of what changed, shown above the re-acceptance

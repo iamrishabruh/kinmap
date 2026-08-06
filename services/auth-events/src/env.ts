@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AppEnvSchema, type AppEnv } from '@family/contracts';
+import { POLICY_VERSIONS, AppEnvSchema, type AppEnv } from '@family/contracts';
 
 /**
  * Typed configuration for the trigger function, failing closed on anything
@@ -32,8 +32,8 @@ const AuthEventsEnvironmentSchema = z.object({
    * lookup: the trigger must be able to reject a stale acceptance even if every
    * other dependency is unavailable.
    */
-  TERMS_VERSION: NonEmpty.default('2026-01-01'),
-  PRIVACY_POLICY_VERSION: NonEmpty.default('2026-01-01'),
+  TERMS_VERSION: NonEmpty.default(POLICY_VERSIONS.termsVersion),
+  PRIVACY_POLICY_VERSION: NonEmpty.default(POLICY_VERSIONS.privacyPolicyVersion),
 
   /**
    * Key for the email HMAC that backs the `byEmailHash` index. Optional so the

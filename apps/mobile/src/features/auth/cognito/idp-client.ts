@@ -133,8 +133,15 @@ export async function callCognito<TResponse>(
 
   if (!response.ok) {
     const parsed = ServiceErrorSchema.safeParse(body);
-    // `parsed.data.message` is deliberately not read. See the file header.
-    throw cognitoError(parsed.success ? (parsed.data.__type ?? '') : '', response.status);
+    // `message` is passed for MATCHING ONLY — `cognitoError` compares it against
+    // this platform's own trigger literals and never surfaces it. See the note
+    // on that parameter; the file header's rule that Cognito's message is never
+    // shown or logged is unchanged.
+    throw cognitoError(
+      parsed.success ? (parsed.data.__type ?? '') : '',
+      response.status,
+      parsed.success ? (parsed.data.message ?? '') : '',
+    );
   }
 
   const parsed = schema.safeParse(body);
