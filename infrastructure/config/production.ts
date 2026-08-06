@@ -49,6 +49,8 @@ export function productionConfig(): EnvironmentConfig {
 
     appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_PRODUCTION'),
     googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_PRODUCTION'),
+    enforceEdgeVerification:
+      envString('KINMAP_ENFORCE_EDGE_VERIFICATION_PRODUCTION', 'false') === 'true',
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_PRODUCTION', 'false') === 'true',
     cdkQualifier: envString(

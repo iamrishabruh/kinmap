@@ -23,6 +23,8 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { CloudAssembly } from 'aws-cdk-lib/cx-api';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { API_ROUTES } from '../stacks/api-stack.js';
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const INFRA_DIR = path.resolve(HERE, '..');
 const REPO_ROOT = path.resolve(INFRA_DIR, '..');
@@ -875,40 +877,53 @@ describe('the public site', () => {
     // secret. The cost of that choice is that a function which quietly loses
     // its environment variable stops verifying anything and nothing complains.
     // This is what makes the choice safe: the absence is a synth-time failure.
-    const MUST_VERIFY = [
-      'kinmap-production-api',
-      'kinmap-production-family',
-      'kinmap-production-location',
-      'kinmap-development-api',
-      'kinmap-development-family',
-      'kinmap-development-location',
-    ];
+    // Derived from the route table rather than listed, so a new route target
+    // fails synth until its function is given the secret. Listing them by hand
+    // is how the three webhook functions — the only UNAUTHENTICATED routes on
+    // the API, and therefore the ones this matters most for — were missed.
+    const ROUTED_SERVICES: ReadonlySet<string> = new Set<string>(
+      API_ROUTES.map((route) => String(route.target ?? 'api')),
+    );
     let functionsChecked = 0;
     let headersChecked = 0;
+    // Which environments have enforcement switched on, read from the same
+    // synthesised templates rather than from configuration.
+    const enforcementOn = new Set(
+      allStacks
+        .filter((stack) =>
+          resourcesOf(stack, 'AWS::Lambda::Function').some(
+            ([, fn]) =>
+              asRecord(asRecord(prop(fn, 'Environment'))?.['Variables'])?.[
+                'EDGE_VERIFICATION_TOKEN'
+              ] !== undefined,
+          ),
+        )
+        .map((stack) => stack.environment),
+    );
 
     for (const stack of allStacks) {
-      if (MUST_VERIFY.includes(stack.stackName)) {
-        for (const [logicalId, fn] of resourcesOf(stack, 'AWS::Lambda::Function')) {
-          const env = asRecord(asRecord(prop(fn, 'Environment'))?.['Variables']);
-          // Only the functions the API routes to; a worker in the same stack
-          // is never reachable from the edge and needs no token.
-          const name = String(env?.['SERVICE_NAME'] ?? '');
-          if (
-            ![
-              'api',
-              'family-service',
-              'invitation-service',
-              'location-ingestion',
-              'location-query',
-            ].includes(name)
-          ) {
-            continue;
-          }
-          functionsChecked += 1;
+      for (const [logicalId, fn] of resourcesOf(stack, 'AWS::Lambda::Function')) {
+        const env = asRecord(asRecord(prop(fn, 'Environment'))?.['Variables']);
+        // Only the functions the API routes to; a worker in the same stack is
+        // never reachable from the edge and needs no token.
+        const name = String(env?.['SERVICE_NAME'] ?? '');
+        if (!ROUTED_SERVICES.has(name)) continue;
+        functionsChecked += 1;
+
+        // Enforcement is a per-environment flag, because the header and the
+        // requirement land in different stacks and CDK deploys them in the
+        // wrong order. With it off the token must be ABSENT everywhere: a
+        // partial rollout IS the outage the flag exists to prevent.
+        if (enforcementOn.has(stack.environment)) {
           expect(
             env?.['EDGE_VERIFICATION_TOKEN'],
             `${describeResource(stack, logicalId)}: routed to by the API but cannot tell an edge request from a direct one`,
           ).toBeDefined();
+        } else {
+          expect(
+            env?.['EDGE_VERIFICATION_TOKEN'],
+            `${describeResource(stack, logicalId)}: demands the edge header while enforcement is off — it would 404 until the distribution caught up`,
+          ).toBeUndefined();
         }
       }
 

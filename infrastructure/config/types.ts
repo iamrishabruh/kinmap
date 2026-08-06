@@ -227,6 +227,37 @@ export interface EnvironmentConfig {
   readonly reserveLambdaConcurrency: boolean;
 
   /**
+   * Whether API-integrated functions REQUIRE the edge header, as opposed to
+   * CloudFront merely sending it.
+   *
+   * This exists because the two halves live in different stacks and CDK
+   * deploys them in the wrong order. `api.addDependency(location)` and the
+   * cross-stack function references put LocationStack, FamilyStack and
+   * BillingStack strictly before ApiStack, and `cdk deploy --all` is serial
+   * and topological. So the functions would start demanding a header four
+   * stacks before the distribution began sending one — and CloudFormation
+   * then waits for the distribution to reach `Deployed`. Every location,
+   * family, invitation and api route would answer 404 for the remainder of
+   * the deploy. Not a race: deterministic, on every deploy, in every live
+   * environment. Worse, if ApiStack then failed, CloudFormation would roll
+   * back only ApiStack and leave the functions demanding a header nothing
+   * sends.
+   *
+   * No arrangement of `addDependency` can fix that, because ApiStack genuinely
+   * depends on the functions it routes to. So it is a flag, and the rollout is
+   * two deploys of one commit:
+   *
+   *   1. false — CloudFront starts sending the header. Nothing reads it, so
+   *      the check is a no-op and the deploy is invisible.
+   *   2. true  — the functions start requiring it. By then every request
+   *      already carries it.
+   *
+   * The revert direction is safe for the same reason: flipping back to false
+   * drops the requirement from the stacks that deploy first.
+   */
+  readonly enforceEdgeVerification: boolean;
+
+  /**
    * Secrets Manager ARNs for federated sign-in, when the provider exists.
    *
    * `IdentityStackProps.federatedIdentitySecrets` documented itself as

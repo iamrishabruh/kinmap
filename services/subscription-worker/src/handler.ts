@@ -4,6 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { SendMessageBatchCommand, SQSClient } from '@aws-sdk/client-sqs';
 
+import { assertRequestCameThroughEdge } from '@family/auth';
 import type { UserId } from '@family/contracts';
 import { createLogger, createMetrics } from '@family/observability';
 
@@ -136,6 +137,23 @@ const ACK: HttpResponse = {
   body: JSON.stringify({ received: true }),
 };
 
+/**
+ * A request that did not arrive through CloudFront.
+ *
+ * These three routes are the only UNAUTHENTICATED ones on the API — a provider
+ * cannot present a Cognito token — so they are exactly the routes an edge check
+ * matters for, and exactly the ones the first version of this work missed.
+ *
+ * Returned rather than thrown, and checked outside the try below, because that
+ * try's catch answers ACK: an AppError raised inside it would be swallowed and
+ * the caller would get 200, which is the opposite of refusing them.
+ */
+const NOT_FOUND: HttpResponse = {
+  statusCode: 404,
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ error: { code: 'NOT_FOUND' } }),
+};
+
 export async function handler(
   event: WorkerEvent,
 ): Promise<HttpResponse | SqsBatchResponse | { reconciled: number }> {
@@ -173,6 +191,12 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
 }
 
 async function handleWebhook(event: HttpEvent): Promise<HttpResponse> {
+  try {
+    assertRequestCameThroughEdge(event.headers ?? null);
+  } catch {
+    return NOT_FOUND;
+  }
+
   const path = event.rawPath.toLowerCase();
   const body = parseJsonObject(rawBody(event));
   const context = { productPlanMap: config.productPlanMap, now: () => new Date() };

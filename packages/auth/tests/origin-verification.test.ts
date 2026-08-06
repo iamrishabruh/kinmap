@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { AppError } from '@family/contracts';
 
-import { assertRequestCameThroughEdge, EDGE_VERIFICATION_HEADER } from '../origin-verification.js';
+import {
+  assertRequestCameThroughEdge,
+  EDGE_VERIFICATION_HEADER,
+} from '../src/origin-verification.js';
 
 /**
  * The check that decides whether a request reached Lambda through the edge or

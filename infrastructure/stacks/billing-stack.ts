@@ -33,6 +33,7 @@ import { LambdaFunction as LambdaFunctionTarget } from 'aws-cdk-lib/aws-events-t
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { type IFunction } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import { type ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import { type IQueue } from 'aws-cdk-lib/aws-sqs';
 import { type Construct } from 'constructs';
 
@@ -91,6 +92,12 @@ interface WebhookServiceOptions {
   readonly familyMembershipsTable: ITable;
   readonly savedPlacesTable: ITable;
   readonly notificationCommandsQueue: IQueue;
+  /**
+   * The webhook routes are the only UNAUTHENTICATED routes on the API, which
+   * makes them the ones an edge check matters most for — they were the three
+   * functions the first version of this work left out entirely.
+   */
+  readonly edgeVerificationSecret?: ISecret;
 }
 
 export class BillingStack extends Stack {
@@ -110,7 +117,7 @@ export class BillingStack extends Stack {
         props.description ?? 'Kinmap subscription webhooks and entitlement reconciliation.',
     });
 
-    const { config, tables } = props;
+    const { config, foundation, tables } = props;
     const secrets: BillingProviderSecrets = props.providerSecrets ?? {};
 
     applyStandardTags(this, config);
@@ -136,6 +143,9 @@ export class BillingStack extends Stack {
     // -----------------------------------------------------------------------
 
     this.revenueCatWebhookFunction = this.addWebhookService({
+      edgeVerificationSecret: config.enforceEdgeVerification
+        ? foundation.edgeVerificationSecret
+        : undefined,
       config,
       constructId: 'RevenueCatWebhookService',
       serviceName: 'revenuecat-webhook',
@@ -151,6 +161,9 @@ export class BillingStack extends Stack {
     });
 
     this.appleWebhookFunction = this.addWebhookService({
+      edgeVerificationSecret: config.enforceEdgeVerification
+        ? foundation.edgeVerificationSecret
+        : undefined,
       config,
       constructId: 'AppleWebhookService',
       serviceName: 'apple-webhook',
@@ -166,6 +179,9 @@ export class BillingStack extends Stack {
     });
 
     this.googleWebhookFunction = this.addWebhookService({
+      edgeVerificationSecret: config.enforceEdgeVerification
+        ? foundation.edgeVerificationSecret
+        : undefined,
       config,
       constructId: 'GoogleWebhookService',
       serviceName: 'google-webhook',
@@ -303,6 +319,7 @@ export class BillingStack extends Stack {
     }
 
     const service = new NodeService(this, options.constructId, {
+      edgeVerificationSecret: options.edgeVerificationSecret,
       config: options.config,
       serviceName: options.serviceName,
       // All three providers are verified by services/subscription-worker, whose

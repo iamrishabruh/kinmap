@@ -49,6 +49,8 @@ export function stagingConfig(): EnvironmentConfig {
 
     appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_STAGING'),
     googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_STAGING'),
+    enforceEdgeVerification:
+      envString('KINMAP_ENFORCE_EDGE_VERIFICATION_STAGING', 'false') === 'true',
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_STAGING', 'false') === 'true',
     cdkQualifier: envString(

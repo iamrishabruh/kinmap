@@ -135,7 +135,7 @@ interface ApiRoute {
  * instead. The only routes that answer without a token are the provider
  * webhooks and `/v1/health`.
  */
-const API_ROUTES: ApiRoute[] = [
+export const API_ROUTES: ApiRoute[] = [
   // -- account --------------------------------------------------------------
   {
     path: '/v1/account',
@@ -564,7 +564,9 @@ export class ApiStack extends Stack {
       serviceName: 'api',
       // Routed to by the public API, so it must be able to tell a request
       // that came through CloudFront from one that went around it.
-      edgeVerificationSecret: foundation.edgeVerificationSecret,
+      edgeVerificationSecret: config.enforceEdgeVerification
+        ? foundation.edgeVerificationSecret
+        : undefined,
       description: 'KinMap v1 HTTP API: accounts, families, invitations, places, privacy.',
       memorySize: 1024,
       // Comfortably inside the 30s API Gateway integration ceiling, so a slow

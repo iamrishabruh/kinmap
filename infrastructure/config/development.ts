@@ -50,6 +50,8 @@ export function developmentConfig(): EnvironmentConfig {
 
     appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_DEVELOPMENT'),
     googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_DEVELOPMENT'),
+    enforceEdgeVerification:
+      envString('KINMAP_ENFORCE_EDGE_VERIFICATION_DEVELOPMENT', 'false') === 'true',
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_DEVELOPMENT', 'false') === 'true',
     cdkQualifier: envString(
