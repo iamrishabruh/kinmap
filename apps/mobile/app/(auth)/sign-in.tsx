@@ -65,21 +65,27 @@ import { useAuthFlow } from './_layout';
  * been created however complete the credentials were; and the deployed pool now
  * lists `SignInWithApple` with the app client offering it.
  *
- * STILL FALSE, because the last step does not pass yet. Requesting
- * `/oauth2/authorize?identity_provider=SignInWithApple` does redirect to
- * `appleid.apple.com`, but Apple answers with an error page reading
- * `invalid_client` — it does not recognise the Services ID
- * `app.kinmap.signin`. HTTP 200 is not evidence of anything here: Apple serves
- * its error page with the same status as its sign-in page, which is why this
- * was briefly and wrongly flipped to true.
+ * True because every step of the path was checked against the live systems.
  *
- * Everything on the AWS side IS done and verified: the secret holds the
- * Services ID, team, key id and .p8; `bin/app.ts` now passes the ARN that the
- * identity stack had always declared and nothing ever supplied; and both pools
- * list `SignInWithApple` with the app client offering it. What remains is on
- * the Apple side alone.
+ * On the AWS side: the Secrets Manager entry holds the Services ID, team id,
+ * key id and the .p8 body; `bin/app.ts` passes the ARN that the identity stack
+ * had always declared and nothing ever supplied, so the provider could not
+ * previously have existed however complete the credentials were; and both
+ * deployed pools list `SignInWithApple` with the app client offering it.
+ *
+ * On the Apple side: the App Store Connect API reports `APPLE_ID_AUTH` enabled
+ * on the Services ID, and requesting
+ * `/oauth2/authorize?identity_provider=SignInWithApple` against both hosted UIs
+ * lands on Apple's real sign-in page — `<title>Signin</title>`, with no error
+ * string in the body.
+ *
+ * That last distinction is the whole reason this comment is long. Apple serves
+ * its ERROR page with HTTP 200, exactly like its sign-in page. This flag was
+ * briefly flipped to true on the strength of a 200 alone while the body in fact
+ * read `invalid_client`, and the Services ID had no capabilities enabled at
+ * all. A status code proves nothing here; the body does.
  */
-const APPLE_FEDERATION_CONFIGURED: boolean = false;
+const APPLE_FEDERATION_CONFIGURED: boolean = true;
 
 /**
  * Why the previous session ended, said once, on the screen the user was dropped
