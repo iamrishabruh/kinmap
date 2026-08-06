@@ -1,4 +1,4 @@
-import type { AuthContext, TokenVerifier } from '@family/auth';
+import { assertRequestCameThroughEdge, type AuthContext, type TokenVerifier } from '@family/auth';
 import { AppError } from '@family/contracts';
 import { type createMetrics, type Logger } from '@family/observability';
 
@@ -71,6 +71,12 @@ export function createPipeline(input: {
     });
 
     try {
+      // Before routing decisions and before authentication: a request that did
+      // not come through the edge should cost nothing to reject, and it must
+      // not be able to distinguish a real route from an unknown one. Both
+      // answer NOT_FOUND. A no-op until the environment supplies a token.
+      assertRequestCameThroughEdge(request.headers ?? null);
+
       if (route === null) {
         // A method mismatch and an unknown path answer identically. The route
         // table is not something a caller gets to enumerate.

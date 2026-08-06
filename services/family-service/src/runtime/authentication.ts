@@ -1,5 +1,6 @@
 import {
   AccessTokenClaimsSchema,
+  assertRequestCameThroughEdge,
   unauthenticatedError,
   resolveDeviceId,
   verifyAccessToken,
@@ -95,6 +96,11 @@ export async function authenticate(
   event: HttpRequest,
   deps: AuthenticationDeps,
 ): Promise<AuthContext> {
+  // Before authentication, not after: a request that did not come through the
+  // edge should cost nothing to reject. It is a no-op until the environment
+  // supplies a token, which is what lets tests and local invocations run.
+  assertRequestCameThroughEdge(event.headers ?? null);
+
   const requestId = requestIdOf(event);
 
   const claims = event.requestContext?.authorizer?.jwt?.claims;

@@ -63,7 +63,7 @@ export class FamilyStack extends Stack {
       description: props.description ?? 'Kinmap families, memberships and invitations.',
     });
 
-    const { config, tables } = props;
+    const { config, foundation, tables } = props;
 
     applyStandardTags(this, config);
 
@@ -88,6 +88,9 @@ export class FamilyStack extends Stack {
     const familyService = new NodeService(this, 'FamilyService', {
       config,
       serviceName: 'family-service',
+      // Routed to by the public API, so it must be able to tell a request
+      // that came through CloudFront from one that went around it.
+      edgeVerificationSecret: foundation.edgeVerificationSecret,
       description: 'Families, memberships, blocks and abuse reports.',
       memorySize: 1024,
       timeout: FAMILY_SERVICE_TIMEOUT,
@@ -129,6 +132,9 @@ export class FamilyStack extends Stack {
     const invitationService = new NodeService(this, 'InvitationService', {
       config,
       serviceName: 'invitation-service',
+      // Routed to by the public API, so it must be able to tell a request
+      // that came through CloudFront from one that went around it.
+      edgeVerificationSecret: foundation.edgeVerificationSecret,
       description: 'Issues, previews, accepts and revokes family invitations.',
       memorySize: 1024,
       timeout: INVITATION_SERVICE_TIMEOUT,

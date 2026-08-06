@@ -562,6 +562,9 @@ export class ApiStack extends Stack {
     const apiService = new NodeService(this, 'ApiService', {
       config,
       serviceName: 'api',
+      // Routed to by the public API, so it must be able to tell a request
+      // that came through CloudFront from one that went around it.
+      edgeVerificationSecret: foundation.edgeVerificationSecret,
       description: 'KinMap v1 HTTP API: accounts, families, invitations, places, privacy.',
       memorySize: 1024,
       // Comfortably inside the 30s API Gateway integration ceiling, so a slow
@@ -1016,18 +1019,29 @@ export class ApiStack extends Stack {
       // request sampling is disabled.
       enableLogging: false,
       defaultBehavior: {
-        // `<origin-label>.<domain>` is a public name, so reaching it directly and
-        // skipping these rules is possible for anyone who finds it. The shared
-        // secret that closes that path is added by the origin-verification
-        // change; what stands in front of the origin until then is the JWT
-        // authorizer, the per-route throttles configured above and the
-        // per-principal token bucket in services/api — all of which apply
-        // whichever hostname a request arrives on.
+        // The origin hostname resolves publicly — it must, for CloudFront to
+        // reach it — so the label alone was never a control. This header is.
+        //
+        // Every service the API routes to refuses a request that does not carry
+        // it, so reaching API Gateway directly now answers NOT_FOUND instead of
+        // serving the route. A viewer cannot forge it: the origin request
+        // policy forwards the viewer's own headers, and CloudFront's custom
+        // origin headers OVERWRITE any header of the same name rather than
+        // appending, so a client that sends its own `x-kinmap-edge` has it
+        // discarded before the request leaves the edge.
+        //
+        // A dynamic reference, so the synthesised template carries a
+        // `{{resolve:secretsmanager:...}}` expression and never the value.
         origin: new HttpOrigin(config.apiOriginDomain, {
           protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
           originSslProtocols: [OriginSslPolicy.TLS_V1_2],
           readTimeout: Duration.seconds(30),
           keepaliveTimeout: Duration.seconds(30),
+          customHeaders: {
+            'x-kinmap-edge': foundation.edgeVerificationSecret
+              .secretValueFromJson('token')
+              .unsafeUnwrap(),
+          },
         }),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: AllowedMethods.ALLOW_ALL,

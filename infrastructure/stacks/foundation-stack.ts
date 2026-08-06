@@ -21,6 +21,7 @@ import { Key, type IKey } from 'aws-cdk-lib/aws-kms';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { HostedZone, type IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { ObjectOwnership, type IBucket } from 'aws-cdk-lib/aws-s3';
+import { Secret, type ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
@@ -74,6 +75,7 @@ export class FoundationStack extends Stack implements FoundationResources {
   readonly accessLogBucket: IBucket;
   readonly trailBucket: IBucket;
   readonly alarmTopic: ITopic;
+  readonly edgeVerificationSecret: ISecret;
   readonly alarmSet: AlarmSet;
   readonly parameterPrefix: string;
   readonly deployRole: IRole;
@@ -187,6 +189,36 @@ export class FoundationStack extends Stack implements FoundationResources {
       encryptionKey: operationsKey,
     });
     this.alarmTopic = this.alarmSet.topic;
+
+    // ---------------------------------------------------------------------
+    // Edge verification
+    // ---------------------------------------------------------------------
+    //
+    // The shared secret CloudFront injects and every API-integrated service
+    // checks, so that reaching API Gateway on its origin hostname without
+    // passing the WebACL stops working.
+    //
+    // It lives here rather than in the API stack because the functions that
+    // must check it are created in LocationStack, FamilyStack and BillingStack,
+    // all of which are built before the API stack that fronts them. A secret
+    // owned by the API stack could not reach them without a cycle.
+    //
+    // Generated rather than supplied: nobody needs to know this value, and one
+    // nobody has ever seen cannot be leaked from a password manager, a shell
+    // history or a note. Rotating it means a deploy, which is acceptable for a
+    // value whose only job is to prove a request took the expected path.
+    this.edgeVerificationSecret = new Secret(this, 'EdgeVerificationSecret', {
+      secretName: `${config.parameterPrefix}/edge/verification`,
+      description: 'Shared secret proving a request reached the origin through CloudFront',
+      encryptionKey: operationsKey,
+      removalPolicy: config.removalPolicy,
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ rotatedAt: 'never' }),
+        generateStringKey: 'token',
+        passwordLength: 64,
+        excludePunctuation: true,
+      },
+    });
 
     // ---------------------------------------------------------------------
     // DNS and certificates

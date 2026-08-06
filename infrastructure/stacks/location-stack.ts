@@ -141,6 +141,9 @@ export class LocationStack extends Stack {
     const ingestion = new NodeService(this, 'LocationIngestionService', {
       config,
       serviceName: 'location-ingestion',
+      // Routed to by the public API, so it must be able to tell a request
+      // that came through CloudFront from one that went around it.
+      edgeVerificationSecret: foundation.edgeVerificationSecret,
       description: 'Validates, encrypts and stores device location batches.',
       memorySize: 1024,
       timeout: INGESTION_TIMEOUT,
@@ -181,6 +184,9 @@ export class LocationStack extends Stack {
     const query = new NodeService(this, 'LocationQueryService', {
       config,
       serviceName: 'location-query',
+      // Routed to by the public API, so it must be able to tell a request
+      // that came through CloudFront from one that went around it.
+      edgeVerificationSecret: foundation.edgeVerificationSecret,
       description: 'Serves authorised current-location and history reads.',
       memorySize: 1024,
       timeout: QUERY_TIMEOUT,

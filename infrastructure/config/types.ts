@@ -6,6 +6,7 @@ import type { IKey } from 'aws-cdk-lib/aws-kms';
 import type { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
+import type { ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 
 import type { AppEnv } from '@family/contracts';
@@ -323,6 +324,13 @@ export interface FoundationResources {
   readonly accessLogBucket: IBucket;
   /** Operational alarms fan out here; never carries user data. */
   readonly alarmTopic: ITopic;
+  /**
+   * Shared secret CloudFront injects and every API-integrated service checks,
+   * so that reaching API Gateway on its origin hostname without passing the
+   * WebACL stops working. Declared on the foundation because the functions
+   * that check it are created before the API stack that fronts them.
+   */
+  readonly edgeVerificationSecret: ISecret;
   /** `/kinmap/<env>` — the SSM namespace owned by the foundation stack. */
   readonly parameterPrefix: string;
   /** Role assumed by GitHub Actions to deploy this environment. */

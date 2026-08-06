@@ -17,6 +17,7 @@ import {
 } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, type RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { type ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import type { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
@@ -81,6 +82,18 @@ export interface NodeServiceProps {
    * outside production rather than blocking the whole environment from deploying.
    */
   readonly reservedConcurrentExecutions?: number;
+  /**
+   * Supplied for functions the public API routes to, so they can reject a
+   * request that reached them without passing CloudFront and its WebACL.
+   *
+   * A CloudFormation dynamic reference: the template carries a `{{resolve:...}}`
+   * expression and never the value, and CloudFormation substitutes it at deploy
+   * time. Rotating the secret therefore takes a deploy, which is the right
+   * trade for a value whose only job is to prove a request took the expected
+   * path — the alternative is a Secrets Manager call in the location ingestion
+   * hot path.
+   */
+  readonly edgeVerificationSecret?: ISecret;
   readonly logRetention?: RetentionDays;
   readonly alarmTopic?: ITopic;
   readonly initialPolicy?: PolicyStatement[];
@@ -177,6 +190,13 @@ export class NodeService extends Construct {
         // traces in CloudWatch point at minified offsets.
         NODE_OPTIONS: '--enable-source-maps',
         DETAILED_TRACING: config.enableDetailedTracing ? '1' : '0',
+        ...(props.edgeVerificationSecret === undefined
+          ? {}
+          : {
+              EDGE_VERIFICATION_TOKEN: props.edgeVerificationSecret
+                .secretValueFromJson('token')
+                .unsafeUnwrap(),
+            }),
         ...props.environment,
       },
 

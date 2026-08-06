@@ -869,6 +869,71 @@ describe('the public site', () => {
     }
   });
 
+  it('gives every API-integrated function the edge token, and the edge the header', () => {
+    // The check in `packages/auth` fails OPEN when no token is configured —
+    // deliberately, so tests and local invocations do not each need the shared
+    // secret. The cost of that choice is that a function which quietly loses
+    // its environment variable stops verifying anything and nothing complains.
+    // This is what makes the choice safe: the absence is a synth-time failure.
+    const MUST_VERIFY = [
+      'kinmap-production-api',
+      'kinmap-production-family',
+      'kinmap-production-location',
+      'kinmap-development-api',
+      'kinmap-development-family',
+      'kinmap-development-location',
+    ];
+    let functionsChecked = 0;
+    let headersChecked = 0;
+
+    for (const stack of allStacks) {
+      if (MUST_VERIFY.includes(stack.stackName)) {
+        for (const [logicalId, fn] of resourcesOf(stack, 'AWS::Lambda::Function')) {
+          const env = asRecord(asRecord(prop(fn, 'Environment'))?.['Variables']);
+          // Only the functions the API routes to; a worker in the same stack
+          // is never reachable from the edge and needs no token.
+          const name = String(env?.['SERVICE_NAME'] ?? '');
+          if (
+            ![
+              'api',
+              'family-service',
+              'invitation-service',
+              'location-ingestion',
+              'location-query',
+            ].includes(name)
+          ) {
+            continue;
+          }
+          functionsChecked += 1;
+          expect(
+            env?.['EDGE_VERIFICATION_TOKEN'],
+            `${describeResource(stack, logicalId)}: routed to by the API but cannot tell an edge request from a direct one`,
+          ).toBeDefined();
+        }
+      }
+
+      for (const [logicalId, dist] of resourcesOf(stack, 'AWS::CloudFront::Distribution')) {
+        const origins = asRecord(prop(dist, 'DistributionConfig'))?.['Origins'];
+        if (!Array.isArray(origins)) continue;
+        for (const origin of origins) {
+          const record = asRecord(origin);
+          if (record?.['CustomOriginConfig'] === undefined) continue;
+          headersChecked += 1;
+          const names = (
+            Array.isArray(record['OriginCustomHeaders']) ? record['OriginCustomHeaders'] : []
+          ).map((h) => asRecord(h)?.['HeaderName']);
+          expect(
+            names,
+            `${describeResource(stack, logicalId)}: fronts the API without injecting the edge header, so every request would be refused`,
+          ).toContain('x-kinmap-edge');
+        }
+      }
+    }
+
+    expect(functionsChecked, 'the API must route to some functions').toBeGreaterThan(0);
+    expect(headersChecked, 'the API must be fronted by a distribution').toBeGreaterThan(0);
+  });
+
   it('closes the execute-api endpoint that would route around the WebACL', () => {
     // `<apiId>.execute-api.<region>.amazonaws.com` answers the same routes and
     // never touches CloudFront, so leaving it open would make the ACL above
