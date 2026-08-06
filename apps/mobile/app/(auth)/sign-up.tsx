@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import { StyleSheet, View, type TextInput } from 'react-native';
 
 import { AppError } from '@family/contracts';
 
@@ -81,6 +81,13 @@ const POLICY_DOCUMENTS: PolicyDocuments | null =
 /** The versions this screen is able to display, and therefore able to record. */
 const SHOWN_POLICIES: PolicyVersions | null =
   POLICY_DOCUMENTS === null ? null : CURRENT_POLICY_VERSIONS;
+
+const dateRow = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 12 },
+  narrow: { flex: 1 },
+  /** Four digits rather than two, so it needs the extra room. */
+  wide: { flex: 1.6 },
+});
 
 // ---------------------------------------------------------------------------
 
@@ -295,56 +302,72 @@ export default function SignUpScreen() {
           Three boxes, not one, and labelled words rather than a locale format —
           03/04/11 is three different dates in three different countries, and a
           month misread here moves somebody across the boundary.
+
+          Laid out in a row. Stacked full-width they were three more screens of
+          scrolling between the password and the thing the user is agreeing to,
+          which pushed the consent card further below the fold than it already
+          was — on a screen whose whole point is that somebody sees what they
+          accept before they accept it.
         */}
         <Stack gap="one">
-          <Field
-            autoComplete="birthdate-day"
-            editable={!refused}
-            inputMode="numeric"
-            keyboardType="number-pad"
-            label="Day of birth"
-            maxLength={2}
-            onChangeText={setBirthDay}
-            onSubmitEditing={() => birthMonthField.current?.focus()}
-            placeholder="DD"
-            ref={birthDayField}
-            returnKeyType="next"
-            testID="sign-up-birth-day"
-            value={birthDay}
-          />
-          <Field
-            autoComplete="birthdate-month"
-            editable={!refused}
-            inputMode="numeric"
-            keyboardType="number-pad"
-            label="Month of birth"
-            maxLength={2}
-            onChangeText={setBirthMonth}
-            onSubmitEditing={() => birthYearField.current?.focus()}
-            placeholder="MM"
-            ref={birthMonthField}
-            returnKeyType="next"
-            testID="sign-up-birth-month"
-            value={birthMonth}
-          />
-          <Field
-            autoComplete="birthdate-year"
-            editable={!refused}
-            helper="We ask so we know which rules apply to your account. We check it and do not store it."
-            inputMode="numeric"
-            keyboardType="number-pad"
-            label="Year of birth"
-            maxLength={4}
-            onChangeText={setBirthYear}
-            onSubmitEditing={() => {
-              void submit();
-            }}
-            placeholder="YYYY"
-            ref={birthYearField}
-            returnKeyType="go"
-            testID="sign-up-birth-year"
-            value={birthYear}
-          />
+          <View style={dateRow.row}>
+            <View style={dateRow.narrow}>
+              <Field
+                autoComplete="birthdate-day"
+                editable={!refused}
+                inputMode="numeric"
+                keyboardType="number-pad"
+                label="Day of birth"
+                maxLength={2}
+                onChangeText={setBirthDay}
+                onSubmitEditing={() => birthMonthField.current?.focus()}
+                placeholder="DD"
+                ref={birthDayField}
+                returnKeyType="next"
+                testID="sign-up-birth-day"
+                value={birthDay}
+              />
+            </View>
+            <View style={dateRow.narrow}>
+              <Field
+                autoComplete="birthdate-month"
+                editable={!refused}
+                inputMode="numeric"
+                keyboardType="number-pad"
+                label="Month of birth"
+                maxLength={2}
+                onChangeText={setBirthMonth}
+                onSubmitEditing={() => birthYearField.current?.focus()}
+                placeholder="MM"
+                ref={birthMonthField}
+                returnKeyType="next"
+                testID="sign-up-birth-month"
+                value={birthMonth}
+              />
+            </View>
+            <View style={dateRow.wide}>
+              <Field
+                autoComplete="birthdate-year"
+                editable={!refused}
+                inputMode="numeric"
+                keyboardType="number-pad"
+                label="Year of birth"
+                maxLength={4}
+                onChangeText={setBirthYear}
+                onSubmitEditing={() => {
+                  void submit();
+                }}
+                placeholder="YYYY"
+                ref={birthYearField}
+                returnKeyType="go"
+                testID="sign-up-birth-year"
+                value={birthYear}
+              />
+            </View>
+          </View>
+          <Caption>
+            We ask so we know which rules apply to your account. We check it and do not store it.
+          </Caption>
         </Stack>
 
         <LinkButton
