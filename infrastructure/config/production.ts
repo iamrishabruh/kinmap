@@ -47,10 +47,18 @@ export function productionConfig(): EnvironmentConfig {
     removalPolicy: RemovalPolicy.RETAIN,
     isProduction: true,
 
-    appleSecretArn: envOptional('KINMAP_APPLE_SECRET_ARN_PRODUCTION'),
-    googleSecretArn: envOptional('KINMAP_GOOGLE_SECRET_ARN_PRODUCTION'),
+    appleSignInEnabled: envString('KINMAP_APPLE_SIGN_IN_PRODUCTION', 'true') === 'true',
+    googleSignInEnabled: envString('KINMAP_GOOGLE_SIGN_IN_PRODUCTION', 'false') === 'true',
+    // Committed, not sourced from the environment. A value that only exists
+    // in somebody's .env.local is a value CI silently drops: the GitHub
+    // deploy passes two of the thirty-two variables this config reads, so
+    // every other one reverts to its default on a CI deploy. That is how
+    // Sign in with Apple was removed from the development pool without
+    // anybody touching it, and it would have turned this flag off next —
+    // reopening the WAF bypass it exists to close. The env var stays as an
+    // override for an incident, not as the source of truth.
     enforceEdgeVerification:
-      envString('KINMAP_ENFORCE_EDGE_VERIFICATION_PRODUCTION', 'false') === 'true',
+      envString('KINMAP_ENFORCE_EDGE_VERIFICATION_PRODUCTION', 'true') === 'true',
     reserveLambdaConcurrency:
       envString('KINMAP_RESERVE_LAMBDA_CONCURRENCY_PRODUCTION', 'false') === 'true',
     cdkQualifier: envString(

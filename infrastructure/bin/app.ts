@@ -110,9 +110,17 @@ const identity = new IdentityStack(app, stackName(config, 'identity'), {
   // The prop this stack has always declared and nothing ever passed. Without
   // it `secrets.appleSecretArn` was permanently undefined, so the Sign in with
   // Apple provider was never created no matter what credentials existed.
+  //
+  // The ARNs are derived from the environment's own parameter prefix rather
+  // than read from the environment, because CI does not have the environment
+  // and quietly deleted the provider once already.
   federatedIdentitySecrets: {
-    appleSecretArn: config.appleSecretArn,
-    googleSecretArn: config.googleSecretArn,
+    appleSecretArn: config.appleSignInEnabled
+      ? `arn:aws:secretsmanager:${config.region}:${config.account}:secret:${config.parameterPrefix}/identity/apple`
+      : undefined,
+    googleSecretArn: config.googleSignInEnabled
+      ? `arn:aws:secretsmanager:${config.region}:${config.account}:secret:${config.parameterPrefix}/identity/google`
+      : undefined,
   },
 });
 identity.addDependency(data);

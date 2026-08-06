@@ -267,8 +267,18 @@ export interface EnvironmentConfig {
    * a secret is simply not created, which is what lets this deploy before any
    * store account exists.
    */
-  readonly appleSecretArn?: string;
-  readonly googleSecretArn?: string;
+  /**
+   * Whether this environment offers the provider.
+   *
+   * A boolean rather than the secret's ARN, because an ARN can only come from
+   * the environment and CI does not have it — so a CI deploy silently REMOVED
+   * the Sign in with Apple provider from the development pool, with nothing
+   * failing and nothing logged. The secret is found by its deterministic name
+   * instead (`<parameterPrefix>/identity/apple`), which every environment can
+   * derive without being told.
+   */
+  readonly appleSignInEnabled: boolean;
+  readonly googleSignInEnabled: boolean;
 
   /**
    * The CDK bootstrap qualifier this account was bootstrapped with.
