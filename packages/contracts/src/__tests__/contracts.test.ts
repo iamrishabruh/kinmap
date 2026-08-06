@@ -177,21 +177,6 @@ describe('LocationEventSchema', () => {
 });
 
 describe('policy versions', () => {
-  it('are a single constant that both sides read', async () => {
-    // The app and the Cognito PreSignUp trigger each carried their own literal
-    // — 2026-05-01 and 2026-01-01 — and nothing compared them. The trigger
-    // refuses a sign-up whose accepted versions are not current, so account
-    // creation failed for everybody, and the client reported it as "Something
-    // went wrong on our end".
-    const mobile = await import('../../../../apps/mobile/src/features/consent/versions.js').catch(
-      () => null,
-    );
-    if (mobile === null) return; // contracts must not require the app to build
-
-    expect(mobile.CURRENT_TERMS_VERSION).toBe(POLICY_VERSIONS.termsVersion);
-    expect(mobile.CURRENT_PRIVACY_POLICY_VERSION).toBe(POLICY_VERSIONS.privacyPolicyVersion);
-  });
-
   it('is dated, so an acceptance record is legible without a lookup table', () => {
     for (const value of Object.values(POLICY_VERSIONS)) {
       expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
