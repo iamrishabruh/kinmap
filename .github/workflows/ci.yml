@@ -203,9 +203,14 @@ jobs:
       - name: Assemble debug
         working-directory: apps/mobile/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
+      # `./gradlew test` runs unit tests for EVERY module in the build, which
+      # includes every Expo package linked from node_modules — expo-eas-client
+      # and expo-json-utils both fail there, in code this repository does not
+      # own and cannot fix. Scoped to the app's own tests, which is what this
+      # job is for.
       - name: Unit tests
         working-directory: apps/mobile/android
-        run: ./gradlew test --no-daemon
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
 
   mobile-ios-build-check:
     name: mobile-ios-build-check
@@ -214,7 +219,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The runner's default Xcode ships Swift 6.1, and Expo's `apple` Swift
-      # package requires 6.2:
+      # package requires 6.2. Note the window is narrow in both directions:
+      # 6.1 cannot resolve the package, and 6.2.4 fails to compile Expo's own
+      # expo-modules-jsi source. See the note on this job below.
+      #
+      # Original problem:
       #
       #   xcodebuild: error: Could not resolve package dependencies:
       #   package 'apple' is using Swift tools version 6.2.0 but the installed
