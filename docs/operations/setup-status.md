@@ -273,17 +273,34 @@ a POST body reaches the origin, and the raw `execute-api` hostname no longer
 answers. Two synth-time guards were confirmed to fail when the ACL is put back
 to REGIONAL and when the default endpoint is re-enabled.
 
-**Residual risk, stated plainly.** CloudFront forwards to a hostname that
-resolves publicly, so a request that reaches it directly skips the managed rule
-groups and the IP rate limit. The label is configuration rather than something
-committed, which raises the cost of finding it without pretending that is a
-control. What still applies on that path regardless: the Cognito JWT authorizer,
-API Gateway per-route throttling, and the per-principal token bucket in
-`services/api` — so the exposure is request volume and cost, not access.
+**The bypass is closed.** CloudFront injects a generated secret as an origin
+request header, and every function the API routes to refuses a request without
+it. Verified against the live development environment:
 
-Closing it properly needs a shared secret injected by CloudFront and checked by
-every API-integrated service — six services, not one — and that is the next
-piece of this work rather than something already done.
+| Request                                        | Result                               |
+| ---------------------------------------------- | ------------------------------------ |
+| `api.dev.kinmap.app/v1/health`                 | 200                                  |
+| `api.dev.kinmap.app/v1/families`               | 401 from the Cognito authorizer      |
+| origin hostname `/v1/health`                   | **404**                              |
+| origin hostname `/v1/webhooks/revenuecat`      | **404**                              |
+| origin + a guessed header                      | **404**                              |
+| through the edge + an attacker-supplied header | unchanged — CloudFront overwrites it |
+
+**What that does and does not mean.** No Lambda invocation is possible at the
+origin without the header: either this check answers 404, or — on an
+authenticated route — the JWT authorizer answers 401 before the function is
+ever invoked. So no compute runs and no data is reachable off-edge.
+
+What is still reachable without passing the WebACL is API Gateway itself: an
+unauthenticated request to the origin gets a 401 from the authorizer, and that
+costs an API Gateway request. That is a smaller surface than it was — request
+cost rather than compute or data — but it is not nothing, and the honest way to
+close it entirely is mutual TLS on the custom domain, which is not built.
+
+Enforcement is a per-environment flag because the header and the requirement
+land in different stacks and CDK deploys them in the wrong order. The rollout is
+two deploys of one commit; the flag is what makes the safe order impossible to
+get wrong, and a synth guard fails on a partial rollout in either direction.
 
 ---
 
