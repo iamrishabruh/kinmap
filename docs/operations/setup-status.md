@@ -159,8 +159,10 @@ which alarms support _and_ which aggregate.
 - **Sign in with Apple.** A Services ID and a Sign in with Apple key have to be
   created in the Apple Developer portal — the App Store Connect API exposes
   neither. Email sign-in works; the Apple button is honestly disabled.
-- **SES production access.** All three accounts are in the sandbox, so mail
-  reaches only verified addresses. Every invitation to a real person is
+- **SES production access — DENIED.** Case `178590242200368`. Production can
+  only email verified addresses until this is appealed; see
+  `docs/operations/ses-production-access.md` for exactly what to do. The API
+  cannot resubmit after a denial, so the support case is the only route. Every invitation to a real person is
   undeliverable until AWS approves the request.
 - **The real-device background location matrix.** Nothing that can be built
   substantiates a claim about background tracking. No such claim is made.
