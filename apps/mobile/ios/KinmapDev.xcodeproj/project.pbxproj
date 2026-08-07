@@ -9,24 +9,24 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		7F1CD44F2195599DAA9AAF6E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5CED2CFCD74E175A2595A1 /* ExpoModulesProvider.swift */; };
-		A0DFCF39CFCC2BD57CEA9239 /* Pods_KinmapDev.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6437AF0BC3F6D0AB70465763 /* Pods_KinmapDev.framework */; };
+		422DB8483833D9FCD45B59F7 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 440E69EDD507233155B0CED8 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C7C1118343B7185583FCED98 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3275C18A6F5A4BFDBBF26CF5 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F710FA12C34FD379024A019B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 84A8FC637EBDE0CA70E192F6 /* PrivacyInfo.xcprivacy */; };
+		F5EAE09B46C313F6FE460CE2 /* Pods_KinmapDev.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C638BDEB3BE594FD03268512 /* Pods_KinmapDev.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* KinmapDev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KinmapDev.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = KinmapDev/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = KinmapDev/Info.plist; sourceTree = "<group>"; };
-		59655D78DC837EC63527A908 /* Pods-KinmapDev.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KinmapDev.release.xcconfig"; path = "Target Support Files/Pods-KinmapDev/Pods-KinmapDev.release.xcconfig"; sourceTree = "<group>"; };
-		5F5CED2CFCD74E175A2595A1 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-KinmapDev/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		6314396CFB80F4EBB6342436 /* Pods-KinmapDev.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KinmapDev.debug.xcconfig"; path = "Target Support Files/Pods-KinmapDev/Pods-KinmapDev.debug.xcconfig"; sourceTree = "<group>"; };
-		6437AF0BC3F6D0AB70465763 /* Pods_KinmapDev.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KinmapDev.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		84A8FC637EBDE0CA70E192F6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = KinmapDev/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		3275C18A6F5A4BFDBBF26CF5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = KinmapDev/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		3CBD857C19DBC96708CECD72 /* Pods-KinmapDev.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KinmapDev.release.xcconfig"; path = "Target Support Files/Pods-KinmapDev/Pods-KinmapDev.release.xcconfig"; sourceTree = "<group>"; };
+		440E69EDD507233155B0CED8 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-KinmapDev/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		83019448463579EFF8E0740E /* Pods-KinmapDev.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KinmapDev.debug.xcconfig"; path = "Target Support Files/Pods-KinmapDev/Pods-KinmapDev.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = KinmapDev/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C638BDEB3BE594FD03268512 /* Pods_KinmapDev.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KinmapDev.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = KinmapDev/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* KinmapDev-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "KinmapDev-Bridging-Header.h"; path = "KinmapDev/KinmapDev-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -37,13 +37,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A0DFCF39CFCC2BD57CEA9239 /* Pods_KinmapDev.framework in Frameworks */,
+				F5EAE09B46C313F6FE460CE2 /* Pods_KinmapDev.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		12714891A5621A7224EED002 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				7E1CD45BE96175063AB87550 /* KinmapDev */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* KinmapDev */ = {
 			isa = PBXGroup;
 			children = (
@@ -53,7 +61,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				84A8FC637EBDE0CA70E192F6 /* PrivacyInfo.xcprivacy */,
+				3275C18A6F5A4BFDBBF26CF5 /* PrivacyInfo.xcprivacy */,
 			);
 			name = KinmapDev;
 			sourceTree = "<group>";
@@ -62,25 +70,15 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				6437AF0BC3F6D0AB70465763 /* Pods_KinmapDev.framework */,
+				C638BDEB3BE594FD03268512 /* Pods_KinmapDev.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		4F6897E9DB7CBDCDFEAA65D3 /* Pods */ = {
+		7E1CD45BE96175063AB87550 /* KinmapDev */ = {
 			isa = PBXGroup;
 			children = (
-				6314396CFB80F4EBB6342436 /* Pods-KinmapDev.debug.xcconfig */,
-				59655D78DC837EC63527A908 /* Pods-KinmapDev.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		6FC03F69C1EEE3662C10380B /* KinmapDev */ = {
-			isa = PBXGroup;
-			children = (
-				5F5CED2CFCD74E175A2595A1 /* ExpoModulesProvider.swift */,
+				440E69EDD507233155B0CED8 /* ExpoModulesProvider.swift */,
 			);
 			name = KinmapDev;
 			sourceTree = "<group>";
@@ -99,8 +97,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				4F6897E9DB7CBDCDFEAA65D3 /* Pods */,
-				BA6A27D4752BB27CA990AF25 /* ExpoModulesProviders */,
+				D18D45B2ABA6FFB2556974DB /* Pods */,
+				12714891A5621A7224EED002 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -115,14 +113,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		BA6A27D4752BB27CA990AF25 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				6FC03F69C1EEE3662C10380B /* KinmapDev */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -130,6 +120,16 @@
 			);
 			name = Supporting;
 			path = KinmapDev/Supporting;
+			sourceTree = "<group>";
+		};
+		D18D45B2ABA6FFB2556974DB /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				83019448463579EFF8E0740E /* Pods-KinmapDev.debug.xcconfig */,
+				3CBD857C19DBC96708CECD72 /* Pods-KinmapDev.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,14 +140,14 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "KinmapDev" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				3E1B485358841C4B82C93BD1 /* [Expo] Configure project */,
+				6D73DE95A0603B9F922B38C2 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				7B077E1C3D1F4C9F82DA882F /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
-				76144A3985EE5AB1BBB95EE0 /* [CP] Embed Pods Frameworks */,
+				67C5B3749C42433C8A7AA40A /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
+				738DB3216E6F2202F85713EC /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -197,7 +197,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				F710FA12C34FD379024A019B /* PrivacyInfo.xcprivacy in Resources */,
+				C7C1118343B7185583FCED98 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,7 +243,21 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		3E1B485358841C4B82C93BD1 /* [Expo] Configure project */ = {
+		67C5B3749C42433C8A7AA40A /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo Dev Launcher] Strip Local Network Keys for Release";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Strip dev-launcher-specific local network permission keys from non-Debug builds\n# This only removes _expo._tcp Bonjour services and the dev-launcher usage description.\n# Other Bonjour services and custom descriptions are preserved for production use.\n\nif [ \"$CONFIGURATION\" != \"Debug\" ]; then\n  PLIST_PATH=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  if [ -f \"$PLIST_PATH\" ]; then\n    # Check if NSBonjourServices exists\n    if /usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" >/dev/null 2>&1; then\n      # Get the count of services\n      COUNT=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n\n      # Remove _expo._tcp\n      for ((i=COUNT-1; i>=0; i--)); do\n        SERVICE=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n        if echo \"$SERVICE\" | grep -q \"_expo._tcp\"; then\n          /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || true\n        fi\n      done\n\n      # If the array is now empty, remove it entirely\n      REMAINING=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n      if [ \"$REMAINING\" -eq \"0\" ]; then\n        /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null || true\n      fi\n    fi\n\n    # Only delete the description if it matches the dev-launcher default text\n    DESC=$(/usr/libexec/PlistBuddy -c \"Print :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n    if echo \"$DESC\" | grep -q \"Expo Dev Launcher\"; then\n      /usr/libexec/PlistBuddy -c \"Delete :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || true\n    fi\n  fi\nfi\n";
+		};
+		6D73DE95A0603B9F922B38C2 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -267,7 +281,7 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-KinmapDev/expo-configure-project.sh\"\n";
 		};
-		76144A3985EE5AB1BBB95EE0 /* [CP] Embed Pods Frameworks */ = {
+		738DB3216E6F2202F85713EC /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -314,20 +328,6 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-KinmapDev/Pods-KinmapDev-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
-		};
-		7B077E1C3D1F4C9F82DA882F /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo Dev Launcher] Strip Local Network Keys for Release";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Strip dev-launcher-specific local network permission keys from non-Debug builds\n# This only removes _expo._tcp Bonjour services and the dev-launcher usage description.\n# Other Bonjour services and custom descriptions are preserved for production use.\n\nif [ \"$CONFIGURATION\" != \"Debug\" ]; then\n  PLIST_PATH=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  if [ -f \"$PLIST_PATH\" ]; then\n    # Check if NSBonjourServices exists\n    if /usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" >/dev/null 2>&1; then\n      # Get the count of services\n      COUNT=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n\n      # Remove _expo._tcp\n      for ((i=COUNT-1; i>=0; i--)); do\n        SERVICE=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n        if echo \"$SERVICE\" | grep -q \"_expo._tcp\"; then\n          /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || true\n        fi\n      done\n\n      # If the array is now empty, remove it entirely\n      REMAINING=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n      if [ \"$REMAINING\" -eq \"0\" ]; then\n        /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null || true\n      fi\n    fi\n\n    # Only delete the description if it matches the dev-launcher default text\n    DESC=$(/usr/libexec/PlistBuddy -c \"Print :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n    if echo \"$DESC\" | grep -q \"Expo Dev Launcher\"; then\n      /usr/libexec/PlistBuddy -c \"Delete :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || true\n    fi\n  fi\nfi\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -403,7 +403,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				7F1CD44F2195599DAA9AAF6E /* ExpoModulesProvider.swift in Sources */,
+				422DB8483833D9FCD45B59F7 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,7 +412,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6314396CFB80F4EBB6342436 /* Pods-KinmapDev.debug.xcconfig */;
+			baseConfigurationReference = 83019448463579EFF8E0740E /* Pods-KinmapDev.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -449,7 +449,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 59655D78DC837EC63527A908 /* Pods-KinmapDev.release.xcconfig */;
+			baseConfigurationReference = 3CBD857C19DBC96708CECD72 /* Pods-KinmapDev.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

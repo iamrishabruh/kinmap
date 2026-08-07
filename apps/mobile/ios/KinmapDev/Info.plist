@@ -4,8 +4,8 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.familylocation.engine.refresh</string>
-		<string>com.familylocation.engine.processing</string>
+		<string>app.kinmap.engine.refresh</string>
+		<string>app.kinmap.engine.processing</string>
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
@@ -34,7 +34,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>familylocation-dev</string>
+				<string>kinmap-dev</string>
 				<string>kinmap</string>
 				<string>app.kinmap.dev</string>
 			</array>

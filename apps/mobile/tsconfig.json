@@ -12,6 +12,6 @@
       "@/assets/*": ["./assets/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "types/**/*.d.ts", ".expo/types/**/*.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "types/**/*.d.ts", ".expo/types/**/*.ts", "expo-env.d.ts"],
   "exclude": ["node_modules", "ios", "android", ".expo"]
 }

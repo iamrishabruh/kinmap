@@ -54,9 +54,13 @@ const APP_NAME = 'Kinmap';
  * (spec §6), so development and staging get their own suffixed identifiers and
  * can be installed side by side on one device.
  *
- * The `familylocation-*` schemes are kept alongside the reverse-DNS ones in the
- * committed native projects, so they are not removed here: a scheme that
- * disappears breaks any link already sent to somebody.
+ * THE SCHEMES USED TO SAY `familylocation-*`, which was the app's name before it
+ * was Kinmap. They are renamed here, deliberately, in the one window where that
+ * is free: a custom scheme is registered by the installed binary, so changing it
+ * breaks every link already handed out — and no link has been handed out,
+ * because no build has ever been installed by anybody. After the first
+ * TestFlight submission this stops being an edit and starts being a migration
+ * that has to register both schemes and keep the old one alive indefinitely.
  */
 const VARIANT_CONFIG: Record<
   Variant,
@@ -65,19 +69,19 @@ const VARIANT_CONFIG: Record<
   development: {
     suffix: '.dev',
     name: `${APP_NAME} (Dev)`,
-    scheme: 'familylocation-dev',
+    scheme: 'kinmap-dev',
     domain: 'dev.kinmap.app',
   },
   staging: {
     suffix: '.staging',
     name: `${APP_NAME} (Staging)`,
-    scheme: 'familylocation-staging',
+    scheme: 'kinmap-staging',
     domain: 'staging.kinmap.app',
   },
   production: {
     suffix: '',
     name: APP_NAME,
-    scheme: 'familylocation',
+    scheme: 'kinmap',
     domain: 'kinmap.app',
   },
 };
@@ -101,11 +105,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  // Two schemes. The variant's own is what deep links use; `kinmap` is what the
-  // Cognito app client's CallbackURLs are built from in identity-stack.ts, and
-  // the binary has to register it or the hosted UI's redirect is delivered to
-  // nothing and Sign in with Apple hangs on a browser that never closes.
-  scheme: [variant.scheme, 'kinmap'],
+  // Two schemes, deduplicated. The variant's own is what deep links use;
+  // `kinmap` is what the Cognito app client's CallbackURLs are built from in
+  // identity-stack.ts, and the binary has to register it or the hosted UI's
+  // redirect is delivered to nothing and Sign in with Apple hangs on a browser
+  // that never closes. In production the two coincide, and listing `kinmap`
+  // twice makes `expo prebuild` emit a duplicate CFBundleURLTypes entry.
+  scheme: [...new Set([variant.scheme, 'kinmap'])],
   userInterfaceStyle: 'automatic',
   // The New Architecture is the default and no longer a config flag in SDK 57.
   assetBundlePatterns: ['**/*'],
