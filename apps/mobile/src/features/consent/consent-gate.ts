@@ -26,11 +26,17 @@ export type ConsentRecord = {
   acceptedTermsVersion: string | null;
   acceptedPrivacyPolicyVersion: string | null;
   /**
-   * The band a previously attested date of birth fell in, or null when nobody
-   * has asked. Null is the gate; a band — any band — satisfies it, because the
-   * one band that would not, `UNDER_13`, is never stored.
+   * The band a previously attested date of birth fell in.
+   *
+   * `null` is the gate — asked for and unanswered, which is where every
+   * federated account starts. A band, any band, satisfies it, because the one
+   * band that would not (`UNDER_13`) is never stored.
+   *
+   * `undefined` is NOT the gate: it means the server did not send the field,
+   * i.e. an API that predates age bands. Gating on that would strand every user
+   * behind a screen whose submission the older API rejects. See `AccountSchema`.
    */
-  ageBand: AgeBand | null;
+  ageBand?: AgeBand | null;
 };
 
 export type ConsentReason =
@@ -88,6 +94,8 @@ export function evaluateConsent(
     outdated.push('PRIVACY_POLICY');
   }
 
+  // `=== null` and not a falsy check: `undefined` is "the server has no opinion"
+  // and must not gate. See `ConsentRecord.ageBand`.
   const ageAttestationRequired = accepted.ageBand === null;
 
   if (outdated.length === 0 && !ageAttestationRequired) {

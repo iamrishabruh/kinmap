@@ -163,6 +163,24 @@ describe('the age gate, which is the federated half of this screen', () => {
     }
   });
 
+  it('does NOT gate when the server never sent the field at all', () => {
+    // An API that predates age bands. Treating absent as null would pin every
+    // user behind a screen whose submission that API rejects as an unknown key,
+    // locking everybody out of the product for the length of the rollout gap.
+    // The app ships through the App Store and the API through CI; they cannot
+    // land at the same instant, so both orders have to be survivable.
+    const olderServer = evaluateConsent(
+      {
+        acceptedTermsVersion: CURRENT_POLICY_VERSIONS.termsVersion,
+        acceptedPrivacyPolicyVersion: CURRENT_POLICY_VERSIONS.privacyPolicyVersion,
+      },
+      CURRENT_POLICY_VERSIONS,
+    );
+
+    expect(olderServer.acceptanceRequired).toBe(false);
+    expect(olderServer.ageAttestationRequired).toBe(false);
+  });
+
   it('asks for the date and the documents together when both are outstanding', () => {
     const brandNew = evaluateConsent(
       { acceptedTermsVersion: null, acceptedPrivacyPolicyVersion: null, ageBand: null },

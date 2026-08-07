@@ -43,16 +43,30 @@ export const AccountSchema = z.strictObject({
   acceptedTermsVersion: TermsVersionSchema.nullable(),
   acceptedPrivacyPolicyVersion: TermsVersionSchema.nullable(),
   /**
-   * The band the account holder's attested date of birth fell in, or null when
-   * they have not been asked — which is every federated account until it clears
-   * the acceptance screen, and every account created before the band existed.
+   * The band the account holder's attested date of birth fell in.
    *
    * Returned on the owner's own read only, like `email`, and returned as a band
    * rather than a date because a date of birth is a strong identifier and beside
    * location history a much stronger one. The client needs this to know whether
    * to ask; nothing else keys off it yet.
+   *
+   * THE THREE STATES ARE DELIBERATE, AND THE ROLLOUT DEPENDS ON THEM.
+   *
+   *  - a band — asked and answered;
+   *  - `null` — asked for, not answered. Every federated account starts here and
+   *    is pinned to the acceptance screen until it is resolved;
+   *  - **absent** — this server does not know about age bands at all.
+   *
+   * Optional rather than merely nullable because the app ships through the App
+   * Store and the API ships through CI, and they cannot land at the same
+   * instant. A client that treated a missing field as `null` would pin every
+   * user of the older API to an acceptance screen whose submission that API
+   * would reject as an unknown key — locking every account out of the product
+   * for the length of the gap. `undefined` means "do not gate", so either
+   * deployment order is safe. Once the API is everywhere, this can tighten to
+   * nullable.
    */
-  ageBand: AgeBandSchema.nullable(),
+  ageBand: AgeBandSchema.nullable().optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
   /** Set once a deletion is scheduled; null otherwise. */
