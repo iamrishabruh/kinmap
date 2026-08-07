@@ -107,6 +107,7 @@ export function selectConsentRecord(state: SessionState): ConsentRecord | null {
   return {
     acceptedTermsVersion: state.account.acceptedTermsVersion,
     acceptedPrivacyPolicyVersion: state.account.acceptedPrivacyPolicyVersion,
+    ageBand: state.account.ageBand,
   };
 }
 

@@ -17,17 +17,25 @@ import { CURRENT_POLICY_VERSIONS, POLICY_CHANGE_SUMMARY } from '@/features/conse
  * that the version shown is the version submitted, and that the gate only opens
  * once BOTH documents are recorded against the account.
  *
- * That last one is not hypothetical. `PATCH /v1/account` currently accepts only
- * `acceptedTermsVersion` (`UpdateAccountRequestSchema`), so an account whose
- * privacy-policy version has moved on cannot be brought up to date by anything
- * this screen can send — it would agree, be told it is done, and be asked again.
- * The test states the requirement; the fix belongs in the schema and the API.
+ * That last one was not hypothetical, and it is now fixed in two places rather
+ * than one. `PATCH /v1/account` accepted only `acceptedTermsVersion`, so an
+ * account whose privacy-policy version had moved on could not be brought up to
+ * date by anything this screen could send — it would agree, be told it was done,
+ * and be asked again forever. Worse, the repository's update expression did not
+ * list either acceptance field, so even the terms version was silently dropped
+ * on the way to DynamoDB. Both are fixed; the request contract now refuses one
+ * document without the other so the half-recorded state is unrepresentable.
+ *
+ * The gate also covers age, which is what makes Sign in with Apple safe: a
+ * federated account arrives with no attestation, and without this it would walk
+ * past the only age check the platform has.
  */
 
 const ACCEPTED_EVERYTHING = {
   acceptedTermsVersion: CURRENT_POLICY_VERSIONS.termsVersion,
   acceptedPrivacyPolicyVersion: CURRENT_POLICY_VERSIONS.privacyPolicyVersion,
-};
+  ageBand: 'ADULT',
+} as const;
 
 describe('the acceptance screen starts from nothing', () => {
   it('pre-ticks neither box', () => {
@@ -59,7 +67,7 @@ describe('what the screen says is out of date', () => {
 
   it('distinguishes a new account from a returning one, because the copy differs', () => {
     const fresh = evaluateConsent(
-      { acceptedTermsVersion: null, acceptedPrivacyPolicyVersion: null },
+      { acceptedTermsVersion: null, acceptedPrivacyPolicyVersion: null, ageBand: null },
       CURRENT_POLICY_VERSIONS,
     );
 
@@ -89,7 +97,11 @@ describe('agreeing to what was shown is what clears the gate', () => {
 
   it('is not satisfied by a newer-looking version the client claims', () => {
     const evaluation = evaluateConsent(
-      { acceptedTermsVersion: '2099-01-01', acceptedPrivacyPolicyVersion: '2099-01-01' },
+      {
+        acceptedTermsVersion: '2099-01-01',
+        acceptedPrivacyPolicyVersion: '2099-01-01',
+        ageBand: 'ADULT',
+      },
       CURRENT_POLICY_VERSIONS,
     );
 
@@ -106,5 +118,59 @@ describe('agreeing to what was shown is what clears the gate', () => {
 
     expect(termsOnly.acceptanceRequired).toBe(true);
     expect(termsOnly.outdatedDocuments).toEqual(['PRIVACY_POLICY']);
+  });
+});
+
+describe('the age gate, which is the federated half of this screen', () => {
+  it('holds an account that has never been asked, even with both documents current', () => {
+    // This is precisely a Sign in with Apple account. The hosted UI's
+    // authorization-code grant carries no date of birth, so the profile is
+    // written with a null band, and if this gate did not exist federation would
+    // be a way around the only age check the platform performs.
+    const federated = evaluateConsent(
+      { ...ACCEPTED_EVERYTHING, ageBand: null },
+      CURRENT_POLICY_VERSIONS,
+    );
+
+    expect(federated.acceptanceRequired).toBe(true);
+    expect(federated.ageAttestationRequired).toBe(true);
+  });
+
+  it('says the documents are fine when they are, so the copy does not claim a change', () => {
+    // "We have updated our terms" would be untrue here, and a consent screen
+    // that misstates why it is asking is not one anybody should trust.
+    const federated = evaluateConsent(
+      { ...ACCEPTED_EVERYTHING, ageBand: null },
+      CURRENT_POLICY_VERSIONS,
+    );
+
+    expect(federated.reason).toBe('AGE_NOT_ATTESTED');
+    expect(federated.outdatedDocuments).toEqual([]);
+  });
+
+  it('is satisfied by any band that can be stored', () => {
+    // UNDER_13 is never persisted — it is refused at sign-up and refused again
+    // by PATCH /v1/account — so every band that can reach this function clears
+    // the gate, including the two minor bands.
+    for (const ageBand of ['AGE_13_TO_15', 'AGE_16_TO_17', 'ADULT'] as const) {
+      const evaluation = evaluateConsent(
+        { ...ACCEPTED_EVERYTHING, ageBand },
+        CURRENT_POLICY_VERSIONS,
+      );
+
+      expect(evaluation.acceptanceRequired, ageBand).toBe(false);
+      expect(evaluation.ageAttestationRequired, ageBand).toBe(false);
+    }
+  });
+
+  it('asks for the date and the documents together when both are outstanding', () => {
+    const brandNew = evaluateConsent(
+      { acceptedTermsVersion: null, acceptedPrivacyPolicyVersion: null, ageBand: null },
+      CURRENT_POLICY_VERSIONS,
+    );
+
+    expect(brandNew.reason).toBe('NEVER_ACCEPTED');
+    expect(brandNew.ageAttestationRequired).toBe(true);
+    expect(brandNew.outdatedDocuments).toHaveLength(2);
   });
 });
