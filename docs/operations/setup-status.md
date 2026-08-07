@@ -158,7 +158,9 @@ which alarms support _and_ which aggregate.
   no alarm in development reaches a person.
 - **Sign in with Apple.** A Services ID and a Sign in with Apple key have to be
   created in the Apple Developer portal — the App Store Connect API exposes
-  neither. Email sign-in works; the Apple button is honestly disabled.
+  neither. The button is enabled and the account-creation path behind it now
+  works; without those two portal artefacts the provider itself cannot complete
+  an exchange.
 - **SES production access — DENIED.** Case `178590242200368`. Production can
   only email verified addresses until this is appealed; see
   `docs/operations/ses-production-access.md` for exactly what to do. The API
@@ -167,20 +169,44 @@ which alarms support _and_ which aggregate.
 - **The real-device background location matrix.** Nothing that can be built
   substantiates a claim about background tracking. No such claim is made.
 
-### 2. Decisions, not tasks
+### 2. Decisions, now taken
 
-- **COPPA.** Still the largest open question, but the shape has changed: there
-  IS now a minimum age, enforced server-side, and under-13 accounts cannot be
-  created. What counsel must decide is whether they should be able to — which
-  for a family location product is a real possibility, and would mean building
-  verifiable parental consent before a US launch. See
-  `docs/privacy/privacy-policy.md` §12.
-- **Google / Firebase.** Deferred while the project is iOS-first. Google Sign-In
-  on iOS also needs a Google Cloud OAuth client; with Apple and email sign-in
-  only, Google can be skipped entirely.
-- **AWS Config.** Not deployed, deliberately — see
-  `docs/operations/api-gaps.md`. Enabling it needs a one-time account baseline
-  rather than a change to the deploy.
+Each of these was on this list as an open question. Three of them were
+engineering decisions wearing a legal costume, and are settled below. One is
+genuinely counsel's and is stated as narrowly as it can be.
+
+- **The age band is now persisted.** `AgeBand` existed but nothing stored it, on
+  the reasoning that no rule turned on a band yet. That reasoning had a hole in
+  it: without a stored band, Sign in with Apple could not be age-gated at all —
+  a federated account carries no date of birth — so federation was a way past
+  the only age check the platform has. The band (never the date) is now written
+  at account creation and on the acceptance screen, `UNDER_13` is never stored
+  because that account is refused, and it is returned only on the holder's own
+  profile read.
+- **COPPA remains counsel's, and only one question of it.** Under-13 accounts
+  cannot be created, server-side, on both the native and the federated path.
+  Whether they _should_ be able to exist is the question, and it is a legal one:
+  serving them lawfully requires verifiable parental consent under 16 CFR
+  §312.5, which is a specified process, is a project rather than a patch, and
+  blocks a US launch if the answer is yes. Everything the platform can do
+  without that answer is done. See `docs/privacy/privacy-policy.md` §12.
+- **Google / Firebase: skipped, not deferred.** Apple and email sign-in cover
+  the product. Google Sign-In on iOS needs a Google Cloud OAuth client and
+  Firebase brings a second analytics and messaging stack into a codebase whose
+  whole argument is that location data has exactly one path through it. Adding a
+  third identity provider before one person has used the first two is work
+  against an unmeasured need. The `GOOGLE_*` variables stay in `.env.example` as
+  empty, and `google-sign-in.ts` stays as the seam to fill if that changes.
+- **AWS Config: not deployed, and not blocking anything.** The four sequencings
+  tried against the real production account are recorded in
+  `infrastructure/stacks/security-stack.ts`; the short version is that Config's
+  recorder and delivery channel are mutually dependent and the only shapes that
+  work require running the first deploy twice, which is not a property a
+  repeatable deploy may have. It is a one-time account baseline — Control Tower,
+  or a script making three API calls in order — and it belongs outside the CDK
+  app. GuardDuty, Security Hub, IAM Access Analyzer, the CloudTrail organisation
+  trail and AWS Backup are all running, so this is a gap in configuration
+  _recording_, not in detection.
 
 ---
 
@@ -202,7 +228,7 @@ Gates, all green: `typecheck` 38/38, `lint` 38/38 zero errors, `test` 38/38 with
 > caps at `<6.1.0`, so TS 7 breaks linting across the repo.
 
 Toolchain: Node 24.18.1 (LTS), pnpm 11.20.0, TypeScript 6.0.3, OpenJDK 21,
-Android SDK 36, Xcode 26.5, CocoaPods 1.17.0, AWS CLI 2.36, CDK 2.1134.0,
+Android SDK 36, Xcode 26.6, CocoaPods 1.17.0, AWS CLI 2.36, CDK 2.1134.0,
 EAS CLI 21.4.0, Sentry CLI 0.40.0.
 
 ### Mobile app
@@ -354,30 +380,39 @@ fully serve, each documented rather than stubbed.
   handler and returns the right answer to an unauthenticated caller, but no
   account has been created, no family formed, no location ingested. Routes
   answering correctly at the edge is not the same as the product working.
-- **Staging and production carry no application infrastructure.** Both accounts
-  are CDK-bootstrapped; `CDKToolkit` is their only stack.
-- **A federated sign-in produces no account row.** Cognito does not invoke the
-  PostConfirmation trigger for users created through an external provider, so an
-  Apple sign-in never reaches the code that creates the `Users` profile. The
-  trigger's own comment says those profiles are created by "the linking flow
-  that owns provider account linking" — that flow does not exist. A user who
-  signed in with Apple would authenticate successfully and then get 404 from
-  `GET /v1/account` forever. Native email sign-up is unaffected: it goes through
-  PostConfirmation and works.
-- **`custom:device_id` is not minted.** The user pool declares no custom
-  attributes, so the device binding falls back to the `x-device-id` header. The
-  header is re-verified against the device registry, so this is not a hole — but
-  minting the claim would make the binding unforgeable, and is a strict
-  tightening whenever it happens.
-- **Branding is inconsistent below the surface.** The deep-link scheme is still
-  `familylocation-dev` and the iOS background task identifiers are still
-  `com.familylocation.engine.*`, baked into the committed native projects and the
-  Swift engine's `BGTaskScheduler` registration. Cheap to change now, expensive
-  after the first TestFlight submission.
 - **`migrations/`** contains no migrations yet.
-- **No GitHub repository.** Work is committed locally on `main` and
-  `development`, no remote configured. Creating and pushing one is outward-facing
-  and waits for a go-ahead.
+
+### Fixed since this list was written
+
+- ~~**Staging and production carry no application infrastructure.**~~ Both now
+  carry all fifteen stacks; see the table at the top of this document, which
+  contradicted this bullet for some time.
+- ~~**A federated sign-in produces no account row.**~~ Fixed twice, because the
+  first fix was not enough. `pre-token-generation.ts` provisions the profile at
+  the first moment a federated user has a subject — but PreSignUp was still
+  refusing every federated sign-up before that could ever run, because it
+  demanded a terms acceptance and a date of birth that the hosted UI's
+  authorization-code grant cannot carry. Both are now gated after the fact, on
+  the acceptance screen, against a profile that honestly records neither until
+  the user provides them.
+- ~~**`custom:device_id` is not minted.**~~ Still not minted, and now a decision
+  rather than a gap: the claim cannot survive a token refresh, because Cognito
+  passes no `clientMetadata` on `REFRESH_TOKEN_AUTH`. The reasoning is in
+  `packages/auth/src/device-binding.ts`.
+- ~~**Branding is inconsistent below the surface.**~~ The schemes are
+  `kinmap-dev` / `kinmap-staging` / `kinmap` and the background task identifiers
+  are `app.kinmap.engine.*`. Done in the window where it was free — no build has
+  ever been installed by anybody, so no link was broken. The Kotlin package
+  namespace `com.familylocation.locationengine` is deliberately left alone: it is
+  internal, is registered with no store, does not appear in any user-visible
+  identifier, and renaming it is a directory move across every file in the engine
+  for no gain.
+- ~~**No GitHub repository.**~~ `iamrishabruh/kinmap`, and `origin` is
+  configured. It is **public** — this document said private in two places, which
+  is the kind of error that matters here rather than a detail: several decisions
+  in this repository, including moving the account identifiers into secrets and
+  redacting the pool name from every fixture, are justified by the fact that
+  anybody can read this. They are correct. The description of why was not.
 
 ---
 
@@ -427,21 +462,32 @@ produced.
 
 ## Order of operations from here
 
-1. First development build onto a real iPhone — `pnpm build:ios development`,
+Every outstanding step is written out, with the exact commands, in
+[`first-run.md`](./first-run.md).
+
+1. Confirm the two SNS alarm subscriptions, so an alarm reaches a person.
+2. Verify two addresses in development SES — that is all the invitation flow
+   needs. Production access is a launch blocker, not a testing one.
+3. First development build onto a real iPhone — `pnpm build:ios development`,
    run interactively once so EAS can create the distribution certificate. The
    device is already registered and a development certificate exists.
-2. Create an account against the live development API — the first end-to-end
+4. Create an account against the live development API — the first end-to-end
    journey, and the first thing that exercises Cognito, the API and DynamoDB
    together.
-3. Tap an invitation link on the device and confirm it opens the app rather than
+5. Tap an invitation link on the device and confirm it opens the app rather than
    Safari — the only proof that universal links work.
-4. Begin the real-device location matrix — the only thing that can substantiate
+6. Begin the real-device location matrix — the only thing that can substantiate
    any claim about background tracking.
-5. ~~Create the GitHub repository and push.~~ Done — `iamrishabruh/kinmap`,
-   private. Making it public is a decision, not an oversight.
-6. ~~Decide the WAF architecture, then deploy staging.~~ Done — CloudFront, and
-   staging is live and verified.
-7. ~~Production.~~ Deployed, with explicit approval, after moving the apex zone
-   into the production account.
-8. Origin verification, so the CloudFront hop cannot be bypassed.
-9. SES production access, and the Apple Services ID — both yours.
+7. Open the SES production-access appeal, from the production account.
+8. Create the Apple Services ID and the Sign in with Apple key in the developer
+   portal — the two artefacts the App Store Connect API cannot produce.
+
+Already done, kept so the sequence reads:
+
+- ~~Create the GitHub repository and push.~~ `iamrishabruh/kinmap`, public.
+- ~~Decide the WAF architecture, then deploy staging.~~ CloudFront, and staging
+  is live and verified.
+- ~~Production.~~ Deployed, with explicit approval, after moving the apex zone
+  into the production account.
+- ~~Origin verification, so the CloudFront hop cannot be bypassed.~~ Closed; see
+  the WAF section above for what it does and does not mean.

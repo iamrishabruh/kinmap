@@ -37,7 +37,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="familylocation-dev"/>
+        <data android:scheme="kinmap-dev"/>
         <data android:scheme="kinmap"/>
         <data android:scheme="exp+kinmap"/>
       </intent-filter>

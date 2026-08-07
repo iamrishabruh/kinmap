@@ -23,3 +23,49 @@ allowBuilds:
   "@sentry/cli": true # fetches the sentry-cli binary for symbol upload
   esbuild: true # fetches the platform esbuild binary (CDK bundling, tsx)
   unrs-resolver: true # native resolver used by eslint-plugin-import-x
+
+# ---------------------------------------------------------------------------
+# Transitive advisories
+# ---------------------------------------------------------------------------
+#
+# `pnpm audit --audit-level high` runs in CI against the LIVE advisory database,
+# so this gate can turn red without a line of this repository changing. That is
+# what happened: three high advisories landed against build-time packages
+# reached through Expo and Metro. Neither package is linked into the shipped
+# app; both run on a developer's machine or a CI runner, over this project's own
+# committed assets.
+
+# nanoid GHSA-2v37-7h3g-55p8 — versions below 3.3.17 loop indefinitely when a
+# custom generator is given size zero. A patch release inside the same major, so
+# taking the fix is uneventful. Pinned to the 3.x line, not
+# ">=3.3.17": that resolved to 6.0.1, and nanoid is ESM-only from 4, which
+# would break the CommonJS consumers (postcss, expo-router) that reach it. Remove once the dependency
+# graph carries a fixed version on its own.
+overrides:
+  nanoid: "^3.3.17"
+
+# image-size GHSA-w3rx-r6r6-pgpr and GHSA-5p2g-fcmc-qvqq — denial of service in
+# the ICNS, JXL and HEIF parsers.
+#
+# THERE IS NO FIX TO TAKE. Both advisories name `>=2.0.3` as the patched
+# version, and 2.0.3 has not been published: the latest release is 2.0.2 and the
+# 1.2.1 that Metro resolves is the `legacy` tag. An override cannot be written
+# because the version it would point at does not exist.
+#
+# So these two are ignored EXPLICITLY, by identifier, rather than by lowering
+# --audit-level. That distinction is the point: every other high advisory, in
+# this package or any other, still fails the build. Lowering the threshold would
+# have silenced the nanoid finding above at the same time.
+#
+# The exposure being accepted: a malformed ICNS/JXL/HEIF file can hang the image
+# parser Metro uses while bundling. The inputs are this repository's own icons
+# and splash images, committed and reviewed. It is not reachable from the app,
+# from the API, or from anything a user supplies.
+#
+# REMOVE THESE the moment 2.0.3 ships — at which point the entry above becomes
+# an override and this block goes away. Check with `pnpm view image-size
+# versions`.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq

@@ -69,6 +69,22 @@ export type PreTokenGenerationDeps = {
  * somebody signing in — the write is conditional, so the next token issuance
  * simply tries again, and a transient failure heals itself. What must never
  * happen is that an outage in this write becomes an outage in authentication.
+ *
+ * IT RECORDS NO CONSENT AND NO AGE, AND THAT IS THE POINT. This used to pass
+ * `deps.config.termsVersion` and `deps.config.privacyPolicyVersion` straight
+ * into the profile, exactly as PostConfirmation does. For a native sign-up that
+ * is accurate — PreSignUp has already refused anything but a current acceptance,
+ * so the server's own versions are what the user agreed to. For a federated one
+ * it was a fabrication: nobody signing in with Apple has been shown a document
+ * or asked their date of birth, because the hosted UI's code grant carries
+ * neither. The platform would have held a record saying a user accepted terms
+ * they never saw, and an Apple sign-in would have walked straight past the age
+ * gate that native sign-up enforces.
+ *
+ * Nulls instead. `evaluateConsent` in the app reads a null acceptance as
+ * `NEVER_ACCEPTED` and the routing guard pins the account to the acceptance
+ * screen, which is where a federated user is actually asked — with the documents
+ * in front of them, and with the age gate applied server-side on the way in.
  */
 async function ensureFederatedProfile(
   event: PreTokenGenerationEvent,
@@ -85,8 +101,12 @@ async function ensureFederatedProfile(
       attributes: event.request.userAttributes,
       userName: event.userName,
       emailHashSecret: deps.config.emailHashSecret ?? event.userPoolId,
-      termsVersion: deps.config.termsVersion,
-      privacyPolicyVersion: deps.config.privacyPolicyVersion,
+      // Null, not the server's current versions. See the note above.
+      termsVersion: null,
+      privacyPolicyVersion: null,
+      // Nobody has attested a date of birth on this path. Null means "not yet
+      // asked", and the acceptance screen is where it is asked.
+      ageBand: null,
       now: deps.now(),
     });
 

@@ -113,6 +113,23 @@ const ConfirmSignUpResponseSchema = z.object({});
 export async function confirmSignUp(input: {
   readonly email: string;
   readonly code: string;
+  /**
+   * `YYYY-MM-DD`, the same date attested on the age screen.
+   *
+   * SENT A SECOND TIME, DELIBERATELY. The PreSignUp trigger applies the age gate
+   * and receives this in `ValidationData`, but it cannot persist anything —
+   * Cognito has assigned no subject yet, so there is no key to write a profile
+   * under. PostConfirmation has the subject and does not receive validation
+   * data; Cognito carries nothing forward between the two triggers. The one
+   * channel PostConfirmation does read is `ClientMetadata` on this call, so the
+   * date comes along again and the band is derived there.
+   *
+   * Still never a user attribute, still never persisted as a date: the trigger
+   * bands it and discards it. Omitted when the account is being confirmed
+   * without a fresh sign-up in memory, in which case no band is recorded and the
+   * app asks again rather than guessing.
+   */
+  readonly birthDate?: string;
 }): Promise<void> {
   try {
     await callCognito(
@@ -121,6 +138,9 @@ export async function confirmSignUp(input: {
         ClientId: cognitoConfig().clientId,
         Username: input.email,
         ConfirmationCode: input.code,
+        ...(input.birthDate === undefined
+          ? {}
+          : { ClientMetadata: { birthDate: input.birthDate } }),
       },
       ConfirmSignUpResponseSchema,
     );

@@ -61,6 +61,18 @@ apps/mobile/ios/*.xcodeproj/xcuserdata/
 # EAS does it, and `pnpm --filter @family/mobile pods` does it locally — so
 # these exist when they need to, including the privacy manifest Apple requires
 # in the shipped app.
+#
+# TWO FILES CANNOT BE HANDLED THIS WAY, and they are why the prebuild
+# consistency check failed for as long as it existed. `pod install` does not
+# only ADD files — it rewrites `KinmapDev.xcodeproj/project.pbxproj` in place to
+# integrate the pods, and Xcode rewrites `Info.plist` with tab indentation where
+# prebuild emits two spaces. Both files are genuinely source and must stay
+# committed, so they cannot be ignored; they must simply never be committed
+# FROM a tree that has had `pod install` run in it.
+#
+# The rule: regenerate with `pnpm --filter @family/mobile prebuild:clean` and
+# commit THAT, before running `pods` or any build. `pnpm validate:prebuild`
+# checks it and is what CI runs.
 apps/mobile/ios/Podfile.lock
 apps/mobile/ios/*.xcworkspace/
 apps/mobile/ios/*/PrivacyInfo.xcprivacy
