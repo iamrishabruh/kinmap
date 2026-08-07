@@ -407,8 +407,12 @@ fully serve, each documented rather than stubbed.
   internal, is registered with no store, does not appear in any user-visible
   identifier, and renaming it is a directory move across every file in the engine
   for no gain.
-- ~~**No GitHub repository.**~~ `iamrishabruh/kinmap`, private, and `origin` is
-  configured.
+- ~~**No GitHub repository.**~~ `iamrishabruh/kinmap`, and `origin` is
+  configured. It is **public** — this document said private in two places, which
+  is the kind of error that matters here rather than a detail: several decisions
+  in this repository, including moving the account identifiers into secrets and
+  redacting the pool name from every fixture, are justified by the fact that
+  anybody can read this. They are correct. The description of why was not.
 
 ---
 
@@ -480,8 +484,7 @@ Every outstanding step is written out, with the exact commands, in
 
 Already done, kept so the sequence reads:
 
-- ~~Create the GitHub repository and push.~~ `iamrishabruh/kinmap`, private.
-  Making it public is a decision, not an oversight.
+- ~~Create the GitHub repository and push.~~ `iamrishabruh/kinmap`, public.
 - ~~Decide the WAF architecture, then deploy staging.~~ CloudFront, and staging
   is live and verified.
 - ~~Production.~~ Deployed, with explicit approval, after moving the apex zone
