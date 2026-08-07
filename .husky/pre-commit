@@ -1,0 +1,62 @@
+#!/usr/bin/env sh
+#
+# Two guards, both for mistakes that are easy to make and expensive to notice.
+#
+# 1. `lint-staged` was configured in package.json and nothing ever invoked it,
+#    because this file did not exist. `pnpm prepare` installed husky into
+#    .husky/_ and there were no hooks for it to run. Another instance of the
+#    failure this codebase is most prone to: carefully written configuration
+#    wired to nothing.
+#
+# 2. The committed Xcode project must be what `expo prebuild` emits, not what
+#    `pod install` left behind. See the long note in .gitignore. This is not a
+#    hypothetical: it is how mobile-ios-build-check and mobile-android-build-check
+#    came to fail for the entire life of the repository, and then how they were
+#    broken a second time within one hour of being fixed — by a `git add -A` run
+#    in a tree where a build had happened.
+
+set -e
+
+# ---------------------------------------------------------------------------
+# The native project must be prebuild output, not pod-install output
+# ---------------------------------------------------------------------------
+#
+# `pod install` rewrites project.pbxproj in place to integrate the pods, adding
+# references to Pods-*.xcconfig, Pods_*.framework and ExpoModulesProvider.swift.
+# A no-install prebuild emits none of them, so committing them guarantees the
+# consistency check fails. Detected on the STAGED content, because that is what
+# is about to be committed — the working tree may legitimately differ.
+staged_pbxproj="$(git diff --cached --name-only --diff-filter=ACM | grep 'project\.pbxproj$' || true)"
+
+if [ -n "$staged_pbxproj" ]; then
+  for file in $staged_pbxproj; do
+    # `Pods-<target>-resources.sh` and the manifest-lock check are emitted by
+    # prebuild itself and are expected; the xcconfig and framework references
+    # are not, and only pod install writes them.
+    if git show ":$file" | grep -qE 'Pods-[A-Za-z]+\.(debug|release)\.xcconfig|Pods_[A-Za-z]+\.framework'; then
+      cat >&2 <<EOF
+
+  $file carries CocoaPods integration.
+
+  That file must be exactly what \`expo prebuild\` emits. \`pod install\` rewrites
+  it in place, and committing the result makes mobile-ios-build-check and
+  mobile-android-build-check fail — they regenerate with --no-install and diff.
+
+  Fix:
+
+      pnpm --filter @family/mobile prebuild:clean
+      git add apps/mobile/ios apps/mobile/android
+
+  Then commit, and run \`pnpm --filter @family/mobile pods\` afterwards if you
+  need to build. Verify with \`pnpm validate:prebuild\`.
+
+EOF
+      exit 1
+    fi
+  done
+fi
+
+# ---------------------------------------------------------------------------
+# Formatting and lint, on staged files only
+# ---------------------------------------------------------------------------
+pnpm exec lint-staged
