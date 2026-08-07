@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { FamilyIdSchema, UserIdSchema } from '@family/contracts';
+import { AgeBandSchema, BirthDateSchema, FamilyIdSchema, UserIdSchema } from '@family/contracts';
 
 import {
   AvatarUrlSchema,
@@ -42,6 +42,17 @@ export const AccountSchema = z.strictObject({
   familyIds: z.array(FamilyIdSchema),
   acceptedTermsVersion: TermsVersionSchema.nullable(),
   acceptedPrivacyPolicyVersion: TermsVersionSchema.nullable(),
+  /**
+   * The band the account holder's attested date of birth fell in, or null when
+   * they have not been asked — which is every federated account until it clears
+   * the acceptance screen, and every account created before the band existed.
+   *
+   * Returned on the owner's own read only, like `email`, and returned as a band
+   * rather than a date because a date of birth is a strong identifier and beside
+   * location history a much stronger one. The client needs this to know whether
+   * to ask; nothing else keys off it yet.
+   */
+  ageBand: AgeBandSchema.nullable(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
   /** Set once a deletion is scheduled; null otherwise. */
@@ -73,10 +84,42 @@ export const UpdateAccountRequestSchema = z
      * cannot accept terms on somebody else's behalf.
      */
     acceptedTermsVersion: TermsVersionSchema.optional(),
+    /**
+     * The other half of the same acceptance, and previously absent.
+     *
+     * The consent gate (`consent-gate.ts`) requires BOTH documents to match the
+     * versions that shipped in the binary before it lets anybody through. Only
+     * the terms version could be written, so an account whose privacy-policy
+     * version was behind could never be brought up to date through the API at
+     * all — the gate had no satisfying move. The two are refined below to travel
+     * together, because one without the other only produces that same dead end
+     * from the other side.
+     */
+    acceptedPrivacyPolicyVersion: TermsVersionSchema.optional(),
+    /**
+     * An attested date of birth, `YYYY-MM-DD`.
+     *
+     * Accepted here so a federated account can answer the age question it was
+     * never asked: the hosted UI's authorization-code grant carries no date, so
+     * Apple sign-in reaches the app with no attestation at all. The server bands
+     * it, refuses anything below the minimum with the same opaque error the
+     * sign-up trigger uses, stores the band, and discards the date. It is
+     * write-only — no response ever echoes it back.
+     */
+    birthDate: BirthDateSchema.optional(),
   })
   .refine((patch) => Object.keys(patch).length > 0, {
     message: 'At least one field must be provided.',
-  });
+  })
+  .refine(
+    (patch) =>
+      (patch.acceptedTermsVersion === undefined) ===
+      (patch.acceptedPrivacyPolicyVersion === undefined),
+    {
+      message: 'The terms version and the privacy policy version must be accepted together.',
+      path: ['acceptedPrivacyPolicyVersion'],
+    },
+  );
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 
 export const UpdateAccountResponseSchema = GetAccountResponseSchema;

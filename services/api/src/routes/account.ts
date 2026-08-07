@@ -246,7 +246,7 @@ export const accountRoutes: RegisteredRoute[] = [
 
       const updated = await context.services.accounts.updateProfile({
         userId: auth.userId,
-        patch: toProfilePatch(request),
+        patch: toProfilePatch(request, context.now),
         now: context.now,
       });
       if (updated === null) {
