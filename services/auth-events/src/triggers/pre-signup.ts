@@ -6,7 +6,10 @@ import type { ClientMetadata, PreSignUpEvent } from '../events.js';
 /**
  * Pre sign-up.
  *
- * Three rules, all of which have to hold for *every* trigger source:
+ * Three rules, all of which have to hold for every trigger source that can
+ * carry an answer to them — which is every native one, and not the federated
+ * one. See {@link handlePreSignUp} for why `PreSignUp_ExternalProvider` is
+ * admitted here and gated after the fact instead.
  *
  *  1. **No account is created without a current terms and privacy acceptance.**
  *     Consent to be located is the product's whole premise, so an account that
@@ -134,21 +137,54 @@ export function clearsMinimumAge(
   return meetsSelfSignupMinimum(parsed.data, now);
 }
 
+/**
+ * A federated sign-up cannot answer either gate, so it is not asked here.
+ *
+ * THIS BLOCKED SIGN IN WITH APPLE ENTIRELY. Federation into a Cognito user pool
+ * happens through the hosted UI's authorization-code grant. That flow has no
+ * channel for `validationData` — it is a field on the public `SignUp` API, which
+ * a federated sign-up never calls — and Cognito does not forward an app's
+ * `clientMetadata` into `PreSignUp_ExternalProvider` either. So both fields
+ * arrive empty, by construction and on every single federated sign-up, and the
+ * gates above threw `TERMS_ACCEPTANCE_REQUIRED` before the account was created.
+ * The first person ever to tap "Sign in with Apple" would have been refused, and
+ * the failure would have read as a server error.
+ *
+ * The test that was supposed to cover this looped over every trigger source
+ * while handing each one a full `validationData` payload, so it asserted the
+ * behaviour of an event Cognito cannot produce.
+ *
+ * ADMITTING THE ACCOUNT IS NOT WAIVING THE GATES. It moves them. The profile
+ * written for a federated user records no accepted policy version and no age
+ * band (see `pre-token-generation.ts`), which is the truth — nobody has been
+ * shown a document or asked their age at this point. The client's routing guard
+ * pins any account in that state to the acceptance screen, which collects both
+ * before any product surface is reachable, and the server refuses an under-13
+ * attestation there exactly as it does here. What is NOT acceptable, and is what
+ * the old code actually did downstream, is recording an acceptance that never
+ * happened so the gate appears satisfied.
+ */
+function isFederated(event: PreSignUpEvent): boolean {
+  return event.triggerSource === 'PreSignUp_ExternalProvider';
+}
+
 export function handlePreSignUp(
   event: PreSignUpEvent,
   config: AuthEventsConfig,
   now: Date = new Date(),
 ): PreSignUpEvent {
-  const acceptance = readTermsAcceptance(
-    event.request.validationData,
-    event.request.clientMetadata,
-  );
-  if (!isAcceptanceCurrent(acceptance, config)) {
-    throw termsAcceptanceRequiredError();
-  }
+  if (!isFederated(event)) {
+    const acceptance = readTermsAcceptance(
+      event.request.validationData,
+      event.request.clientMetadata,
+    );
+    if (!isAcceptanceCurrent(acceptance, config)) {
+      throw termsAcceptanceRequiredError();
+    }
 
-  if (!clearsMinimumAge(event.request.validationData, event.request.clientMetadata, now)) {
-    throw ageRequirementNotMetError();
+    if (!clearsMinimumAge(event.request.validationData, event.request.clientMetadata, now)) {
+      throw ageRequirementNotMetError();
+    }
   }
 
   return {
