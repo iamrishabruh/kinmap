@@ -61,7 +61,7 @@ version was chosen.
 | Expo SDK     | 57.0.9                                                          |
 | React Native | 0.86.2 / React 19.2.3                                           |
 | AWS CDK      | 2.1134.0 (`aws-cdk-lib` 2.263.0)                                |
-| JDK          | 21 · Android compileSdk 36 · Xcode 26.5                         |
+| JDK          | 21 · Android compileSdk 36 · Xcode 26.6                         |
 
 ## Quickstart
 

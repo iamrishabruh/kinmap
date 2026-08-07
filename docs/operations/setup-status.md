@@ -228,7 +228,7 @@ Gates, all green: `typecheck` 38/38, `lint` 38/38 zero errors, `test` 38/38 with
 > caps at `<6.1.0`, so TS 7 breaks linting across the repo.
 
 Toolchain: Node 24.18.1 (LTS), pnpm 11.20.0, TypeScript 6.0.3, OpenJDK 21,
-Android SDK 36, Xcode 26.5, CocoaPods 1.17.0, AWS CLI 2.36, CDK 2.1134.0,
+Android SDK 36, Xcode 26.6, CocoaPods 1.17.0, AWS CLI 2.36, CDK 2.1134.0,
 EAS CLI 21.4.0, Sentry CLI 0.40.0.
 
 ### Mobile app
