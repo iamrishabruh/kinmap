@@ -18,7 +18,7 @@
   "dependencies": {
     "@family/contracts": "workspace:*",
     "aws-cdk-lib": "2.263.0",
-    "constructs": "10.8.0"
+    "constructs": "10.8.1"
   },
   "devDependencies": {
     "@family/eslint-config": "workspace:*",
