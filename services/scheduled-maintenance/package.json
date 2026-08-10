@@ -13,10 +13,10 @@
     "lint": "eslint src tests"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "3.980.0",
-    "@aws-sdk/client-sns": "3.980.0",
-    "@aws-sdk/client-sqs": "3.980.0",
-    "@aws-sdk/lib-dynamodb": "3.980.0",
+    "@aws-sdk/client-dynamodb": "3.1105.0",
+    "@aws-sdk/client-sns": "3.1105.0",
+    "@aws-sdk/client-sqs": "3.1105.0",
+    "@aws-sdk/lib-dynamodb": "3.1105.0",
     "@family/contracts": "workspace:*",
     "@family/location-core": "workspace:*",
     "@family/observability": "workspace:*",
