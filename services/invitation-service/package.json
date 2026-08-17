@@ -17,8 +17,8 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "3.980.0",
-    "@aws-sdk/lib-dynamodb": "3.980.0",
+    "@aws-sdk/client-dynamodb": "3.1110.0",
+    "@aws-sdk/lib-dynamodb": "3.1110.0",
     "@family/auth": "workspace:*",
     "@family/contracts": "workspace:*",
     "@family/observability": "workspace:*",
