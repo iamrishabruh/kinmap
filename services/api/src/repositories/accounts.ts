@@ -2,9 +2,11 @@ import { z } from 'zod';
 
 import type { UserAccountRecord, UserAccountRepository } from '@family/auth';
 import {
+  AgeBandSchema,
   AppError,
   SharingStatusSchema,
   UserIdSchema,
+  type AgeBand,
   type SharingStatus,
   type UserId,
 } from '@family/contracts';
@@ -50,6 +52,13 @@ export const UserRecordSchema = z.object({
   status: AccountStatusRecordSchema,
   acceptedTermsVersion: TermsVersionSchema.nullable().default(null),
   acceptedPrivacyPolicyVersion: TermsVersionSchema.nullable().default(null),
+  /**
+   * Null on every row written before the band existed, and on every federated
+   * account until its holder answers the age question. Defaulting to null rather
+   * than to a band is the whole point: an unanswered question must not read as
+   * an adult.
+   */
+  ageBand: AgeBandSchema.nullable().default(null),
   sharingStatus: SharingStatusSchema.default('SHARING'),
   sharingPausedUntil: IsoDateTimeSchema.nullable().default(null),
   createdAt: IsoDateTimeSchema,
@@ -64,6 +73,19 @@ export type ProfilePatch = {
   readonly locale?: string;
   readonly timeZone?: string;
   readonly acceptedTermsVersion?: string;
+  /**
+   * Written alongside the terms version, never independently.
+   *
+   * The consent gate requires BOTH documents to match the shipped versions, so a
+   * path that could record one without the other would leave an account that can
+   * never satisfy it. `toProfilePatch` is what enforces that they arrive together.
+   */
+  readonly acceptedPrivacyPolicyVersion?: string;
+  /**
+   * Derived server-side from an attested date of birth; the date itself is never
+   * accepted into a patch and never stored.
+   */
+  readonly ageBand?: AgeBand;
 };
 
 export interface AccountsRepository extends UserAccountRepository {
@@ -112,11 +134,26 @@ export function createAccountsRepository(
     },
 
     async updateProfile(input): Promise<UserRecord | null> {
+      // THE THREE CONSENT FIELDS USED TO BE MISSING FROM THIS LIST. `ProfilePatch`
+      // declared `acceptedTermsVersion`, `toProfilePatch` populated it, the route
+      // passed it — and this expression, the only thing that actually writes, did
+      // not mention it. Accepting the terms therefore persisted nothing at all.
+      //
+      // The consequence was not subtle: the acceptance screen is where the
+      // routing guard pins anybody whose stored acceptance is behind the shipped
+      // version, and it only lets go when the account reports the current one. A
+      // user who tapped "Agree and continue" got a success, a re-read of an
+      // unchanged account, and the same screen again, forever, with no way into
+      // the product. It was reachable by every federated account and by every
+      // existing account the first time a policy version was raised.
       const expression = buildSetExpression({
         displayName: input.patch.displayName,
         avatarUrl: input.patch.avatarUrl,
         locale: input.patch.locale,
         timeZone: input.patch.timeZone,
+        acceptedTermsVersion: input.patch.acceptedTermsVersion,
+        acceptedPrivacyPolicyVersion: input.patch.acceptedPrivacyPolicyVersion,
+        ageBand: input.patch.ageBand,
         updatedAt: input.now.toISOString(),
       });
       if (expression === null) {

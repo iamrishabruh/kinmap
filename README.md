@@ -61,7 +61,7 @@ version was chosen.
 | Expo SDK     | 57.0.9                                                          |
 | React Native | 0.86.2 / React 19.2.3                                           |
 | AWS CDK      | 2.1134.0 (`aws-cdk-lib` 2.263.0)                                |
-| JDK          | 21 · Android compileSdk 36 · Xcode 26.5                         |
+| JDK          | 21 · Android compileSdk 36 · Xcode 26.6                         |
 
 ## Quickstart
 
@@ -105,12 +105,15 @@ Stated plainly, because this file previously said the opposite of the truth in
 both directions — it claimed `services/` and `infrastructure/` were empty long
 after they were deployed and serving. What follows is what is genuinely absent.
 
-- **Nobody has used it.** Two environments are deployed and answer on
-  `api.kinmap.app` and `api.dev.kinmap.app`, and the app builds, bundles and
-  installs. No person has opened a screen, so nothing here is evidence that it
-  is good to use.
-- **Sign in with Apple is not wired.** The button is disabled rather than
-  broken. Email sign-in works.
+- **Nobody has used it.** Three environments are deployed and answer on
+  `api.kinmap.app`, `api.staging.kinmap.app` and `api.dev.kinmap.app`, and the
+  app builds, bundles and installs. The screens have now been run in a
+  simulator, but no person has used it against a real device, so nothing here is
+  evidence that it is good to use.
+- **Sign in with Apple is wired, and has never been used.** The button is
+  enabled, the provider is configured, and the account-creation path a federated
+  sign-in takes has been fixed — it previously refused every such sign-up at the
+  PreSignUp trigger. Nobody has completed one. Email sign-in works.
 - **Email cannot reach a stranger.** Both AWS accounts are in the SES sandbox,
   so invitations only deliver to verified addresses until AWS lifts it.
 - **Background tracking has never run on a real device.** Both native engines

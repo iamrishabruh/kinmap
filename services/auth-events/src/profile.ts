@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import { IdentitySubjectSchema, type UserId } from '@family/contracts';
+import { IdentitySubjectSchema, type AgeBand, type UserId } from '@family/contracts';
 
 import type { UserAttributes } from './events.js';
 
@@ -46,6 +46,15 @@ export type UserProfileRecord = {
   readonly identityProvider: IdentityProvider;
   readonly acceptedTermsVersion: string | null;
   readonly acceptedPrivacyPolicyVersion: string | null;
+  /**
+   * The band the attested date of birth fell in, or null when nobody has been
+   * asked yet — which is every federated account at creation, because the hosted
+   * UI's code grant carries no date of birth. Null is a gate, not a default: the
+   * client pins such an account to the acceptance screen until it is answered.
+   *
+   * The band, never the date. See `@family/contracts/age.ts`.
+   */
+  readonly ageBand: AgeBand | null;
   readonly sharingStatus: 'NEVER_ENABLED';
   readonly sharingPausedUntil: null;
   readonly createdAt: string;
@@ -144,6 +153,8 @@ export type BuildProfileInput = {
   readonly emailHashSecret: string;
   readonly termsVersion: string | null;
   readonly privacyPolicyVersion: string | null;
+  /** Null when no date of birth was attested on the path that created this. */
+  readonly ageBand: AgeBand | null;
   readonly now: Date;
 };
 
@@ -186,6 +197,7 @@ export function buildUserProfile(input: BuildProfileInput): UserProfileRecord {
     identityProvider: resolveIdentityProvider(input.attributes, input.userName),
     acceptedTermsVersion: input.termsVersion,
     acceptedPrivacyPolicyVersion: input.privacyPolicyVersion,
+    ageBand: input.ageBand,
     // A brand-new account shares with nobody until the user turns it on. There
     // is no state in which sharing is on before somebody chose it.
     sharingStatus: 'NEVER_ENABLED',

@@ -1,4 +1,4 @@
-import type { FamilyId } from '@family/contracts';
+import { AppError, ageBandFor, type FamilyId } from '@family/contracts';
 import type { Account, AccountStatus, UpdateAccountRequest } from '@family/schemas';
 
 import type { AccountStatusRecord, ProfilePatch, UserRecord } from '../repositories/accounts.js';
@@ -45,6 +45,9 @@ export function projectAccount(input: {
     familyIds: [...input.familyIds],
     acceptedTermsVersion: input.user.acceptedTermsVersion,
     acceptedPrivacyPolicyVersion: input.user.acceptedPrivacyPolicyVersion,
+    // The band, on the owner's own read only. Never the date, which is not
+    // stored anywhere to project.
+    ageBand: input.user.ageBand,
     createdAt: input.user.createdAt,
     updatedAt: input.user.updatedAt,
     scheduledPurgeAt: input.user.scheduledPurgeAt,
@@ -52,16 +55,48 @@ export function projectAccount(input: {
 }
 
 /**
+ * The one refusal an attested date of birth can produce.
+ *
+ * Word for word what `pre-signup.ts` says, and for the same reason: telling a
+ * caller which part of the gate they failed only teaches them which date gets
+ * through. Both gates have to give the same answer, or the difference between
+ * them is itself the hint.
+ */
+function ageRequirementNotMetError(): AppError {
+  return new AppError(
+    'AGE_REQUIREMENT_NOT_MET',
+    'This account cannot be created. Kinmap is not available to everyone who tries to sign up.',
+  );
+}
+
+/**
  * Narrows a validated patch to the fields that are actually writable. The
  * schema already rejects unknown keys; this makes the writable set explicit at
  * the point where it turns into an update expression.
+ *
+ * The date of birth is the one field that does not survive this function. It
+ * arrives, it is banded, and the band is what continues — so no caller below
+ * this line can write a date even by accident, and there is no field on
+ * `ProfilePatch` for one to land in.
  */
-export function toProfilePatch(request: UpdateAccountRequest): ProfilePatch {
+export function toProfilePatch(request: UpdateAccountRequest, now: Date): ProfilePatch {
+  const ageBand = request.birthDate === undefined ? undefined : ageBandFor(request.birthDate, now);
+
+  // Refused rather than recorded. The band exists so a rule can turn on it, and
+  // the rule for UNDER_13 is that the platform has no lawful basis to serve the
+  // account at all — storing the band would be recording that fact and carrying
+  // on regardless. `pre-signup.ts` refuses the same case at creation.
+  if (ageBand === 'UNDER_13') {
+    throw ageRequirementNotMetError();
+  }
+
   return {
     displayName: request.displayName,
     avatarUrl: request.avatarUrl,
     locale: request.locale,
     timeZone: request.timeZone,
     acceptedTermsVersion: request.acceptedTermsVersion,
+    acceptedPrivacyPolicyVersion: request.acceptedPrivacyPolicyVersion,
+    ageBand,
   };
 }

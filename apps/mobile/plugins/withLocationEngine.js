@@ -28,13 +28,25 @@ const { withEntitlementsPlist, withInfoPlist } = require('expo/config-plugins');
  */
 
 /**
- * Must match the identifiers the Swift engine registers with BGTaskScheduler.
+ * Background task identifiers permitted for this app.
+ *
+ * RENAMED FROM `com.familylocation.engine.*`, which was a prefix belonging to no
+ * bundle this project ships. `BGTaskScheduler` requires a submitted task's
+ * identifier to appear in `BGTaskSchedulerPermittedIdentifiers`, and Apple's
+ * guidance is that it be namespaced under the app's own bundle identifier —
+ * `app.kinmap*` here. The old prefix predates the rename to Kinmap and would
+ * have been a permanent oddity in the shipped Info.plist.
+ *
+ * NOTHING REGISTERS THESE YET. The Swift engine contains no
+ * `BGTaskScheduler.shared.register` call, so today this list only declares an
+ * intent. It is kept, and corrected, because the declaration has to exist in the
+ * binary *before* the engine can ever schedule work — Info.plist is read at
+ * launch and cannot be added over the air — and because a wrong prefix left in
+ * place would fail at the first registration attempt rather than here.
+ *
  * @type {string[]}
  */
-const BACKGROUND_TASK_IDENTIFIERS = [
-  'com.familylocation.engine.refresh',
-  'com.familylocation.engine.processing',
-];
+const BACKGROUND_TASK_IDENTIFIERS = ['app.kinmap.engine.refresh', 'app.kinmap.engine.processing'];
 
 /** @type {string[]} */
 const REQUIRED_USAGE_KEYS = [

@@ -159,12 +159,17 @@ export function postConfirmationEvent(input: {
   triggerSource?: PostConfirmationSource;
   userName?: string;
   userAttributes: UserAttributes;
+  /** What `ConfirmSignUp` carried. The only channel a birth date has to here. */
+  clientMetadata?: Record<string, string> | null;
 }): PostConfirmationEvent {
   return {
     ...base,
     triggerSource: input.triggerSource ?? 'PostConfirmation_ConfirmSignUp',
     userName: input.userName ?? 'test-user',
-    request: { userAttributes: input.userAttributes, clientMetadata: null },
+    request: {
+      userAttributes: input.userAttributes,
+      clientMetadata: input.clientMetadata ?? null,
+    },
     response: {},
   };
 }

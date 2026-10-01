@@ -68,8 +68,14 @@ normalise_object_ids "${scratch}/ios.b"
 status=0
 
 # Generated artefacts that legitimately differ run-to-run.
+#
+# `DerivedData` is here because `ios/.gitignore` already declares it ignorable
+# and this list did not, so the check failed for anybody who had pointed
+# `xcodebuild -derivedDataPath` at it — a perfectly ordinary thing to do, and
+# what the ignore rule exists to permit. It never reaches CI; it made the check
+# unrunnable locally, which is where it is most useful.
 DIFF_EXCLUDES=(
-  -x 'Pods' -x 'build' -x '.gradle' -x 'local.properties'
+  -x 'Pods' -x 'build' -x 'DerivedData' -x '.gradle' -x 'local.properties'
   -x 'xcuserdata' -x '*.xcworkspace' -x '.cxx' -x 'gradlew' -x 'gradlew.bat'
   -x '*.lock' -x '.xcode.env.local'
   # Written by `pod install`, which neither this regeneration nor the committed

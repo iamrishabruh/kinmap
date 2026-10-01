@@ -168,6 +168,8 @@ export default function SignUpScreen() {
       beginEmailVerification({
         email: plan.email,
         codeSentTo: outcome.codeSentTo ?? maskEmail(plan.email),
+        // Needed again by `ConfirmSignUp`; see `PendingEmailVerification`.
+        birthDate: plan.birthDate,
       });
       router.replace(ROUTES.verifyEmail);
     } catch (cause) {

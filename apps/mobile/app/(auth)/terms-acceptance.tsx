@@ -26,6 +26,7 @@ import { Spacing } from '@/constants/theme';
 import { acceptTerms } from '@/features/auth/api';
 import { ACCOUNT_QUERY_KEY } from '@/features/auth/session-provider';
 import { signOut } from '@/features/auth/sign-out';
+import { composeBirthDate } from '@/features/auth/sign-up-plan';
 import { useSession } from '@/features/auth/use-session';
 import {
   canSubmitConsent,
@@ -82,6 +83,20 @@ import { describeError } from '@/lib/api';
  *    enables anything.
  *  - If this build cannot open the documents, it does not ask anybody to agree
  *    to them. Consent to a document you were not shown is not consent.
+ *
+ * ---------------------------------------------------------------------------
+ * IT ALSO ASKS FOR A DATE OF BIRTH, SOMETIMES
+ * ---------------------------------------------------------------------------
+ * Only when the account has never been asked — `consent.ageAttestationRequired`
+ * — which in practice means an account created through Sign in with Apple. The
+ * hosted UI's authorization-code grant carries no validation data, so a
+ * federated account reaches the app with no age attestation, and without this it
+ * would be a way straight around the only age gate the platform has. A native
+ * sign-up answers on the sign-up screen and never sees these fields.
+ *
+ * Same three rules as that screen: a date and no mention of a threshold, three
+ * boxes rather than a locale-formatted string, and the refusal comes after the
+ * answer. The date is checked and banded server-side and is not stored.
  */
 
 type Mode = 'CONSENT' | 'DELETE';
@@ -147,18 +162,32 @@ function AcceptanceRequest({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(false);
+  const [birthDay, setBirthDay] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+
+  const ageRequired = consent.ageAttestationRequired;
+  // Null while the three boxes are empty or do not spell a real calendar date.
+  // Only the shape is checked here; whether it clears the minimum is the
+  // server's answer, and it is not previewed on this screen.
+  const birthDate = composeBirthDate({ day: birthDay, month: birthMonth, year: birthYear });
 
   const documentsReadable = hasEnv('termsUrl') && hasEnv('privacyUrl');
-  const ready = documentsReadable && canSubmitConsent(selection) && !recorded;
+  const ready =
+    documentsReadable &&
+    canSubmitConsent(selection) &&
+    (!ageRequired || birthDate !== null) &&
+    !recorded;
 
   const agree = useCallback(() => {
     if (!canSubmitConsent(selection) || !documentsReadable) return;
+    if (ageRequired && birthDate === null) return;
     setBusy(true);
     setProblem(null);
 
     void (async () => {
       try {
-        await acceptTerms(CURRENT_POLICY_VERSIONS);
+        await acceptTerms(CURRENT_POLICY_VERSIONS, birthDate ?? undefined);
         setRecorded(true);
         // The account snapshot is the authority on consent, so the screen does
         // not navigate: it refreshes the fact and lets the routing guard move
@@ -171,10 +200,13 @@ function AcceptanceRequest({
         setBusy(false);
       }
     })();
-  }, [documentsReadable, queryClient, selection]);
+  }, [ageRequired, birthDate, documentsReadable, queryClient, selection]);
 
   const outdated = consent.outdatedDocuments.map(describeDocument).join(' and ');
   const returning = consent.reason === 'VERSION_CHANGED';
+  // Documents current, age unknown: nothing has been updated and saying so would
+  // be untrue. This is the Sign in with Apple case.
+  const ageOnly = consent.reason === 'AGE_NOT_ATTESTED';
 
   return (
     <Screen
@@ -182,9 +214,11 @@ function AcceptanceRequest({
         <Stack gap="two">
           {ready || recorded ? null : (
             <Caption testID="terms-blocked">
-              {documentsReadable
-                ? 'Tick both boxes to continue. Nothing is agreed until you do.'
-                : 'This build cannot open the documents, so we will not ask you to agree to them.'}
+              {!documentsReadable
+                ? 'This build cannot open the documents, so we will not ask you to agree to them.'
+                : ageRequired && birthDate === null
+                  ? 'Tick both boxes and enter your date of birth to continue. Nothing is agreed until you do.'
+                  : 'Tick both boxes to continue. Nothing is agreed until you do.'}
             </Caption>
           )}
           <Button
@@ -217,13 +251,19 @@ function AcceptanceRequest({
     >
       <Stack gap="three">
         <Title>
-          {returning ? 'We have updated our terms' : 'Before you start, please read these'}
+          {ageOnly
+            ? 'One more thing before you start'
+            : returning
+              ? 'We have updated our terms'
+              : 'Before you start, please read these'}
         </Title>
         <Body>
           {displayName === null ? 'Hello. ' : `Hello ${displayName}. `}
-          {returning
-            ? `We have published a new ${outdated}. You need to agree to the current version before Family Location shares anything else about you.`
-            : `Family Location can only collect your location once you have agreed to the ${outdated}.`}
+          {ageOnly
+            ? 'We still need to ask for your date of birth. Signing in with Apple does not tell us, and we ask everybody.'
+            : returning
+              ? `We have published a new ${outdated}. You need to agree to the current version before Family Location shares anything else about you.`
+              : `Family Location can only collect your location once you have agreed to the ${outdated}.`}
         </Body>
 
         {returning && POLICY_CHANGE_SUMMARY.length > 0 ? (
@@ -291,6 +331,63 @@ function AcceptanceRequest({
             account from this screen.
           </Callout>
         )}
+
+        {ageRequired ? (
+          <Stack gap="one">
+            {/*
+              No minimum is stated, and none is hinted at by the layout. A form
+              that says "you must be 13" collects the number 13; the refusal, if
+              there is one, comes from the server after the answer.
+            */}
+            <View style={styles.dateRow}>
+              <View style={styles.dateNarrow}>
+                <Field
+                  autoComplete="birthdate-day"
+                  editable={!recorded}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  label="Day of birth"
+                  maxLength={2}
+                  onChangeText={setBirthDay}
+                  placeholder="DD"
+                  testID="terms-birth-day"
+                  value={birthDay}
+                />
+              </View>
+              <View style={styles.dateNarrow}>
+                <Field
+                  autoComplete="birthdate-month"
+                  editable={!recorded}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  label="Month of birth"
+                  maxLength={2}
+                  onChangeText={setBirthMonth}
+                  placeholder="MM"
+                  testID="terms-birth-month"
+                  value={birthMonth}
+                />
+              </View>
+              <View style={styles.dateWide}>
+                <Field
+                  autoComplete="birthdate-year"
+                  editable={!recorded}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  label="Year of birth"
+                  maxLength={4}
+                  onChangeText={setBirthYear}
+                  placeholder="YYYY"
+                  testID="terms-birth-year"
+                  value={birthYear}
+                />
+              </View>
+            </View>
+            <Caption>
+              We ask so we know which rules apply to your account. We check it and do not store it.
+            </Caption>
+          </Stack>
+        ) : null}
 
         <Stack gap="two">
           <ConsentCheck
@@ -705,5 +802,11 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   consentLabel: { flex: 1, gap: Spacing.one },
+  // Day and month are two characters, the year is four, so the year gets twice
+  // the room. Stacked full-width these were three more screens of scrolling
+  // between the question and the thing being agreed to.
+  dateNarrow: { flex: 1 },
+  dateRow: { flexDirection: 'row', gap: Spacing.two },
+  dateWide: { flex: 2 },
   tick: { fontSize: 18, fontWeight: '700', lineHeight: 22 },
 });

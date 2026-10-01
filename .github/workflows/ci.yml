@@ -214,23 +214,37 @@ jobs:
 
   mobile-ios-build-check:
     name: mobile-ios-build-check
-    runs-on: macos-15
+    # macos-26, not macos-15, and that is the whole fix for a job that had
+    # never once passed.
+    #
+    # The window Expo needs is narrow in BOTH directions, which is what made
+    # this look unfixable by version-juggling on one image:
+    #
+    #   - Swift 6.1 cannot RESOLVE Expo's `apple` package —
+    #       xcodebuild: error: Could not resolve package dependencies:
+    #       package 'apple' is using Swift tools version 6.2.0 but the
+    #       installed version is 6.1.0
+    #   - Swift 6.2.4 resolves it and then cannot COMPILE Expo's own source —
+    #       expo-modules-jsi/.../JavaScriptCodable+Date.swift:53:50:
+    #       error: type of expression is ambiguous without a type annotation
+    #
+    # Every Xcode on the macos-15 image falls on one side or the other, so
+    # "select the newest Xcode" was picking the newest of a set that contained
+    # no working option. It reported success at selection and failed four
+    # hundred lines into a compile, which is why the cause was not obvious.
+    #
+    # The toolchain this project is actually developed against — Xcode 26.5,
+    # per docs/operations/setup-status.md — builds it, and lives on the
+    # macos-26 image.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # The runner's default Xcode ships Swift 6.1, and Expo's `apple` Swift
-      # package requires 6.2. Note the window is narrow in both directions:
-      # 6.1 cannot resolve the package, and 6.2.4 fails to compile Expo's own
-      # expo-modules-jsi source. See the note on this job below.
-      #
-      # Original problem:
-      #
-      #   xcodebuild: error: Could not resolve package dependencies:
-      #   package 'apple' is using Swift tools version 6.2.0 but the installed
-      #   version is 6.1.0
-      #
       # The image carries several Xcodes; this selects the newest rather than
-      # pinning a version that will age out of the image.
+      # pinning a version that will age out of the image. The floor check is
+      # what stops a future image quietly reintroducing the problem above: a
+      # toolchain too old to compile Expo now fails here, naming the reason,
+      # instead of deep inside xcodebuild's output.
       - name: Select the newest Xcode
         run: |
           set -euo pipefail
@@ -238,6 +252,13 @@ jobs:
           echo "Using ${newest}"
           sudo xcode-select -s "${newest}/Contents/Developer"
           swift --version
+
+          swift_version="$(swift --version 2>&1 | sed -nE 's/.*Swift version ([0-9]+\.[0-9]+).*/\1/p' | head -1)"
+          if [ "$(printf '%s\n6.3\n' "$swift_version" | sort -V | head -1)" != "6.3" ]; then
+            echo "::error::Swift ${swift_version} cannot compile expo-modules-jsi." \
+                 "This job needs 6.3 or newer — see the comment on this job." >&2
+            exit 1
+          fi
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

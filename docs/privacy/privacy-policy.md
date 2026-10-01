@@ -96,11 +96,23 @@ one-time code, Sign in with Apple (`APPLE`), and Google Sign-In (`GOOGLE`). One-
 codes and provider identity tokens are treated as credentials: they are verified
 server-side, never logged, and never included in an error message.
 
-**Date of birth is asked for and is not kept.** Creating an account requires entering a
-date of birth. It is sent to the sign-up trigger, compared against the minimum age, and
-discarded — it is not written to the account, not stored in the user pool, not logged, and
-not returned by any endpoint. It does not appear in the table above because nothing
-persists it.
+**Date of birth is asked for and is not kept; the age band is.** Creating an account
+requires entering a date of birth. It is sent to the sign-up trigger, compared against the
+minimum age, and discarded — it is not written to the account, not stored in the user pool,
+not logged, and not returned by any endpoint.
+
+What is stored is the **band** it fell in: one of `AGE_13_TO_15`, `AGE_16_TO_17` or
+`ADULT`. `UNDER_13` is never stored, because that account is refused rather than created.
+A band is a category with at most four values and is not an identifier; a date of birth is
+a strong identifier and, joined to location history, a much stronger one. The band is
+returned only on the account holder's own profile read, alongside their own email address,
+and nothing else in the API exposes it.
+
+**Accounts created through Sign in with Apple are asked separately.** Federation into the
+user pool happens through an authorization-code grant that carries no date of birth, so
+those accounts are created with no band and cannot reach any part of the product until the
+holder answers the same question on the acceptance screen. The same minimum applies and the
+same refusal follows.
 
 This is **self-attestation**. Nobody verifies it, and this document does not claim
 otherwise. What it establishes is that the product asks and refuses the answers it cannot
@@ -334,9 +346,13 @@ all. Counsel must still answer:
    family location product is a real possibility — that mechanism is a project in its own
    right and blocks launch in the US.
 3. GDPR Art. 8: what is the digital-consent age in each target market (13–16 varies), and
-   who provides consent? The platform can distinguish 13–15 from 16–17 (`AgeBand` in
-   `packages/contracts/src/age.ts`) but **persists no band today**, because no rule
-   currently turns on one. A rule that does will need the band stored.
+   who provides consent? The platform distinguishes 13–15 from 16–17 (`AgeBand` in
+   `packages/contracts/src/age.ts`) and now **persists the band on the account**, so a rule
+   that turns on the Art. 8 threshold can be written without asking anybody again. No rule
+   turns on it yet — deciding what those rules are is question 3 itself. Storing the band
+   was an engineering decision taken deliberately: without it, an Art. 8 answer could not be
+   implemented at all without re-interviewing every existing user, and Sign in with Apple
+   had no way to be age-gated.
 4. The domain model deliberately **refuses** to encode guardianship. Is a
    "guardian" concept legally required — and if so, how is it verified without creating a
    new abuse vector where an adult falsely claims guardianship over another adult?

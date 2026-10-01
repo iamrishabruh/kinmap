@@ -46,6 +46,7 @@ export function useSession(): Session {
           : {
               acceptedTermsVersion: account.acceptedTermsVersion,
               acceptedPrivacyPolicyVersion: account.acceptedPrivacyPolicyVersion,
+              ageBand: account.ageBand,
             },
         CURRENT_POLICY_VERSIONS,
       ),

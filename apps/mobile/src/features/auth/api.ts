@@ -221,11 +221,29 @@ export async function revokeSession(session: StoredSession, allDevices: boolean)
  * expose — nobody should be able to accept terms without being signed in as the
  * person accepting them.
  */
-export async function acceptTerms(versions: PolicyVersions): Promise<void> {
+/**
+ * Records an acceptance of both documents, and — when the account has never been
+ * asked — the date of birth that goes with it.
+ *
+ * BOTH VERSIONS, NOT ONE. This used to send only `acceptedTermsVersion`, while
+ * `evaluateConsent` requires both documents to match before it lets anybody off
+ * the acceptance screen. The privacy policy version stayed wherever it was, the
+ * gate stayed shut, and the screen re-rendered itself indefinitely. The request
+ * contract now refuses one without the other, so this cannot regress into a
+ * half-recorded consent.
+ *
+ * The date of birth is sent only when there is one to send — a federated account
+ * that has never attested an age — and it is banded and discarded server-side.
+ */
+export async function acceptTerms(versions: PolicyVersions, birthDate?: string): Promise<void> {
   await request({
     method: 'PATCH',
     path: '/v1/account',
-    body: { acceptedTermsVersion: versions.termsVersion },
+    body: {
+      acceptedTermsVersion: versions.termsVersion,
+      acceptedPrivacyPolicyVersion: versions.privacyPolicyVersion,
+      ...(birthDate === undefined ? {} : { birthDate }),
+    },
     schema: AcceptTermsResponseSchema,
   });
 }

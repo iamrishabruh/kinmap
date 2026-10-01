@@ -37,6 +37,14 @@ export type PendingEmailVerification = {
    * string.
    */
   readonly codeSentTo: string;
+  /**
+   * `YYYY-MM-DD`, as attested on the sign-up screen, carried to `ConfirmSignUp`
+   * so PostConfirmation can record the age band. Held on exactly the same terms
+   * as the address above — memory only, one attempt, never persisted, never a
+   * route parameter, never rendered — because a date of birth is a strong
+   * identifier and, next to location history, a much stronger one.
+   */
+  readonly birthDate: string;
 };
 
 type AuthFlowState = {

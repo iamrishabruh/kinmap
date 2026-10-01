@@ -68,7 +68,13 @@ export default function VerifyEmailScreen() {
 
     setBusy(true);
     try {
-      await confirmSignUp({ email, code: entered });
+      await confirmSignUp({
+        email,
+        code: entered,
+        // Carried from sign-up so PostConfirmation can band it. See
+        // `confirmSignUp` for why Cognito makes this the only way through.
+        birthDate: pendingVerification?.birthDate,
+      });
       confirmAccount(email);
       router.replace(ROUTES.signIn);
     } catch (cause) {
@@ -77,7 +83,7 @@ export default function VerifyEmailScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, code, confirmAccount, email, router]);
+  }, [busy, code, confirmAccount, email, pendingVerification?.birthDate, router]);
 
   const startOver = useCallback(() => {
     abandonEmailVerification();
