@@ -220,10 +220,10 @@ importers:
         version: link:../packages/contracts
       aws-cdk-lib:
         specifier: 2.263.0
-        version: 2.263.0(constructs@10.8.0)
+        version: 2.263.0(constructs@10.8.1)
       constructs:
-        specifier: 10.8.0
-        version: 10.8.0
+        specifier: 10.8.1
+        version: 10.8.1
     devDependencies:
       '@family/eslint-config':
         specifier: workspace:*
@@ -4092,9 +4092,8 @@ packages:
     resolution: {integrity: sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ==}
     engines: {node: '>= 0.10.0'}
 
-  constructs@10.8.0:
-    resolution: {integrity: sha512-pJHp2CxvTG0ttp52rZvQfkbspPLZzttWPooIRLBwlZK8rV7ZhkjIkyZWJhIfBDC4YdcwIDmXyUFr1ieJaqjBbg==}
-    deprecated: This version has a bug that breaks downstream jsii consumers
+  constructs@10.8.1:
+    resolution: {integrity: sha512-98yGXYyhePqPYh3cYu8nzBERmAhC0DONe3UD03okK0nehZ7hYP4wgZuf02a04+uOWxnTJ5Rpp5m0GRNpwyLGGA==}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -10566,12 +10565,12 @@ snapshots:
 
   await-lock@2.2.2: {}
 
-  aws-cdk-lib@2.263.0(constructs@10.8.0):
+  aws-cdk-lib@2.263.0(constructs@10.8.1):
     dependencies:
       '@aws-cdk/asset-awscli-v1': 2.2.282
       '@aws-cdk/asset-node-proxy-agent-v6': 2.1.2
       '@aws-cdk/cloud-assembly-schema': 54.15.0
-      constructs: 10.8.0
+      constructs: 10.8.1
 
   aws-cdk@2.1134.0: {}
 
@@ -10969,7 +10968,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  constructs@10.8.0: {}
+  constructs@10.8.1: {}
 
   convert-source-map@2.0.0: {}
 
