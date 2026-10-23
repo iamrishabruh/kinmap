@@ -284,8 +284,8 @@ importers:
         specifier: workspace:*
         version: link:../contracts
       aws-jwt-verify:
-        specifier: 5.1.0
-        version: 5.1.0
+        specifier: 5.2.1
+        version: 5.2.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -1105,8 +1105,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schemas
       aws-jwt-verify:
-        specifier: 5.1.0
-        version: 5.1.0
+        specifier: 5.2.1
+        version: 5.2.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -3781,8 +3781,8 @@ packages:
     engines: {node: '>= 18.0.0'}
     hasBin: true
 
-  aws-jwt-verify@5.1.0:
-    resolution: {integrity: sha512-98ioOBMyrLU5jW5rPvkJo20XlNB2rAX3tZR3BM6AamfBkOoSRLV1EyGkbgHQzgFOWyQ7yV8+tce6M24rOpMkgw==}
+  aws-jwt-verify@5.2.1:
+    resolution: {integrity: sha512-J+buA4M+qvQDk58WXFBLkDodkEX3DDL1ac5XFQPW3opxAsaLXYu5hYnlSHsaBRDBUXBAn695kE/cw/mdyJKwJg==}
     engines: {node: '>=18.0.0'}
 
   babel-jest@29.7.0:
@@ -10575,7 +10575,7 @@ snapshots:
 
   aws-cdk@2.1134.0: {}
 
-  aws-jwt-verify@5.1.0: {}
+  aws-jwt-verify@5.2.1: {}
 
   babel-jest@29.7.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
