@@ -22,6 +22,6 @@
     "@family/tsconfig": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "4.1.10",
-    "@types/node": "24.13.3"
+    "@types/node": "26.1.2"
   }
 }

@@ -23,7 +23,7 @@
   "devDependencies": {
     "@family/eslint-config": "workspace:*",
     "@family/tsconfig": "workspace:*",
-    "@types/node": "24.13.3",
+    "@types/node": "26.1.2",
     "aws-cdk": "2.1134.0",
     "esbuild": "0.28.1",
     "eslint": "10.8.0",
